@@ -194,114 +194,92 @@
     <tbody id="vehicleRows"></tbody>
   </table>
 </div>
-<div class="section-label">
-  <div class="section-line"></div>
-  <h2>â½ Fuel Used Today</h2>
-  <div class="section-line"></div>
-</div>
-<div class="fuel-grid" id="fuelGrid">
-  <div class="fuel-no-data">No fuel data yet</div>
+
 </div>
 <div class="footer" id="footer">â</div>
 
 
-<style>
-.weekly-wrap{background:#111827;border-radius:12px;padding:24px;margin:24px 0;}
-.weekly-wrap h2{color:#f9fafb;font-size:1.1rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0 0 16px;}
-.weekly-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-.weekly-table thead th{color:#6b7280;font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:.75rem;padding:8px 12px;border-bottom:1px solid #1f2937;text-align:left;}
-.weekly-table tbody tr:hover{background:rgba(255,255,255,.03);}
-.weekly-table td{padding:10px 12px;border-bottom:1px solid #1f2937;color:#9ca3af;}
-.weekly-table td.w-name{color:#f9fafb;font-weight:600;}
-.weekly-table td.w-rank{color:#6b7280;width:36px;}
-.weekly-table td.w-out{color:#f87171;}
-.weekly-table td.w-in{color:#34d399;}
-.weekly-table td.w-clean{color:#60a5fa;}
-.weekly-table td.w-total{color:#fbbf24;font-weight:700;}
-.weekly-table td.dash{color:#374151;}
-</style>
 
-<div class="weekly-wrap">
-  <h2>Last Week — Employee Leaderboard</h2>
-  <table class="weekly-table">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Employee</th>
-        <th>Bins Out</th>
-        <th>Bins In</th>
-        <th>Bin Cleans</th>
-        <th>Total</th>
-      </tr>
-    </thead>
-    <tbody id="weekly-tbody"></tbody>
-  </table>
-</div>
+
+
 
 <script>
 const DASHBOARD_DATA = {
-  "generatedAt": "2026-04-20T23:25:37.628Z",
+  "generatedAt": "2026-04-20T23:58:45.211Z",
   "date": "2026-04-21",
-  "week": 17,
   "day": "Tuesday",
+  "week": 2,
   "employees": [
     {
       "name": "Cameron Gallo",
       "bins_moved_in": 0,
-      "bins_moved_out": 195,
-      "bins_moved": 195,
+      "bins_moved_out": 219,
+      "bins_moved": 219,
       "bins_cleaned": 0,
-      "total_bins": 195,
-      "sites_done": 27
+      "total_bins": 219,
+      "sites_done": 2
     },
     {
       "name": "Joel Ansems-mills",
       "bins_moved_in": 0,
-      "bins_moved_out": 68,
-      "bins_moved": 68,
+      "bins_moved_out": 193,
+      "bins_moved": 193,
       "bins_cleaned": 0,
-      "total_bins": 68,
-      "sites_done": 4
-    },
-    {
-      "name": "Mitch Davis",
-      "bins_moved_in": 0,
-      "bins_moved_out": 29,
-      "bins_moved": 29,
-      "bins_cleaned": 0,
-      "total_bins": 29,
-      "sites_done": 5
+      "total_bins": 193,
+      "sites_done": 3
     },
     {
       "name": "Zach Williams",
       "bins_moved_in": 0,
-      "bins_moved_out": 22,
-      "bins_moved": 22,
+      "bins_moved_out": 133,
+      "bins_moved": 133,
       "bins_cleaned": 0,
-      "total_bins": 22,
-      "sites_done": 4
+      "total_bins": 133,
+      "sites_done": 1
+    },
+    {
+      "name": "Ben Copley",
+      "bins_moved_in": 0,
+      "bins_moved_out": 70,
+      "bins_moved": 70,
+      "bins_cleaned": 0,
+      "total_bins": 70,
+      "sites_done": 1
+    },
+    {
+      "name": "Mitch Davis",
+      "bins_moved_in": 0,
+      "bins_moved_out": 60,
+      "bins_moved": 60,
+      "bins_cleaned": 0,
+      "total_bins": 60,
+      "sites_done": 2
     },
     {
       "name": "Mybins",
       "bins_moved_in": 0,
       "bins_moved_out": 0,
       "bins_moved": 0,
-      "bins_cleaned": 4,
-      "total_bins": 4,
-      "sites_done": 1
+      "bins_cleaned": 12,
+      "total_bins": 12,
+      "sites_done": 2
     }
   ],
   "crew": {
-    "bins_moved": 314,
-    "bins_cleaned": 4,
-    "total_bins": 318,
-    "sites_done": 41
+    "bins_moved": 675,
+    "bins_cleaned": 12,
+    "total_bins": 687,
+    "sites_done": 11,
+    "sched_moved": 597,
+    "sched_cleaned": 50,
+    "sched_total": 647,
+    "sched_sites": 647
   },
   "assignments": {
     "Hugh Sellar": "Moe",
     "Cameron Gallo": "Ferrari",
     "Luiz Eduardo": "FROG",
-    "Jacob Saxby": "Troopie",
+    "Jacob Saxby": "TROOPY",
     "Joel": "EMPTY",
     "Zach": "BARRA",
     "Ben": "Grouch",
@@ -311,142 +289,141 @@ const DASHBOARD_DATA = {
     "Paulo": "Hippo"
   },
   "fleet": {
-    "totalKm": 98.8,
-    "totalTrips": 23,
+    "totalKm": 0,
+    "totalTrips": 0,
     "movingNow": 0,
-    "activeVehicles": 12,
+    "activeVehicles": 0,
     "vehicles": [
       {
         "label": "ALPHA",
-        "state": "active",
-        "km": 18.2,
-        "trips": 6,
-        "avgDriverScore": 100,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "Big Bertha",
         "state": "stopped",
         "km": 0,
-        "trips": 0,
+        "t": 0,
         "avgDriverScore": null,
         "location": null
       },
       {
         "label": "Big Red",
-        "state": "active",
-        "km": 6.1,
-        "trips": 1,
-        "avgDriverScore": 0,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "Bin Diesel",
-        "state": "active",
-        "km": 5.1,
-        "trips": 1,
-        "avgDriverScore": 100,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "Blue",
-        "state": "active",
-        "km": 13,
-        "trips": 2,
-        "avgDriverScore": 100,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "Commy",
         "state": "stopped",
         "km": 0,
-        "trips": 0,
+        "t": 0,
         "avgDriverScore": null,
         "location": null
       },
       {
         "label": "DELTA",
-        "state": "active",
-        "km": 1.7,
-        "trips": 1,
-        "avgDriverScore": 100,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "Ferrari",
-        "state": "active",
-        "km": 16.8,
-        "trips": 2,
-        "avgDriverScore": 37,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "Grouch",
         "state": "stopped",
         "km": 0,
-        "trips": 0,
+        "t": 0,
         "avgDriverScore": null,
         "location": null
       },
       {
         "label": "Hippo",
-        "state": "active",
-        "km": 6.9,
-        "trips": 1,
-        "avgDriverScore": 70,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "Hopper",
-        "state": "active",
-        "km": 3.8,
-        "trips": 1,
-        "avgDriverScore": 91,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "Moe",
-        "state": "active",
-        "km": 4.4,
-        "trips": 3,
-        "avgDriverScore": 100,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "The Barra",
-        "state": "active",
-        "km": 6.5,
-        "trips": 3,
-        "avgDriverScore": 66,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "The Fridge",
-        "state": "active",
-        "km": 7.8,
-        "trips": 1,
-        "avgDriverScore": 100,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "The Frog",
-        "state": "active",
-        "km": 8.5,
-        "trips": 1,
-        "avgDriverScore": 0,
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
         "location": null
       },
       {
         "label": "Troopie",
         "state": "stopped",
         "km": 0,
-        "trips": 0,
+        "t": 0,
         "avgDriverScore": null,
         "location": null
       }
     ]
   },
-  "weeklyLeaderboard": [],
   "fuel": null
 };
 
