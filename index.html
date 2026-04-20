@@ -204,96 +204,67 @@
 </div>
 <div class="footer" id="footer">â</div>
 
+
+<style>
+.weekly-wrap{background:#111827;border-radius:12px;padding:24px;margin:24px 0;}
+.weekly-wrap h2{color:#f9fafb;font-size:1.1rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0 0 16px;}
+.weekly-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+.weekly-table thead th{color:#6b7280;font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:.75rem;padding:8px 12px;border-bottom:1px solid #1f2937;text-align:left;}
+.weekly-table tbody tr:hover{background:rgba(255,255,255,.03);}
+.weekly-table td{padding:10px 12px;border-bottom:1px solid #1f2937;color:#9ca3af;}
+.weekly-table td.w-name{color:#f9fafb;font-weight:600;}
+.weekly-table td.w-rank{color:#6b7280;width:36px;}
+.weekly-table td.w-out{color:#f87171;}
+.weekly-table td.w-in{color:#34d399;}
+.weekly-table td.w-clean{color:#60a5fa;}
+.weekly-table td.w-total{color:#fbbf24;font-weight:700;}
+.weekly-table td.dash{color:#374151;}
+</style>
+
+<div class="weekly-wrap">
+  <h2>Last Week — Employee Leaderboard</h2>
+  <table class="weekly-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Employee</th>
+        <th>Bins Out</th>
+        <th>Bins In</th>
+        <th>Bin Cleans</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody id="weekly-tbody"></tbody>
+  </table>
+</div>
+
 <script>
 const DASHBOARD_DATA = {
-  "generatedAt": "2026-04-20T01:01:37.849Z",
+  "generatedAt": "2026-04-20T03:03:08.743Z",
   "date": "2026-04-20",
   "week": 17,
   "day": "Monday",
   "employees": [
     {
-      "name": "Kalicique Carvalho",
-      "bins_moved_in": 0,
-      "bins_moved_out": 94,
-      "bins_moved": 94,
-      "bins_cleaned": 0,
-      "total_bins": 94,
-      "sites_done": 12
-    },
-    {
-      "name": "Luiz da Silva",
-      "bins_moved_in": 0,
-      "bins_moved_out": 91,
-      "bins_moved": 91,
-      "bins_cleaned": 0,
-      "total_bins": 91,
-      "sites_done": 13
-    },
-    {
       "name": "Thassio Franco",
       "bins_moved_in": 0,
-      "bins_moved_out": 67,
-      "bins_moved": 67,
+      "bins_moved_out": 34,
+      "bins_moved": 34,
       "bins_cleaned": 0,
-      "total_bins": 67,
-      "sites_done": 10
-    },
-    {
-      "name": "Mitch Davis",
-      "bins_moved_in": 38,
-      "bins_moved_out": 16,
-      "bins_moved": 54,
-      "bins_cleaned": 0,
-      "total_bins": 54,
-      "sites_done": 9
-    },
-    {
-      "name": "Cameron Gallo",
-      "bins_moved_in": 0,
-      "bins_moved_out": 52,
-      "bins_moved": 52,
-      "bins_cleaned": 0,
-      "total_bins": 52,
-      "sites_done": 14
-    },
-    {
-      "name": "Joel Ansems-mills",
-      "bins_moved_in": 0,
-      "bins_moved_out": 33,
-      "bins_moved": 33,
-      "bins_cleaned": 1,
       "total_bins": 34,
-      "sites_done": 13
-    },
-    {
-      "name": "Mybins",
-      "bins_moved_in": 0,
-      "bins_moved_out": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 20,
-      "total_bins": 20,
-      "sites_done": 6
-    },
-    {
-      "name": "Jacob Saxby",
-      "bins_moved_in": 0,
-      "bins_moved_out": 8,
-      "bins_moved": 8,
-      "bins_cleaned": 0,
-      "total_bins": 8,
-      "sites_done": 5
+      "sites_done": 4
     }
   ],
   "crew": {
-    "bins_moved": 399,
-    "bins_cleaned": 21,
-    "total_bins": 420,
-    "sites_done": 82
+    "bins_moved": 34,
+    "bins_cleaned": 0,
+    "total_bins": 34,
+    "sites_done": 4
   },
   "assignments": {
     "Ben": "MOE OR HOPPER",
     "Cameron Gallo": "Ferrari",
-    "Jacob Saxby": "TROOPY",
+    "Jacob Saxby": "Troopie",
     "Joel": "BARRA",
     "Luiz Eduardo": "FROG",
     "Kike": "Hippo",
@@ -301,8 +272,8 @@ const DASHBOARD_DATA = {
     "Thassio": "Big Red"
   },
   "fleet": {
-    "totalKm": 147.7,
-    "totalTrips": 23,
+    "totalKm": 171.1,
+    "totalTrips": 36,
     "movingNow": 0,
     "activeVehicles": 9,
     "vehicles": [
@@ -318,16 +289,16 @@ const DASHBOARD_DATA = {
         "label": "Big Bertha",
         "state": "active",
         "km": 15,
-        "trips": 5,
-        "avgDriverScore": 40,
+        "trips": 7,
+        "avgDriverScore": 71,
         "location": null
       },
       {
         "label": "Big Red",
         "state": "active",
-        "km": 5.9,
-        "trips": 2,
-        "avgDriverScore": 63,
+        "km": 8.7,
+        "trips": 4,
+        "avgDriverScore": 71,
         "location": null
       },
       {
@@ -335,7 +306,7 @@ const DASHBOARD_DATA = {
         "state": "active",
         "km": 5,
         "trips": 1,
-        "avgDriverScore": 80,
+        "avgDriverScore": 100,
         "location": null
       },
       {
@@ -365,9 +336,9 @@ const DASHBOARD_DATA = {
       {
         "label": "Ferrari",
         "state": "active",
-        "km": 41.7,
-        "trips": 3,
-        "avgDriverScore": 45,
+        "km": 47.3,
+        "trips": 8,
+        "avgDriverScore": 58,
         "location": null
       },
       {
@@ -381,9 +352,9 @@ const DASHBOARD_DATA = {
       {
         "label": "Hippo",
         "state": "active",
-        "km": 18.8,
-        "trips": 4,
-        "avgDriverScore": 44,
+        "km": 29.3,
+        "trips": 6,
+        "avgDriverScore": 58,
         "location": null
       },
       {
@@ -397,9 +368,9 @@ const DASHBOARD_DATA = {
       {
         "label": "Moe",
         "state": "active",
-        "km": 15.5,
-        "trips": 3,
-        "avgDriverScore": 89,
+        "km": 20,
+        "trips": 5,
+        "avgDriverScore": 100,
         "location": null
       },
       {
@@ -423,7 +394,7 @@ const DASHBOARD_DATA = {
         "state": "active",
         "km": 11.5,
         "trips": 2,
-        "avgDriverScore": 33,
+        "avgDriverScore": 41,
         "location": null
       },
       {
@@ -431,11 +402,12 @@ const DASHBOARD_DATA = {
         "state": "active",
         "km": 32.6,
         "trips": 2,
-        "avgDriverScore": 41,
+        "avgDriverScore": 51,
         "location": null
       }
     ]
   },
+  "weeklyLeaderboard": [],
   "fuel": null
 };
 
@@ -558,6 +530,27 @@ function render() {
   }
 }
 render();
+
+
+// ── Weekly leaderboard renderer ──────────────────────────────────────────────
+(function renderWeekly() {
+  const rows = (DASHBOARD_DATA.weeklyLeaderboard || []);
+  const tbody = document.getElementById('weekly-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = rows.map((e, i) => {
+    const out   = e.bins_out     > 0 ? e.bins_out     : '<span class="dash">—</span>';
+    const inn   = e.bins_in      > 0 ? e.bins_in      : '<span class="dash">—</span>';
+    const clean = e.bins_cleaned > 0 ? e.bins_cleaned : '<span class="dash">—</span>';
+    return `<tr>
+      <td class="w-rank">${i+1}</td>
+      <td class="w-name">${e.name}</td>
+      <td class="w-out">${out}</td>
+      <td class="w-in">${inn}</td>
+      <td class="w-clean">${clean}</td>
+      <td class="w-total">${e.total}</td>
+    </tr>`;
+  }).join('');
+})();
 </script>
 </body>
 </html>
