@@ -3,9 +3,560 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>myBins Crew Dashboard</title>
+<title>myBins Live Crew Dashboard</title>
+<meta http-equiv="refresh" content="900">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .header { text-align: center; margin-bottom: 28px; }
+  .header h1 { font-size: 2rem; font-weight: 700; color: #60a5fa; letter-spacing: -0.5px; }
+  .header .subtitle { font-size: 0.95rem; color: #94a3b8; margin-top: 6px; }
+  .header .week-badge {
+    display: inline-block; background: #1e3a5f; color: #60a5fa;
+    border: 1px solid #2563eb; border-radius: 20px; padding: 3px 14px;
+    font-size: 0.82rem; font-weight: 600; margin-top: 8px; letter-spacing: 0.5px;
+  }
+  .crew-summary {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+    margin-bottom: 28px; max-width: 900px; margin-left: auto; margin-right: auto;
+  }
+  .summary-card {
+    background: #1e2130; border: 1px solid #2d3348; border-radius: 12px;
+    padding: 18px; text-align: center;
+  }
+  .summary-card .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .summary-card .value { font-size: 2.2rem; font-weight: 700; line-height: 1; }
+  .summary-card .value-split { font-size: 1.45rem; font-weight: 700; line-height: 1; }
+  .summary-card .split-sep { color: #475569; font-weight: 400; margin: 0 2px; }
+  .summary-card .split-labels { font-size: 0.65rem; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 5px; display: flex; justify-content: center; gap: 6px; }
+  .summary-card .split-labels span { display: inline-block; }
+  .summary-card.moved .value { color: #34d399; }
+  .summary-card.cleaned .value { color: #a78bfa; }
+  .summary-card.total .value { color: #fbbf24; }
+  .summary-card.sites .value { color: #60a5fa; }
+  .table-wrapper {
+    max-width: 900px; margin: 0 auto; background: #1e2130;
+    border: 1px solid #2d3348; border-radius: 14px; overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: #161926; color: #64748b; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.8px; padding: 12px 16px;
+    text-align: right; font-weight: 600;
+  }
+  thead th:first-child { text-align: left; }
+  tbody tr { border-top: 1px solid #2d3348; transition: background 0.15s; }
+  tbody tr:hover { background: #262c42; }
+  tbody td { padding: 13px 16px; font-size: 0.9rem; text-align: right; }
+  tbody td:first-child { text-align: left; font-weight: 600; color: #e2e8f0; }
+  .name-cell { display: flex; align-items: center; gap: 10px; }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; font-size: 0.75rem;
+    font-weight: 700; flex-shrink: 0;
+  }
+  .stat-moved { color: #34d399; font-weight: 600; }
+  .stat-cleaned { color: #a78bfa; font-weight: 600; }
+  .stat-total { color: #fbbf24; font-weight: 700; }
+  .stat-sites { color: #60a5fa; }
+  .stat-muted { color: #475569; font-size: 0.8rem; }
+  .footer { text-align: center; margin-top: 22px; color: #334155; font-size: 0.75rem; }
+  .score-cell { min-width: 100px; }
+  .score-val { color: #f59e0b; font-weight: 700; }
+  .score-pts { font-size: 0.72rem; color: #78716c; font-weight: 400; margin-left: 1px; }
+  .score-bar { height: 6px; border-radius: 3px; background: #2d3348; margin-top: 5px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #f59e0b, #fcd34d); transition: width 0.4s ease; }
+  .section-label {
+    max-width: 900px; margin: 32px auto 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-label h2 { font-size: 1.1rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.3px; }
+  .section-label .section-line { flex: 1; height: 1px; background: #2d3348; }
+  .fleet-summary {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    margin-bottom: 14px; max-width: 900px; margin-left: auto; margin-right: auto;
+  }
+  .summary-card.km .value { color: #34d399; }
+  .summary-card.trips .value { color: #60a5fa; }
+  .summary-card.active .value { color: #fb923c; }
+  .state-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .state-moving { background: #34d399; box-shadow: 0 0 6px #34d399; }
+  .state-idle   { background: #fbbf24; }
+  .state-stopped{ background: #475569; }
+  .driver-score-bar { height: 5px; border-radius: 3px; background: #2d3348; margin-top: 5px; overflow: hidden; }
+  .driver-score-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .fuel-grid {
+    max-width: 900px; margin: 0 auto; display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;
+  }
+  .fuel-card {
+    background: #1e2130; border: 1px solid #2d3348; border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .fuel-card .f-label { font-size: 0.78rem; color: #94a3b8; font-weight: 600; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fuel-card .f-val { font-size: 1.5rem; font-weight: 700; color: #fb923c; line-height: 1; }
+  .fuel-card .f-unit { font-size: 0.75rem; color: #78716c; margin-left: 2px; }
+  .fuel-bar-wrap { height: 5px; background: #2d3348; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+  .fuel-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #fb923c, #fcd34d); }
+  .fuel-no-data { color: #475569; font-style: italic; font-size: 0.85rem; text-align: center; padding: 18px; }
+  @media (max-width: 640px) {
+    .crew-summary { grid-template-columns: repeat(2, 1fr); }
+    .fleet-summary { grid-template-columns: repeat(3, 1fr); }
+    .summary-card .value { font-size: 1.7rem; }
+    table { font-size: 0.82rem; }
+    .fuel-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
 </head>
 <body>
-<p>Dashboard initialising — first update runs within 5 minutes.</p>
+<div class="header">
+  <h1>ðï¸ myBins Crew Dashboard</h1>
+  <div class="subtitle" id="dateStr">Loading...</div>
+  <div class="week-badge" id="weekBadge">Week â</div>
+</div>
+<div class="crew-summary">
+  <div class="summary-card moved">
+    <div class="label">Bins Moved</div>
+    <div class="value-split stat-moved"><span id="crewMoved">â</span><span class="split-sep">/</span><span id="schedMoved">â</span></div>
+    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
+  </div>
+  <div class="summary-card cleaned">
+    <div class="label">Bins Cleaned</div>
+    <div class="value-split stat-cleaned"><span id="crewCleaned">â</span><span class="split-sep">/</span><span id="schedCleaned">â</span></div>
+    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
+  </div>
+  <div class="summary-card total">
+    <div class="label">Total Bins</div>
+    <div class="value-split stat-total"><span id="crewTotal">â</span><span class="split-sep">/</span><span id="schedTotal">â</span></div>
+    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
+  </div>
+  <div class="summary-card sites">
+    <div class="label">Sites Done</div>
+    <div class="value-split stat-sites"><span id="crewSites">â</span><span class="split-sep">/</span><span id="schedSites">â</span></div>
+    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
+  </div>
+</div>
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Moved Out</th>
+        <th>Moved In</th>
+        <th>Moved</th>
+        <th>Cleaned</th>
+        <th>Vehicle</th>
+        <th>KM</th>
+        <th>Score</th>
+        <th>Sites</th>
+      </tr>
+    </thead>
+    <tbody id="employeeRows"></tbody>
+  </table>
+</div>
+<div class="section-label">
+  <div class="section-line"></div>
+  <h2>ð Fleet</h2>
+  <div class="section-line"></div>
+</div>
+<div class="fleet-summary">
+  <div class="summary-card km">
+    <div class="label">KM Today</div>
+    <div class="value" id="fleetKm">â</div>
+  </div>
+  <div class="summary-card trips">
+    <div class="label">Trips</div>
+    <div class="value" id="fleetTrips">â</div>
+  </div>
+  <div class="summary-card active">
+    <div class="label">Active Vehicles</div>
+    <div class="value-split stat-moved" style="color:#fb923c"><span id="fleetMoving">â</span><span class="split-sep">/</span><span id="fleetActive">â</span></div>
+    <div class="split-labels"><span>MOVING</span><span style="flex:1;text-align:center">/</span><span>TODAY</span></div>
+  </div>
+</div>
+<div class="table-wrapper" style="max-width:900px;margin:0 auto 0;">
+  <table>
+    <thead>
+      <tr>
+        <th>Vehicle</th>
+        <th>Driver</th>
+        <th>Status</th>
+        <th>KM Today</th>
+        <th>Trips</th>
+        <th>Driver Score</th>
+      </tr>
+    </thead>
+    <tbody id="vehicleRows"></tbody>
+  </table>
+</div>
+<div class="section-label">
+  <div class="section-line"></div>
+  <h2>â½ Fuel Used Today</h2>
+  <div class="section-line"></div>
+</div>
+<div class="fuel-grid" id="fuelGrid">
+  <div class="fuel-no-data">No fuel data yet</div>
+</div>
+<div class="footer" id="footer">â</div>
+
+<script>
+const DASHBOARD_DATA = {
+  "generatedAt": "2026-04-20T00:47:24.159Z",
+  "date": "2026-04-20",
+  "day": "Monday",
+  "employees": [
+    {
+      "name": "Luiz da Silva",
+      "bins_moved_in": 0,
+      "bins_moved_out": 81,
+      "bins_moved": 81,
+      "bins_cleaned": 0,
+      "total_bins": 81,
+      "sites_done": 11
+    },
+    {
+      "name": "Kalicique Carvalho",
+      "bins_moved_in": 0,
+      "bins_moved_out": 70,
+      "bins_moved": 70,
+      "bins_cleaned": 0,
+      "total_bins": 70,
+      "sites_done": 7
+    },
+    {
+      "name": "Thassio Franco",
+      "bins_moved_in": 0,
+      "bins_moved_out": 67,
+      "bins_moved": 67,
+      "bins_cleaned": 0,
+      "total_bins": 67,
+      "sites_done": 10
+    },
+    {
+      "name": "Mitch Davis",
+      "bins_moved_in": 38,
+      "bins_moved_out": 16,
+      "bins_moved": 54,
+      "bins_cleaned": 0,
+      "total_bins": 54,
+      "sites_done": 9
+    },
+    {
+      "name": "Cameron Gallo",
+      "bins_moved_in": 0,
+      "bins_moved_out": 52,
+      "bins_moved": 52,
+      "bins_cleaned": 0,
+      "total_bins": 52,
+      "sites_done": 14
+    },
+    {
+      "name": "Joel Ansems-mills",
+      "bins_moved_in": 0,
+      "bins_moved_out": 33,
+      "bins_moved": 33,
+      "bins_cleaned": 1,
+      "total_bins": 34,
+      "sites_done": 13
+    },
+    {
+      "name": "Mybins",
+      "bins_moved_in": 0,
+      "bins_moved_out": 0,
+      "bins_moved": 0,
+      "bins_cleaned": 20,
+      "total_bins": 20,
+      "sites_done": 6
+    },
+    {
+      "name": "Jacob Saxby",
+      "bins_moved_in": 0,
+      "bins_moved_out": 1,
+      "bins_moved": 1,
+      "bins_cleaned": 0,
+      "total_bins": 1,
+      "sites_done": 1
+    }
+  ],
+  "crew": {
+    "bins_moved": 358,
+    "bins_cleaned": 21,
+    "total_bins": 379,
+    "sites_done": 71
+  },
+  "assignments": {
+    "Ben": "MOE OR HOPPER",
+    "Cameron Gallo": "Ferrari",
+    "Jacob Saxby": "TROOPY",
+    "Joel": "BARRA",
+    "Luiz Eduardo": "FROG",
+    "Kike": "Hippo",
+    "Mitchell Davis": "FRIDGE",
+    "Thassio": "Big Red"
+  },
+  "fleet": {
+    "totalKm": 0,
+    "totalTrips": 0,
+    "movingNow": 0,
+    "activeVehicles": 0,
+    "vehicles": [
+      {
+        "label": "ALPHA",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "Big Bertha",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "Big Red",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "Bin Diesel",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "Blue",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "Commy",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "DELTA",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "Ferrari",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "Grouch",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "Hippo",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "Hopper",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "Moe",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "The Barra",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "The Fridge",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "The Frog",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      },
+      {
+        "label": "Troopie",
+        "state": "stopped",
+        "km": 0,
+        "t": 0,
+        "avgDriverScore": null,
+        "location": null
+      }
+    ]
+  },
+  "fuel": null
+};
+
+const COLOURS = [
+  ['#1e3a5f','#60a5fa'],['#1e3b2e','#34d399'],['#3b1f4e','#a78bfa'],
+  ['#3b2a1e','#fbbf24'],['#3b1e1e','#f87171'],['#1e3040','#38bdf8'],
+  ['#2e3b1e','#86efac'],['#3b351e','#fcd34d'],['#1e2b3b','#93c5fd'],
+  ['#2b1e3b','#c4b5fd'],['#3b1e2e','#f9a8d4']
+];
+
+function initials(name) { return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function formatDate(dateStr, day) {
+  const d = new Date(dateStr+'T00:00:00');
+  return `${day}, ${d.toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'})}`;
+}
+
+function render() {
+  const { date, day, week, employees, crew, generatedAt } = DASHBOARD_DATA;
+  document.getElementById('dateStr').textContent = formatDate(date, day);
+  document.getElementById('weekBadge').textContent = `Week ${week}`;
+  const fmt = n => (n||0).toLocaleString();
+  document.getElementById('crewMoved').textContent    = fmt(crew.bins_moved);
+  document.getElementById('schedMoved').textContent   = fmt(crew.sched_moved);
+  document.getElementById('crewCleaned').textContent  = fmt(crew.bins_cleaned);
+  document.getElementById('schedCleaned').textContent = fmt(crew.sched_cleaned);
+  document.getElementById('crewTotal').textContent    = fmt(crew.total_bins);
+  document.getElementById('schedTotal').textContent   = fmt(crew.sched_total);
+  document.getElementById('crewSites').textContent    = fmt(crew.sites_done);
+  document.getElementById('schedSites').textContent   = fmt(crew.sched_sites);
+
+  // Score: 1pt per bin moved (in or out), 10pts per bin cleaned
+  // Score: 1pt per bin moved, 6pts per bin cleaned, 2pts per site visited
+  const withScore = employees
+    .filter(e=>e.name!=='myBins')
+    .map(e=>({...e, score: e.bins_moved + e.bins_cleaned * 6 + e.sites_done * 2}));
+  const maxScore = Math.max(...withScore.map(e=>e.score), 1);
+  const sorted = [...withScore].sort((a,b)=>b.score-a.score);
+
+  const asgn = DASHBOARD_DATA.assignments || {};
+  const fleetVehicles = DASHBOARD_DATA.fleet?.vehicles || [];
+
+  document.getElementById('employeeRows').innerHTML = sorted.map((emp,i) => {
+    const [bg,fg] = COLOURS[i%COLOURS.length];
+    const pct = Math.round((emp.score/maxScore)*100);
+    const vehicle = asgn[emp.name] || null;
+    const vdata = vehicle ? fleetVehicles.find(v => v.label === vehicle) : null;
+    const vCell = vehicle
+      ? `<span style="color:#94a3b8;font-size:0.82rem">${vehicle}</span>`
+      : `<span style="color:#334155">&mdash;</span>`;
+    const kmCell = vdata
+      ? `<span style="color:#60a5fa;font-weight:600">${vdata.km} km</span>`
+      : `<span style="color:#334155">&mdash;</span>`;
+    return `<tr>
+      <td><div class="name-cell"><div class="avatar" style="background:${bg};color:${fg}">${initials(emp.name)}</div><span>${emp.name}</span></div></td>
+      <td class="stat-muted">${emp.bins_moved_out>0?emp.bins_moved_out:'&mdash;'}</td>
+      <td class="stat-muted">${emp.bins_moved_in>0?emp.bins_moved_in:'&mdash;'}</td>
+      <td class="stat-moved">${emp.bins_moved>0?emp.bins_moved:'&mdash;'}</td>
+      <td class="stat-cleaned">${emp.bins_cleaned>0?emp.bins_cleaned:'&mdash;'}</td>
+      <td style="text-align:left">${vCell}</td>
+      <td>${kmCell}</td>
+      <td class="score-cell"><span class="score-val">${emp.score.toLocaleString()}</span><span class="score-pts">pts</span><div class="score-bar"><div class="score-bar-fill" style="width:${pct}%"></div></div></td>
+      <td class="stat-sites">${emp.sites_done}</td>
+    </tr>`;
+  }).join('');
+
+  const genTime = new Date(generatedAt).toLocaleTimeString('en-AU',{
+    timeZone:'Australia/Sydney', hour:'2-digit', minute:'2-digit', hour12:false
+  });
+  document.getElementById('footer').textContent = `Last updated ${genTime} AEST Â· auto-refreshes every 15 min`;
+
+  // Fuel section
+  const fuelVehicles = (DASHBOARD_DATA.fuel?.vehicles || [])
+    .filter(v => v.litres > 0)
+    .sort((a,b) => b.litres - a.litres);
+  const maxFuel = Math.max(...fuelVehicles.map(v => v.litres), 1);
+  const fuelGrid = document.getElementById('fuelGrid');
+  if (fuelVehicles.length > 0) {
+    fuelGrid.innerHTML = fuelVehicles.map(v => {
+      const pct = Math.round((v.litres / maxFuel) * 100);
+      return `<div class="fuel-card">
+        <div class="f-label">${v.label}</div>
+        <div><span class="f-val">${v.litres.toFixed(1)}</span><span class="f-unit">L</span></div>
+        <div class="fuel-bar-wrap"><div class="fuel-bar-fill" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // Fleet section
+  const { fleet } = DASHBOARD_DATA;
+  if (fleet) {
+    document.getElementById('fleetKm').textContent    = fleet.totalKm.toLocaleString();
+    document.getElementById('fleetTrips').textContent = fleet.totalTrips;
+    document.getElementById('fleetMoving').textContent = fleet.movingNow;
+    document.getElementById('fleetActive').textContent = fleet.activeVehicles;
+
+    const stateLabel = { moving: 'Moving', idle: 'Idle', stopped: 'Stopped', unknown: '&mdash;' };
+    const stateDot   = s => `<span class="state-dot state-${s}"></span>`;
+    const scoreColor = sc => sc >= 80 ? '#34d399' : sc >= 50 ? '#fbbf24' : '#f87171';
+
+    const reverseAsgn = Object.fromEntries(Object.entries(asgn).map(([emp,veh]) => [veh, emp]));
+
+    document.getElementById('vehicleRows').innerHTML = (fleet.vehicles || []).map(v => {
+      const sc = v.avgDriverScore ?? null;
+      const scBar = sc !== null
+        ? `<div class="driver-score-bar"><div class="driver-score-fill" style="width:${sc}%;background:${scoreColor(sc)}"></div></div>`
+        : '';
+      const scVal = sc !== null
+        ? `<span style="color:${scoreColor(sc)};font-weight:700">${sc}</span><span style="font-size:0.72rem;color:#78716c">/100</span>${scBar}`
+        : '<span style="color:#475569">&mdash;</span>';
+      const driver = reverseAsgn[v.label] || null;
+      return `<tr>
+        <td><div class="name-cell"><span>${v.label}</span></div></td>
+        <td style="text-align:left;color:#e2e8f0;font-size:0.85rem">${driver || '<span style="color:#334155">&mdash;</span>'}</td>
+        <td style="text-align:left">${stateDot(v.state||'unknown')}<span style="font-size:0.82rem;color:#94a3b8">${stateLabel[v.state]||'&mdash;'}</span></td>
+        <td class="stat-moved">${v.km}</td>
+        <td class="stat-sites">${v.trips}</td>
+        <td class="score-cell">${scVal}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+render();
+</script>
 </body>
 </html>
