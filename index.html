@@ -62,25 +62,25 @@
 
 <script>
 const DASHBOARD_DATA = {
-  "generatedAt": "21 Apr, 3:16 pm",
+  "generatedAt": "21 Apr, 5:09 pm",
   "today": "2026-04-21",
   "displayDate": "Tuesday 21 April 2026",
   "week": 2,
   "crew": {
     "binsMoved": {
-      "done": 4037,
+      "done": 4430,
       "scheduled": 4544
     },
     "binsCleaned": {
-      "done": 120,
+      "done": 221,
       "scheduled": 242
     },
     "totalBins": {
-      "done": 4157,
+      "done": 4651,
       "scheduled": 4786
     },
     "sitesDone": {
-      "done": 534,
+      "done": 624,
       "scheduled": 647
     }
   },
@@ -101,25 +101,25 @@ const DASHBOARD_DATA = {
       "name": "Jacob Saxby",
       "vehicle": "TROOPY",
       "bins_moved_out": 592,
-      "bins_moved_in": 0,
-      "bins_moved": 592,
-      "bins_cleaned": 0,
-      "total_bins": 592,
+      "bins_moved_in": 80,
+      "bins_moved": 672,
+      "bins_cleaned": 15,
+      "total_bins": 687,
       "km": null,
       "driverScore": null,
-      "score": 592
+      "score": 687
     },
     {
       "name": "Luiz Eduardo",
       "vehicle": "FROG",
       "bins_moved_out": 390,
-      "bins_moved_in": 95,
-      "bins_moved": 485,
-      "bins_cleaned": 22,
-      "total_bins": 507,
+      "bins_moved_in": 185,
+      "bins_moved": 575,
+      "bins_cleaned": 48,
+      "total_bins": 623,
       "km": null,
       "driverScore": null,
-      "score": 507
+      "score": 623
     },
     {
       "name": "Ben",
@@ -127,11 +127,23 @@ const DASHBOARD_DATA = {
       "bins_moved_out": 466,
       "bins_moved_in": 18,
       "bins_moved": 484,
-      "bins_cleaned": 10,
-      "total_bins": 494,
+      "bins_cleaned": 26,
+      "total_bins": 510,
       "km": null,
       "driverScore": null,
-      "score": 494
+      "score": 510
+    },
+    {
+      "name": "Cameron Gallo",
+      "vehicle": "Ferrari",
+      "bins_moved_out": 434,
+      "bins_moved_in": 56,
+      "bins_moved": 490,
+      "bins_cleaned": 11,
+      "total_bins": 501,
+      "km": null,
+      "driverScore": null,
+      "score": 501
     },
     {
       "name": "Zach",
@@ -146,64 +158,52 @@ const DASHBOARD_DATA = {
       "score": 484
     },
     {
-      "name": "Cameron Gallo",
-      "vehicle": "Ferrari",
-      "bins_moved_out": 434,
-      "bins_moved_in": 35,
-      "bins_moved": 469,
-      "bins_cleaned": 7,
-      "total_bins": 476,
-      "km": 27,
-      "driverScore": 29,
-      "score": 476
-    },
-    {
       "name": "Kalicique Carvalho",
       "vehicle": null,
       "bins_moved_out": 300,
-      "bins_moved_in": 0,
-      "bins_moved": 300,
+      "bins_moved_in": 87,
+      "bins_moved": 387,
       "bins_cleaned": 0,
-      "total_bins": 300,
+      "total_bins": 387,
       "km": null,
       "driverScore": null,
-      "score": 300
+      "score": 387
     },
     {
       "name": "Thassio",
       "vehicle": "Big Red",
       "bins_moved_out": 187,
-      "bins_moved_in": 52,
-      "bins_moved": 239,
-      "bins_cleaned": 44,
-      "total_bins": 283,
+      "bins_moved_in": 100,
+      "bins_moved": 287,
+      "bins_cleaned": 58,
+      "total_bins": 345,
       "km": null,
       "driverScore": null,
-      "score": 283
+      "score": 345
     },
     {
       "name": "Mitch Davis",
       "vehicle": null,
       "bins_moved_out": 115,
-      "bins_moved_in": 54,
-      "bins_moved": 169,
-      "bins_cleaned": 4,
-      "total_bins": 173,
+      "bins_moved_in": 92,
+      "bins_moved": 207,
+      "bins_cleaned": 19,
+      "total_bins": 226,
       "km": null,
       "driverScore": null,
-      "score": 173
+      "score": 226
     },
     {
       "name": "Paulo",
       "vehicle": "Hippo",
-      "bins_moved_out": 61,
-      "bins_moved_in": 36,
-      "bins_moved": 97,
-      "bins_cleaned": 21,
-      "total_bins": 118,
-      "km": 26,
-      "driverScore": 80,
-      "score": 118
+      "bins_moved_out": 83,
+      "bins_moved_in": 39,
+      "bins_moved": 122,
+      "bins_cleaned": 27,
+      "total_bins": 149,
+      "km": null,
+      "driverScore": null,
+      "score": 149
     },
     {
       "name": "Ryan Hobbs",
@@ -225,8 +225,8 @@ const DASHBOARD_DATA = {
       "bins_moved": 0,
       "bins_cleaned": 0,
       "total_bins": 0,
-      "km": 6,
-      "driverScore": 100,
+      "km": null,
+      "driverScore": null,
       "score": 0
     },
     {
@@ -267,171 +267,10 @@ const DASHBOARD_DATA = {
     }
   ],
   "fleet": {
-    "totalTrips": 40,
-    "activeVehicles": 13,
-    "movingNow": 7,
-    "vehicles": [
-      {
-        "label": "Grouch",
-        "registration": "YJB11M",
-        "driver": "Ben",
-        "state": "idle",
-        "speed": 0,
-        "trips": 0,
-        "km": null,
-        "avgDriverScore": null
-      },
-      {
-        "label": "Hippo",
-        "registration": "CX8 3NL",
-        "driver": "Paulo",
-        "state": "idle",
-        "speed": 0,
-        "trips": 13,
-        "km": 26,
-        "avgDriverScore": 80
-      },
-      {
-        "label": "Blue",
-        "registration": "CG93MY",
-        "driver": null,
-        "state": "moving",
-        "speed": 23,
-        "trips": 0,
-        "km": null,
-        "avgDriverScore": null
-      },
-      {
-        "label": "DELTA",
-        "registration": "YNU35T",
-        "driver": null,
-        "state": "moving",
-        "speed": 13,
-        "trips": 0,
-        "km": null,
-        "avgDriverScore": null
-      },
-      {
-        "label": "Ferrari",
-        "registration": "EGZ71Q",
-        "driver": "Cameron Gallo",
-        "state": "moving",
-        "speed": 34,
-        "trips": 2,
-        "km": 27,
-        "avgDriverScore": 29
-      },
-      {
-        "label": "Troopie",
-        "registration": "YLS66H",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 0,
-        "km": null,
-        "avgDriverScore": null
-      },
-      {
-        "label": "Bin Diesel",
-        "registration": "MYBINS",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 5,
-        "km": 28,
-        "avgDriverScore": 72
-      },
-      {
-        "label": "The Fridge",
-        "registration": "YLS62Z",
-        "driver": null,
-        "state": "moving",
-        "speed": 19,
-        "trips": 2,
-        "km": 6,
-        "avgDriverScore": 89
-      },
-      {
-        "label": "The Frog",
-        "registration": "FVF85Z",
-        "driver": null,
-        "state": "moving",
-        "speed": 28,
-        "trips": 0,
-        "km": null,
-        "avgDriverScore": null
-      },
-      {
-        "label": "The Barra",
-        "registration": "YLS89Q",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 4,
-        "km": 19,
-        "avgDriverScore": 85
-      },
-      {
-        "label": "ALPHA",
-        "registration": "YNU15Q",
-        "driver": null,
-        "state": "moving",
-        "speed": 3,
-        "trips": 1,
-        "km": 13,
-        "avgDriverScore": null
-      },
-      {
-        "label": "Big Red",
-        "registration": "CI69CU",
-        "driver": "Thassio",
-        "state": "moving",
-        "speed": 7,
-        "trips": 0,
-        "km": null,
-        "avgDriverScore": null
-      },
-      {
-        "label": "Big Bertha",
-        "registration": "CC52TG",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 2,
-        "km": 7,
-        "avgDriverScore": null
-      },
-      {
-        "label": "Hopper",
-        "registration": "FRL48A",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 4,
-        "km": 14,
-        "avgDriverScore": 86
-      },
-      {
-        "label": "Commy",
-        "registration": "YKG81J",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 0,
-        "km": null,
-        "avgDriverScore": null
-      },
-      {
-        "label": "Moe",
-        "registration": "YJB31S",
-        "driver": "Hugh Sellar",
-        "state": "idle",
-        "speed": 0,
-        "trips": 7,
-        "km": 6,
-        "avgDriverScore": 100
-      }
-    ]
+    "totalTrips": 0,
+    "activeVehicles": 0,
+    "movingNow": 0,
+    "vehicles": []
   },
   "assignments": {
     "Hugh Sellar": "Moe",
