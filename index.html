@@ -62,25 +62,25 @@
 
 <script>
 const DASHBOARD_DATA = {
-  "generatedAt": "21 Apr, 1:35 pm",
+  "generatedAt": "21 Apr, 1:40 pm",
   "today": "2026-04-21",
   "displayDate": "Tuesday 21 April 2026",
   "week": 2,
   "crew": {
     "binsMoved": {
-      "done": 3106,
+      "done": 3136,
       "scheduled": 4544
     },
     "binsCleaned": {
-      "done": 59,
+      "done": 66,
       "scheduled": 242
     },
     "totalBins": {
-      "done": 3165,
+      "done": 3202,
       "scheduled": 4786
     },
     "sitesDone": {
-      "done": 390,
+      "done": 394,
       "scheduled": 647
     }
   },
@@ -98,6 +98,30 @@ const DASHBOARD_DATA = {
       "score": 594
     },
     {
+      "name": "Cameron Gallo",
+      "vehicle": "Ferrari",
+      "bins_moved_out": 434,
+      "bins_moved_in": 21,
+      "bins_moved": 455,
+      "bins_cleaned": 7,
+      "total_bins": 462,
+      "km": 27,
+      "driverScore": 29,
+      "score": 462
+    },
+    {
+      "name": "Ben",
+      "vehicle": "Grouch",
+      "bins_moved_out": 456,
+      "bins_moved_in": 0,
+      "bins_moved": 456,
+      "bins_cleaned": 0,
+      "total_bins": 456,
+      "km": null,
+      "driverScore": null,
+      "score": 456
+    },
+    {
       "name": "Zach",
       "vehicle": "BARRA",
       "bins_moved_out": 446,
@@ -108,30 +132,6 @@ const DASHBOARD_DATA = {
       "km": null,
       "driverScore": null,
       "score": 446
-    },
-    {
-      "name": "Cameron Gallo",
-      "vehicle": "Ferrari",
-      "bins_moved_out": 434,
-      "bins_moved_in": 10,
-      "bins_moved": 444,
-      "bins_cleaned": 0,
-      "total_bins": 444,
-      "km": 27,
-      "driverScore": 29,
-      "score": 444
-    },
-    {
-      "name": "Ben",
-      "vehicle": "Grouch",
-      "bins_moved_out": 441,
-      "bins_moved_in": 0,
-      "bins_moved": 441,
-      "bins_cleaned": 0,
-      "total_bins": 441,
-      "km": null,
-      "driverScore": null,
-      "score": 441
     },
     {
       "name": "Luiz Eduardo",
@@ -196,14 +196,14 @@ const DASHBOARD_DATA = {
     {
       "name": "Paulo",
       "vehicle": "Hippo",
-      "bins_moved_out": 48,
+      "bins_moved_out": 52,
       "bins_moved_in": 33,
-      "bins_moved": 81,
+      "bins_moved": 85,
       "bins_cleaned": 10,
-      "total_bins": 91,
-      "km": 15,
-      "driverScore": 54,
-      "score": 91
+      "total_bins": 95,
+      "km": 19,
+      "driverScore": 60,
+      "score": 95
     },
     {
       "name": "Ryan Hobbs",
@@ -255,7 +255,7 @@ const DASHBOARD_DATA = {
     }
   ],
   "fleet": {
-    "totalTrips": 18,
+    "totalTrips": 19,
     "activeVehicles": 11,
     "movingNow": 6,
     "vehicles": [
@@ -273,18 +273,18 @@ const DASHBOARD_DATA = {
         "label": "Hippo",
         "registration": "CX8 3NL",
         "driver": "Paulo",
-        "state": "moving",
-        "speed": 18,
-        "trips": 6,
-        "km": 15,
-        "avgDriverScore": 54
+        "state": "idle",
+        "speed": 0,
+        "trips": 7,
+        "km": 19,
+        "avgDriverScore": 60
       },
       {
         "label": "Blue",
         "registration": "CG93MY",
         "driver": null,
-        "state": "idle",
-        "speed": 0,
+        "state": "moving",
+        "speed": 8,
         "trips": 0,
         "km": null,
         "avgDriverScore": null
@@ -294,7 +294,7 @@ const DASHBOARD_DATA = {
         "registration": "YNU35T",
         "driver": null,
         "state": "moving",
-        "speed": 26,
+        "speed": 35,
         "trips": 0,
         "km": null,
         "avgDriverScore": null
@@ -323,8 +323,8 @@ const DASHBOARD_DATA = {
         "label": "Bin Diesel",
         "registration": "MYBINS",
         "driver": null,
-        "state": "idle",
-        "speed": 0,
+        "state": "moving",
+        "speed": 66,
         "trips": 2,
         "km": 14,
         "avgDriverScore": 62
@@ -333,8 +333,8 @@ const DASHBOARD_DATA = {
         "label": "The Fridge",
         "registration": "YLS62Z",
         "driver": null,
-        "state": "moving",
-        "speed": 14,
+        "state": "idle",
+        "speed": 0,
         "trips": 0,
         "km": null,
         "avgDriverScore": null
@@ -344,7 +344,7 @@ const DASHBOARD_DATA = {
         "registration": "FVF85Z",
         "driver": null,
         "state": "moving",
-        "speed": 7,
+        "speed": 3,
         "trips": 0,
         "km": null,
         "avgDriverScore": null
@@ -354,7 +354,7 @@ const DASHBOARD_DATA = {
         "registration": "YLS89Q",
         "driver": null,
         "state": "moving",
-        "speed": 3,
+        "speed": 10,
         "trips": 1,
         "km": 3,
         "avgDriverScore": 39
