@@ -200,100 +200,46 @@
 
 <script>
 const DASHBOARD_DATA = {
-  "generatedAt": "2026-04-21T01:35:34.946Z",
+  "generatedAt": "2026-04-21T01:59:20.939Z",
   "date": "2026-04-21",
   "day": "Tuesday",
   "week": 2,
   "employees": [
     {
-      "name": "Cameron Gallo",
-      "bins_moved_in": 0,
-      "bins_moved_out": 368,
-      "bins_moved": 368,
-      "bins_cleaned": 0,
-      "total_bins": 368,
-      "sites_done": 2
-    },
-    {
-      "name": "Joel Ansems-mills",
-      "bins_moved_in": 0,
-      "bins_moved_out": 358,
-      "bins_moved": 358,
-      "bins_cleaned": 0,
-      "total_bins": 358,
-      "sites_done": 3
-    },
-    {
-      "name": "Zach Williams",
-      "bins_moved_in": 0,
-      "bins_moved_out": 265,
-      "bins_moved": 265,
-      "bins_cleaned": 0,
-      "total_bins": 265,
-      "sites_done": 1
-    },
-    {
-      "name": "Luiz da Silva",
-      "bins_moved_in": 0,
-      "bins_moved_out": 261,
-      "bins_moved": 261,
-      "bins_cleaned": 0,
-      "total_bins": 261,
-      "sites_done": 1
-    },
-    {
-      "name": "Ben Copley",
-      "bins_moved_in": 0,
-      "bins_moved_out": 236,
-      "bins_moved": 236,
-      "bins_cleaned": 0,
-      "total_bins": 236,
-      "sites_done": 1
-    },
-    {
       "name": "Thassio Franco",
       "bins_moved_in": 0,
-      "bins_moved_out": 138,
-      "bins_moved": 138,
+      "bins_moved_out": 187,
+      "bins_moved": 187,
       "bins_cleaned": 0,
-      "total_bins": 138,
+      "total_bins": 187,
       "sites_done": 2
-    },
-    {
-      "name": "Jacob Saxby",
-      "bins_moved_in": 0,
-      "bins_moved_out": 135,
-      "bins_moved": 135,
-      "bins_cleaned": 0,
-      "total_bins": 135,
-      "sites_done": 1
     },
     {
       "name": "Kalicique Carvalho",
       "bins_moved_in": 0,
-      "bins_moved_out": 118,
-      "bins_moved": 118,
+      "bins_moved_out": 181,
+      "bins_moved": 181,
       "bins_cleaned": 0,
-      "total_bins": 118,
+      "total_bins": 181,
       "sites_done": 1
     },
     {
       "name": "Mitch Davis",
-      "bins_moved_in": 2,
+      "bins_moved_in": 10,
       "bins_moved_out": 84,
-      "bins_moved": 86,
-      "bins_cleaned": 2,
-      "total_bins": 88,
+      "bins_moved": 94,
+      "bins_cleaned": 4,
+      "total_bins": 98,
       "sites_done": 5
     },
     {
       "name": "Paulo Penedo",
-      "bins_moved_in": 0,
+      "bins_moved_in": 20,
       "bins_moved_out": 44,
-      "bins_moved": 44,
-      "bins_cleaned": 0,
-      "total_bins": 44,
-      "sites_done": 1
+      "bins_moved": 64,
+      "bins_cleaned": 4,
+      "total_bins": 68,
+      "sites_done": 3
     },
     {
       "name": "Mybins",
@@ -306,14 +252,14 @@ const DASHBOARD_DATA = {
     }
   ],
   "crew": {
-    "bins_moved": 2009,
-    "bins_cleaned": 14,
-    "total_bins": 2023,
-    "sites_done": 20,
-    "sched_moved": 597,
-    "sched_cleaned": 50,
-    "sched_total": 647,
-    "sched_sites": 647
+    "bins_moved": 526,
+    "bins_cleaned": 20,
+    "total_bins": 546,
+    "sites_done": 13,
+    "sched_moved": 149,
+    "sched_cleaned": 36,
+    "sched_total": 185,
+    "sched_sites": 185
   },
   "assignments": {
     "Hugh Sellar": "Moe",
@@ -335,163 +281,241 @@ const DASHBOARD_DATA = {
         "registration": "YJB11M",
         "type": "ute",
         "driver": "Ben",
-        "status": "idle",
+        "state": "idle",
         "speed": 0,
         "trips": 0,
-        "driverScore": null
+        "avgDriverScore": null,
+        "km": null
       },
       {
         "label": "Hippo",
         "registration": "CX8 3NL",
         "type": "ute",
         "driver": "Paulo",
-        "status": "moving",
-        "speed": 43,
-        "trips": 2,
-        "driverScore": 13
+        "state": "idle",
+        "speed": 0,
+        "trips": 3,
+        "avgDriverScore": 21,
+        "km": 9
       },
       {
         "label": "Blue",
         "registration": "CG93MY",
         "type": "ute",
         "driver": null,
-        "status": "moving",
-        "speed": 4,
+        "state": "idle",
+        "speed": 0,
         "trips": 0,
-        "driverScore": null
+        "avgDriverScore": null,
+        "km": null
       },
       {
         "label": "DELTA",
         "registration": "YNU35T",
         "type": "ute",
         "driver": null,
-        "status": "idle",
+        "state": "idle",
         "speed": 0,
         "trips": 0,
-        "driverScore": null
+        "avgDriverScore": null,
+        "km": null
       },
       {
         "label": "Ferrari",
         "registration": "EGZ71Q",
         "type": "ute",
         "driver": "Cameron Gallo",
-        "status": "moving",
-        "speed": 10,
+        "state": "idle",
+        "speed": 0,
         "trips": 1,
-        "driverScore": 100
+        "avgDriverScore": 100,
+        "km": 4
       },
       {
         "label": "Troopie",
         "registration": "YLS66H",
         "type": "ute",
         "driver": null,
-        "status": "idle",
-        "speed": 0,
+        "state": "moving",
+        "speed": 6,
         "trips": 0,
-        "driverScore": null
+        "avgDriverScore": null,
+        "km": null
       },
       {
         "label": "Bin Diesel",
         "registration": "MYBINS",
         "type": "ute",
         "driver": null,
-        "status": "idle",
+        "state": "idle",
         "speed": 0,
         "trips": 1,
-        "driverScore": 100
+        "avgDriverScore": 100,
+        "km": null
       },
       {
         "label": "The Fridge",
         "registration": "YLS62Z",
         "type": "ute",
         "driver": null,
-        "status": "moving",
+        "state": "moving",
         "speed": 4,
         "trips": 0,
-        "driverScore": null
+        "avgDriverScore": null,
+        "km": null
       },
       {
         "label": "The Frog",
         "registration": "FVF85Z",
         "type": "ute",
         "driver": null,
-        "status": "idle",
+        "state": "idle",
         "speed": 0,
         "trips": 0,
-        "driverScore": null
+        "avgDriverScore": null,
+        "km": null
       },
       {
         "label": "The Barra",
         "registration": "YLS89Q",
         "type": "ute",
         "driver": null,
-        "status": "moving",
-        "speed": 5,
+        "state": "idle",
+        "speed": 0,
         "trips": 0,
-        "driverScore": null
+        "avgDriverScore": null,
+        "km": null
       },
       {
         "label": "ALPHA",
         "registration": "YNU15Q",
         "type": "ute",
         "driver": null,
-        "status": "moving",
-        "speed": 9,
+        "state": "idle",
+        "speed": 0,
         "trips": 0,
-        "driverScore": null
+        "avgDriverScore": null,
+        "km": null
       },
       {
         "label": "Big Red",
         "registration": "CI69CU",
         "type": "ute",
         "driver": "Thassio",
-        "status": "moving",
-        "speed": 4,
+        "state": "moving",
+        "speed": 5,
         "trips": 0,
-        "driverScore": null
+        "avgDriverScore": null,
+        "km": null
       },
       {
         "label": "Big Bertha",
         "registration": "CC52TG",
         "type": "box-truck",
         "driver": null,
-        "status": "idle",
+        "state": "idle",
         "speed": 0,
         "trips": 0,
-        "driverScore": null
+        "avgDriverScore": null,
+        "km": null
       },
       {
         "label": "Hopper",
         "registration": "FRL48A",
         "type": "ute",
         "driver": null,
-        "status": "idle",
+        "state": "idle",
         "speed": 0,
         "trips": 2,
-        "driverScore": 84
+        "avgDriverScore": 84,
+        "km": 6
       },
       {
         "label": "Commy",
         "registration": "YKG81J",
         "type": "ute",
         "driver": null,
-        "status": "idle",
+        "state": "idle",
         "speed": 0,
         "trips": 0,
-        "driverScore": null
+        "avgDriverScore": null,
+        "km": null
       },
       {
         "label": "Moe",
         "registration": "YJB31S",
         "type": "ute",
         "driver": "Hugh Sellar",
-        "status": "moving",
-        "speed": 3,
-        "trips": 0,
-        "driverScore": null
+        "state": "idle",
+        "speed": 0,
+        "trips": 1,
+        "avgDriverScore": 100,
+        "km": null
       }
     ],
     "trips": [
+      {
+        "tripId": 104253740,
+        "tripKey": "20260421013246-ffbdc793-1c07-448e-a48e-8",
+        "tripStatusId": 0,
+        "tripStateId": 1,
+        "tripDistance": 0,
+        "dateFrom": "2026-04-21T01:32:45+0000",
+        "dateTo": "2026-04-21T01:35:09+0000",
+        "maxSpeed": 10,
+        "avgSpeed": 6,
+        "imei": "ffbdc793-1c07-448e-a48e-8",
+        "startEventId": 9901868872,
+        "endEventId": 9901879616,
+        "type": "N",
+        "fuelConsumptionStart": 88670,
+        "fuelConsumptionEnd": 88740,
+        "fuelConsumed": 70,
+        "odometerStart": 105019400,
+        "odometerEnd": 105019400,
+        "stopType": "U",
+        "engineHourStart": 95004,
+        "engineHourEnd": 95143,
+        "engineHourUsed": 139,
+        "totalDuration": 144,
+        "totalHarshBrakes": 0,
+        "totalHarshAccelerations": 0,
+        "totalSpeedingEvents": 0,
+        "driverScore": 100,
+        "tripDuration": 144,
+        "id": 104253740
+      },
+      {
+        "tripId": 104253466,
+        "tripKey": "20260421012004-2a2410e2-ab7b-4cbe-b125-a",
+        "tripStatusId": 0,
+        "tripStateId": 1,
+        "tripDistance": 4890,
+        "dateFrom": "2026-04-21T01:20:03+0000",
+        "dateTo": "2026-04-21T01:36:26+0000",
+        "maxSpeed": 51,
+        "avgSpeed": 26,
+        "imei": "2a2410e2-ab7b-4cbe-b125-a",
+        "startEventId": 9901815126,
+        "endEventId": 9901885186,
+        "type": "N",
+        "fuelConsumptionStart": 459600,
+        "fuelConsumptionEnd": 460580,
+        "fuelConsumed": 980,
+        "odometerStart": 122850810,
+        "odometerEnd": 122855700,
+        "stopType": "U",
+        "engineHourStart": 167797,
+        "engineHourEnd": 168795,
+        "engineHourUsed": 998,
+        "totalDuration": 983,
+        "totalHarshBrakes": 0,
+        "totalHarshAccelerations": 3,
+        "totalSpeedingEvents": 0,
+        "driverScore": 38,
+        "tripDuration": 983,
+        "id": 104253466
+      },
       {
         "tripId": 104253307,
         "tripKey": "20260421011215-d8aa067b-9dc2-440a-9522-4",
@@ -605,6 +629,7 @@ const DASHBOARD_DATA = {
         "fuelConsumed": 670,
         "odometerStart": 122849280,
         "odometerEnd": 122850810,
+        "stopDuration": 580,
         "stopType": "U",
         "engineHourStart": 166461,
         "engineHourEnd": 167797,
@@ -681,11 +706,11 @@ const DASHBOARD_DATA = {
         "id": 104245444
       }
     ],
-    "active": 10,
-    "moving": 8,
-    "totalTrips": 6,
-    "activeVehicles": 10,
-    "movingNow": 8
+    "active": 8,
+    "moving": 3,
+    "totalTrips": 8,
+    "activeVehicles": 8,
+    "movingNow": 3
   },
   "fuel": null
 };
