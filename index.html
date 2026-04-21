@@ -62,119 +62,112 @@
 
 <script>
 const DASHBOARD_DATA = {
-  "generatedAt": "21 Apr, 1:05 pm",
+  "generatedAt": "21 Apr, 1:35 pm",
   "today": "2026-04-21",
   "displayDate": "Tuesday 21 April 2026",
   "week": 2,
   "crew": {
     "binsMoved": {
-      "done": 2765,
-      "scheduled": 597
+      "done": 3106,
+      "scheduled": 4544
     },
     "binsCleaned": {
-      "done": 23,
-      "scheduled": 50
+      "done": 59,
+      "scheduled": 242
     },
     "totalBins": {
-      "done": 2788,
-      "scheduled": 647
+      "done": 3165,
+      "scheduled": 4786
     },
     "sitesDone": {
-      "done": 23,
+      "done": 390,
       "scheduled": 647
     }
   },
   "leaderboard": [
     {
-      "name": "Joel Ansems-mills",
-      "vehicle": null,
-      "bins_moved_out": 524,
+      "name": "Joel",
+      "vehicle": "EMPTY",
+      "bins_moved_out": 594,
       "bins_moved_in": 0,
-      "bins_moved": 524,
+      "bins_moved": 594,
       "bins_cleaned": 0,
-      "total_bins": 524,
-      "sites_done": 3,
+      "total_bins": 594,
       "km": null,
       "driverScore": null,
-      "score": 524
+      "score": 594
+    },
+    {
+      "name": "Zach",
+      "vehicle": "BARRA",
+      "bins_moved_out": 446,
+      "bins_moved_in": 0,
+      "bins_moved": 446,
+      "bins_cleaned": 0,
+      "total_bins": 446,
+      "km": null,
+      "driverScore": null,
+      "score": 446
     },
     {
       "name": "Cameron Gallo",
       "vehicle": "Ferrari",
-      "bins_moved_out": 432,
-      "bins_moved_in": 0,
-      "bins_moved": 432,
+      "bins_moved_out": 434,
+      "bins_moved_in": 10,
+      "bins_moved": 444,
       "bins_cleaned": 0,
-      "total_bins": 432,
-      "sites_done": 2,
-      "km": 13,
-      "driverScore": 24,
-      "score": 432
+      "total_bins": 444,
+      "km": 27,
+      "driverScore": 29,
+      "score": 444
     },
     {
-      "name": "Zach Williams",
-      "vehicle": null,
-      "bins_moved_out": 401,
+      "name": "Ben",
+      "vehicle": "Grouch",
+      "bins_moved_out": 441,
       "bins_moved_in": 0,
-      "bins_moved": 401,
+      "bins_moved": 441,
       "bins_cleaned": 0,
-      "total_bins": 401,
-      "sites_done": 1,
+      "total_bins": 441,
       "km": null,
       "driverScore": null,
-      "score": 401
+      "score": 441
     },
     {
-      "name": "Ben Copley",
-      "vehicle": null,
-      "bins_moved_out": 378,
+      "name": "Luiz Eduardo",
+      "vehicle": "FROG",
+      "bins_moved_out": 390,
       "bins_moved_in": 0,
-      "bins_moved": 378,
+      "bins_moved": 390,
       "bins_cleaned": 0,
-      "total_bins": 378,
-      "sites_done": 1,
+      "total_bins": 390,
       "km": null,
       "driverScore": null,
-      "score": 378
-    },
-    {
-      "name": "Luiz da Silva",
-      "vehicle": null,
-      "bins_moved_out": 261,
-      "bins_moved_in": 0,
-      "bins_moved": 261,
-      "bins_cleaned": 0,
-      "total_bins": 261,
-      "sites_done": 1,
-      "km": null,
-      "driverScore": null,
-      "score": 261
+      "score": 390
     },
     {
       "name": "Kalicique Carvalho",
       "vehicle": null,
-      "bins_moved_out": 245,
+      "bins_moved_out": 263,
       "bins_moved_in": 0,
-      "bins_moved": 245,
+      "bins_moved": 263,
       "bins_cleaned": 0,
-      "total_bins": 245,
-      "sites_done": 1,
+      "total_bins": 263,
       "km": null,
       "driverScore": null,
-      "score": 245
+      "score": 263
     },
     {
-      "name": "Thassio Franco",
-      "vehicle": null,
+      "name": "Thassio",
+      "vehicle": "Big Red",
       "bins_moved_out": 187,
       "bins_moved_in": 0,
       "bins_moved": 187,
-      "bins_cleaned": 0,
-      "total_bins": 187,
-      "sites_done": 2,
+      "bins_cleaned": 33,
+      "total_bins": 220,
       "km": null,
       "driverScore": null,
-      "score": 187
+      "score": 220
     },
     {
       "name": "Jacob Saxby",
@@ -184,7 +177,6 @@ const DASHBOARD_DATA = {
       "bins_moved": 135,
       "bins_cleaned": 0,
       "total_bins": 135,
-      "sites_done": 1,
       "km": null,
       "driverScore": null,
       "score": 135
@@ -197,36 +189,21 @@ const DASHBOARD_DATA = {
       "bins_moved": 125,
       "bins_cleaned": 4,
       "total_bins": 129,
-      "sites_done": 6,
       "km": null,
       "driverScore": null,
       "score": 129
     },
     {
-      "name": "Paulo Penedo",
-      "vehicle": null,
-      "bins_moved_out": 44,
+      "name": "Paulo",
+      "vehicle": "Hippo",
+      "bins_moved_out": 48,
       "bins_moved_in": 33,
-      "bins_moved": 77,
-      "bins_cleaned": 7,
-      "total_bins": 84,
-      "sites_done": 3,
-      "km": null,
-      "driverScore": null,
-      "score": 84
-    },
-    {
-      "name": "Mybins",
-      "vehicle": null,
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 12,
-      "total_bins": 12,
-      "sites_done": 2,
-      "km": null,
-      "driverScore": null,
-      "score": 12
+      "bins_moved": 81,
+      "bins_cleaned": 10,
+      "total_bins": 91,
+      "km": 15,
+      "driverScore": 54,
+      "score": 91
     },
     {
       "name": "Ryan Hobbs",
@@ -236,7 +213,6 @@ const DASHBOARD_DATA = {
       "bins_moved": 0,
       "bins_cleaned": 0,
       "total_bins": 0,
-      "sites_done": 0,
       "km": null,
       "driverScore": null,
       "score": 0
@@ -249,74 +225,8 @@ const DASHBOARD_DATA = {
       "bins_moved": 0,
       "bins_cleaned": 0,
       "total_bins": 0,
-      "sites_done": 0,
       "km": 1,
       "driverScore": 100,
-      "score": 0
-    },
-    {
-      "name": "Luiz Eduardo",
-      "vehicle": "FROG",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "sites_done": 0,
-      "km": null,
-      "driverScore": null,
-      "score": 0
-    },
-    {
-      "name": "Joel",
-      "vehicle": "EMPTY",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "sites_done": 0,
-      "km": null,
-      "driverScore": null,
-      "score": 0
-    },
-    {
-      "name": "Zach",
-      "vehicle": "BARRA",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "sites_done": 0,
-      "km": null,
-      "driverScore": null,
-      "score": 0
-    },
-    {
-      "name": "Ben",
-      "vehicle": "Grouch",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "sites_done": 0,
-      "km": null,
-      "driverScore": null,
-      "score": 0
-    },
-    {
-      "name": "Thassio",
-      "vehicle": "Big Red",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "sites_done": 0,
-      "km": null,
-      "driverScore": null,
       "score": 0
     },
     {
@@ -327,7 +237,6 @@ const DASHBOARD_DATA = {
       "bins_moved": 0,
       "bins_cleaned": 0,
       "total_bins": 0,
-      "sites_done": 0,
       "km": null,
       "driverScore": null,
       "score": 0
@@ -340,29 +249,15 @@ const DASHBOARD_DATA = {
       "bins_moved": 0,
       "bins_cleaned": 0,
       "total_bins": 0,
-      "sites_done": 0,
       "km": null,
       "driverScore": null,
-      "score": 0
-    },
-    {
-      "name": "Paulo",
-      "vehicle": "Hippo",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "sites_done": 0,
-      "km": 15,
-      "driverScore": 54,
       "score": 0
     }
   ],
   "fleet": {
-    "totalTrips": 15,
-    "activeVehicles": 6,
-    "movingNow": 2,
+    "totalTrips": 18,
+    "activeVehicles": 11,
+    "movingNow": 6,
     "vehicles": [
       {
         "label": "Grouch",
@@ -378,8 +273,8 @@ const DASHBOARD_DATA = {
         "label": "Hippo",
         "registration": "CX8 3NL",
         "driver": "Paulo",
-        "state": "idle",
-        "speed": 0,
+        "state": "moving",
+        "speed": 18,
         "trips": 6,
         "km": 15,
         "avgDriverScore": 54
@@ -398,8 +293,8 @@ const DASHBOARD_DATA = {
         "label": "DELTA",
         "registration": "YNU35T",
         "driver": null,
-        "state": "idle",
-        "speed": 0,
+        "state": "moving",
+        "speed": 26,
         "trips": 0,
         "km": null,
         "avgDriverScore": null
@@ -408,11 +303,11 @@ const DASHBOARD_DATA = {
         "label": "Ferrari",
         "registration": "EGZ71Q",
         "driver": "Cameron Gallo",
-        "state": "moving",
-        "speed": 3,
-        "trips": 1,
-        "km": 13,
-        "avgDriverScore": 24
+        "state": "idle",
+        "speed": 0,
+        "trips": 2,
+        "km": 27,
+        "avgDriverScore": 29
       },
       {
         "label": "Troopie",
@@ -428,18 +323,18 @@ const DASHBOARD_DATA = {
         "label": "Bin Diesel",
         "registration": "MYBINS",
         "driver": null,
-        "state": "moving",
-        "speed": 36,
-        "trips": 1,
-        "km": null,
-        "avgDriverScore": 100
+        "state": "idle",
+        "speed": 0,
+        "trips": 2,
+        "km": 14,
+        "avgDriverScore": 62
       },
       {
         "label": "The Fridge",
         "registration": "YLS62Z",
         "driver": null,
-        "state": "idle",
-        "speed": 0,
+        "state": "moving",
+        "speed": 14,
         "trips": 0,
         "km": null,
         "avgDriverScore": null
@@ -448,8 +343,8 @@ const DASHBOARD_DATA = {
         "label": "The Frog",
         "registration": "FVF85Z",
         "driver": null,
-        "state": "idle",
-        "speed": 0,
+        "state": "moving",
+        "speed": 7,
         "trips": 0,
         "km": null,
         "avgDriverScore": null
@@ -458,8 +353,8 @@ const DASHBOARD_DATA = {
         "label": "The Barra",
         "registration": "YLS89Q",
         "driver": null,
-        "state": "idle",
-        "speed": 0,
+        "state": "moving",
+        "speed": 3,
         "trips": 1,
         "km": 3,
         "avgDriverScore": 39
@@ -470,16 +365,16 @@ const DASHBOARD_DATA = {
         "driver": null,
         "state": "idle",
         "speed": 0,
-        "trips": 0,
-        "km": null,
+        "trips": 1,
+        "km": 13,
         "avgDriverScore": null
       },
       {
         "label": "Big Red",
         "registration": "CI69CU",
         "driver": "Thassio",
-        "state": "idle",
-        "speed": 0,
+        "state": "moving",
+        "speed": 32,
         "trips": 0,
         "km": null,
         "avgDriverScore": null
@@ -588,7 +483,6 @@ const DASHBOARD_DATA = {
           <th class="td-right">KMs</th>
           <th>Driver Score</th>
           <th class="td-right">Score</th>
-          <th class="td-right">Sites</th>
         </tr>
       </thead>
       <tbody id="empRows"></tbody>
@@ -647,7 +541,7 @@ const DASHBOARD_DATA = {
   document.getElementById('cardCleaned').innerHTML      = `${c.binsCleaned?.done ?? 'â'}<span>/${c.binsCleaned?.scheduled ?? 'â'}</span>`;
   document.getElementById('cardCleanedDone').textContent  = c.binsCleaned?.done ?? 'â';
   document.getElementById('cardCleanedSched').textContent = c.binsCleaned?.scheduled ?? 'â';
-  document.getElementById('cardTotal').innerHTML        = `${c.totalBins?.done ?? 'â'}<span>/${c.totalBins?.scheduled ?? 'â'}</span`;
+  document.getElementById('cardTotal').innerHTML        = `${c.totalBins?.done ?? 'â'}<span>/${c.totalBins?.scheduled ?? 'â'}</span>`;
   document.getElementById('cardTotalDone').textContent  = c.totalBins?.done ?? 'â';
   document.getElementById('cardTotalSched').textContent = c.totalBins?.scheduled ?? 'â';
   document.getElementById('cardSites').innerHTML        = `${c.sitesDone?.done ?? 'â'}<span>/${c.sitesDone?.scheduled ?? 'â'}</span>`;
@@ -660,18 +554,14 @@ const DASHBOARD_DATA = {
     ['#9d174d','#fff'],['#1e3a5f','#60a5fa'],['#374151','#e5e7eb'],['#1a1a2e','#818cf8'],
   ];
   const initials = n => n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-
-  // Score colour
   const sc = s => s > 80 ? '#34d399' : s > 50 ? '#fbbf24' : '#f87171';
 
-  // Driver score cell
   function scoreCell(val) {
     if (val == null) return '<span class="dash">â</span>';
     const bar = `<div class="score-bar"><div class="score-fill" style="width:${val}%;background:${sc(val)}"></div></div>`;
     return `<div class="score-bar-wrap"><span style="color:${sc(val)};font-weight:700">${val}</span><span style="font-size:0.72rem;color:#78716c">/100</span>${bar}</div>`;
   }
 
-  // Employee rows
   const empRows = document.getElementById('empRows');
   (D.leaderboard || []).forEach((e, i) => {
     const [bg, fg] = COLOURS[i % COLOURS.length];
@@ -681,24 +571,21 @@ const DASHBOARD_DATA = {
       <td class="td-right">${e.bins_moved_out > 0 ? `<span class="stat-num">${e.bins_moved_out}</span>` : '<span class="dash">â</span>'}</td>
       <td class="td-right">${e.bins_moved_in  > 0 ? `<span class="stat-num">${e.bins_moved_in}</span>`  : '<span class="dash">â</span>'}</td>
       <td class="td-right">${e.bins_moved     > 0 ? `<span class="stat-moved">${e.bins_moved}</span>`   : '<span class="dash">â</span>'}</td>
-      <td class="td-right">${e.bins_cleaned   > 0 ? `<span class="stat-num">${e.bins_cleaned}</span>`   : '<span class="dash">â</span>'}</td>
+      <td class="td-right">${e.bins_cleaned   > 0 ? `<span class="stat-num">${e.bins_cleaned}</span>`    : '<span class="dash">â</span>'}</td>
       <td>${e.vehicle ? `<span class="vehicle-tag">${e.vehicle}</span>` : '<span class="dash">â</span>'}</td>
       <td class="td-right">${e.km != null ? `<span style="color:#60a5fa;font-weight:600">${e.km} km</span>` : '<span class="dash">â</span>'}</td>
       <td>${scoreCell(e.driverScore)}</td>
       <td class="td-right">${e.score > 0 ? `<span class="score-pts">${e.score}<span style="font-size:0.7rem">pts</span></span>` : '<span class="dash">â</span>'}</td>
-      <td class="td-right">${e.sites_done > 0 ? e.sites_done : '<span class="dash">â</span>'}</td>
     `;
     empRows.appendChild(tr);
   });
 
-  // Fleet summary
   const fl = D.fleet || {};
   document.getElementById('fleetTrips').textContent  = fl.totalTrips   ?? 'â';
-  document.getElementById('fleetActive').innerHTML   = `${fl.movingNow ?? 'â'}|span>/${fl.activeVehicles ?? 'â'}</span>`;
+  document.getElementById('fleetActive').innerHTML   = `${fl.movingNow ?? 'â'}<span>/${fl.activeVehicles ?? 'â'}</span>`;
   document.getElementById('fleetMoving').textContent = fl.movingNow    ?? 'â';
   document.getElementById('fleetToday').textContent  = fl.activeVehicles ?? 'â';
 
-  // Fleet rows
   const stateLabel = { moving: 'Moving', idle: 'Idle', unknown: 'â' };
   const stateDotClass = s => s === 'moving' ? 'dot-moving' : s === 'idle' ? 'dot-idle' : 'dot-unknown';
 
@@ -716,10 +603,8 @@ const DASHBOARD_DATA = {
     fleetRows.appendChild(tr);
   });
 
-  // Footer
   document.getElementById('footer').textContent = `Last updated ${D.generatedAt || ''} Â· auto-refreshes every 15 min`;
 
-  // Auto-refresh every 15 min
   setTimeout(() => location.reload(), 15 * 60 * 1000);
 })();
 </script>
