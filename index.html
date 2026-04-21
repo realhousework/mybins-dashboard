@@ -78,7 +78,7 @@
   .section-label h2 { font-size: 1.1rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.3px; }
   .section-label .section-line { flex: 1; height: 1px; background: #2d3348; }
   .fleet-summary {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
     margin-bottom: 14px; max-width: 900px; margin-left: auto; margin-right: auto;
   }
   .summary-card.km .value { color: #34d399; }
@@ -151,7 +151,6 @@
         <th>Moved</th>
         <th>Cleaned</th>
         <th>Vehicle</th>
-        <th>KM</th>
         <th>Score</th>
         <th>Sites</th>
       </tr>
@@ -165,10 +164,7 @@
   <div class="section-line"></div>
 </div>
 <div class="fleet-summary">
-  <div class="summary-card km">
-    <div class="label">KM Today</div>
-    <div class="value" id="fleetKm">â</div>
-  </div>
+  
   <div class="summary-card trips">
     <div class="label">Trips</div>
     <div class="value" id="fleetTrips">â</div>
@@ -186,7 +182,6 @@
         <th>Vehicle</th>
         <th>Driver</th>
         <th>Status</th>
-        <th>KM Today</th>
         <th>Trips</th>
         <th>Driver Score</th>
       </tr>
@@ -205,7 +200,7 @@
 
 <script>
 const DASHBOARD_DATA = {
-  "generatedAt": "2026-04-21T00:05:17.169Z",
+  "generatedAt": "2026-04-21T00:10:39.663Z",
   "date": "2026-04-21",
   "day": "Tuesday",
   "week": 2,
@@ -213,10 +208,10 @@ const DASHBOARD_DATA = {
     {
       "name": "Cameron Gallo",
       "bins_moved_in": 0,
-      "bins_moved_out": 270,
-      "bins_moved": 270,
+      "bins_moved_out": 277,
+      "bins_moved": 277,
       "bins_cleaned": 0,
-      "total_bins": 270,
+      "total_bins": 277,
       "sites_done": 2
     },
     {
@@ -231,10 +226,10 @@ const DASHBOARD_DATA = {
     {
       "name": "Zach Williams",
       "bins_moved_in": 0,
-      "bins_moved_out": 133,
-      "bins_moved": 133,
+      "bins_moved_out": 148,
+      "bins_moved": 148,
       "bins_cleaned": 0,
-      "total_bins": 133,
+      "total_bins": 148,
       "sites_done": 1
     },
     {
@@ -249,10 +244,10 @@ const DASHBOARD_DATA = {
     {
       "name": "Ben Copley",
       "bins_moved_in": 0,
-      "bins_moved_out": 93,
-      "bins_moved": 93,
+      "bins_moved_out": 104,
+      "bins_moved": 104,
       "bins_cleaned": 0,
-      "total_bins": 93,
+      "total_bins": 104,
       "sites_done": 1
     },
     {
@@ -275,9 +270,9 @@ const DASHBOARD_DATA = {
     }
   ],
   "crew": {
-    "bins_moved": 889,
+    "bins_moved": 922,
     "bins_cleaned": 12,
-    "total_bins": 901,
+    "total_bins": 934,
     "sites_done": 12,
     "sched_moved": 597,
     "sched_cleaned": 50,
@@ -298,140 +293,10 @@ const DASHBOARD_DATA = {
     "Paulo": "Hippo"
   },
   "fleet": {
-    "totalKm": 0,
     "totalTrips": 0,
     "movingNow": 0,
     "activeVehicles": 0,
-    "vehicles": [
-      {
-        "label": "ALPHA",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "Big Bertha",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "Big Red",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "Bin Diesel",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "Blue",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "Commy",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "DELTA",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "Ferrari",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "Grouch",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "Hippo",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "Hopper",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "Moe",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "The Barra",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "The Fridge",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "The Frog",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      },
-      {
-        "label": "Troopie",
-        "state": "stopped",
-        "km": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "location": null
-      }
-    ]
+    "vehicles": []
   },
   "fuel": null
 };
@@ -523,8 +388,7 @@ function render() {
   // Fleet section
   const { fleet } = DASHBOARD_DATA;
   if (fleet) {
-    document.getElementById('fleetKm').textContent    = fleet.totalKm.toLocaleString();
-    document.getElementById('fleetTrips').textContent = fleet.totalTrips;
+        document.getElementById('fleetTrips').textContent = fleet.totalTrips;
     document.getElementById('fleetMoving').textContent = fleet.movingNow;
     document.getElementById('fleetActive').textContent = fleet.activeVehicles;
 
@@ -547,7 +411,6 @@ function render() {
         <td><div class="name-cell"><span>${v.label}</span></div></td>
         <td style="text-align:left;color:#e2e8f0;font-size:0.85rem">${driver || '<span style="color:#334155">&mdash;</span>'}</td>
         <td style="text-align:left">${stateDot(v.state||'unknown')}<span style="font-size:0.82rem;color:#94a3b8">${stateLabel[v.state]||'&mdash;'}</span></td>
-        <td class="stat-moved">${v.km}</td>
         <td class="stat-sites">${v.trips}</td>
         <td class="score-cell">${scVal}</td>
       </tr>`;
