@@ -4,316 +4,527 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>myBins Live Crew Dashboard</title>
-<meta http-equiv="refresh" content="900">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0f1117;
-    color: #e2e8f0;
-    min-height: 100vh;
-    padding: 20px;
-  }
-  .header { text-align: center; margin-bottom: 28px; }
-  .header h1 { font-size: 2rem; font-weight: 700; color: #60a5fa; letter-spacing: -0.5px; }
-  .header .subtitle { font-size: 0.95rem; color: #94a3b8; margin-top: 6px; }
-  .header .week-badge {
-    display: inline-block; background: #1e3a5f; color: #60a5fa;
-    border: 1px solid #2563eb; border-radius: 20px; padding: 3px 14px;
-    font-size: 0.82rem; font-weight: 600; margin-top: 8px; letter-spacing: 0.5px;
-  }
-  .crew-summary {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
-    margin-bottom: 28px; max-width: 900px; margin-left: auto; margin-right: auto;
-  }
-  .summary-card {
-    background: #1e2130; border: 1px solid #2d3348; border-radius: 12px;
-    padding: 18px; text-align: center;
-  }
-  .summary-card .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-  .summary-card .value { font-size: 2.2rem; font-weight: 700; line-height: 1; }
-  .summary-card .value-split { font-size: 1.45rem; font-weight: 700; line-height: 1; }
-  .summary-card .split-sep { color: #475569; font-weight: 400; margin: 0 2px; }
-  .summary-card .split-labels { font-size: 0.65rem; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 5px; display: flex; justify-content: center; gap: 6px; }
-  .summary-card .split-labels span { display: inline-block; }
-  .summary-card.moved .value { color: #34d399; }
-  .summary-card.cleaned .value { color: #a78bfa; }
-  .summary-card.total .value { color: #fbbf24; }
-  .summary-card.sites .value { color: #60a5fa; }
-  .table-wrapper {
-    max-width: 900px; margin: 0 auto; background: #1e2130;
-    border: 1px solid #2d3348; border-radius: 14px; overflow: hidden;
-  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; padding: 24px 16px 48px; }
+  h1 { text-align: center; font-size: 1.9rem; font-weight: 800; color: #f1f5f9; letter-spacing: -0.5px; }
+  .subtitle { text-align: center; color: #94a3b8; font-size: 0.95rem; margin: 6px 0 4px; }
+  .week-badge { display: inline-block; background: #1e3a5f; color: #60a5fa; font-size: 0.8rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; margin-bottom: 24px; }
+
+  /* Summary cards */
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; max-width: 860px; margin: 0 auto 28px; }
+  @media (max-width: 640px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+  .card { background: #1e293b; border-radius: 12px; padding: 16px 20px; text-align: center; }
+  .card-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; color: #64748b; text-transform: uppercase; margin-bottom: 6px; }
+  .card-val { font-size: 1.8rem; font-weight: 800; color: #38bdf8; }
+  .card-val span { color: #475569; font-size: 1.2rem; }
+  .card-sub { font-size: 0.7rem; color: #475569; margin-top: 2px; display: flex; justify-content: space-around; }
+  .card-sub b { color: #94a3b8; }
+
+  /* Tables */
+  .section { max-width: 1100px; margin: 0 auto 36px; }
+  .section-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #1e293b; }
+  .tbl-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid #1e293b; }
   table { width: 100%; border-collapse: collapse; }
-  thead th {
-    background: #161926; color: #64748b; font-size: 0.72rem;
-    text-transform: uppercase; letter-spacing: 0.8px; padding: 12px 16px;
-    text-align: right; font-weight: 600;
-  }
-  thead th:first-child { text-align: left; }
-  tbody tr { border-top: 1px solid #2d3348; transition: background 0.15s; }
-  tbody tr:hover { background: #262c42; }
-  tbody td { padding: 13px 16px; font-size: 0.9rem; text-align: right; }
-  tbody td:first-child { text-align: left; font-weight: 600; color: #e2e8f0; }
-  .name-cell { display: flex; align-items: center; gap: 10px; }
-  .avatar {
-    width: 32px; height: 32px; border-radius: 50%; display: flex;
-    align-items: center; justify-content: center; font-size: 0.75rem;
-    font-weight: 700; flex-shrink: 0;
-  }
-  .stat-moved { color: #34d399; font-weight: 600; }
-  .stat-cleaned { color: #a78bfa; font-weight: 600; }
-  .stat-total { color: #fbbf24; font-weight: 700; }
-  .stat-sites { color: #60a5fa; }
-  .stat-muted { color: #475569; font-size: 0.8rem; }
-  .footer { text-align: center; margin-top: 22px; color: #334155; font-size: 0.75rem; }
-  .score-cell { min-width: 100px; }
-  .score-val { color: #f59e0b; font-weight: 700; }
-  .score-pts { font-size: 0.72rem; color: #78716c; font-weight: 400; margin-left: 1px; }
-  .score-bar { height: 6px; border-radius: 3px; background: #2d3348; margin-top: 5px; overflow: hidden; }
-  .score-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #f59e0b, #fcd34d); transition: width 0.4s ease; }
-  .section-label {
-    max-width: 900px; margin: 32px auto 14px; display: flex; align-items: center; gap: 10px;
-  }
-  .section-label h2 { font-size: 1.1rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.3px; }
-  .section-label .section-line { flex: 1; height: 1px; background: #2d3348; }
-  .fleet-summary {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
-    margin-bottom: 14px; max-width: 900px; margin-left: auto; margin-right: auto;
-  }
-  .summary-card.km .value { color: #34d399; }
-  .summary-card.trips .value { color: #60a5fa; }
-  .summary-card.active .value { color: #fb923c; }
-  .state-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
-  .state-moving { background: #34d399; box-shadow: 0 0 6px #34d399; }
-  .state-idle   { background: #fbbf24; }
-  .state-stopped{ background: #475569; }
-  .driver-score-bar { height: 5px; border-radius: 3px; background: #2d3348; margin-top: 5px; overflow: hidden; }
-  .driver-score-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
-  .fuel-grid {
-    max-width: 900px; margin: 0 auto; display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;
-  }
-  .fuel-card {
-    background: #1e2130; border: 1px solid #2d3348; border-radius: 12px;
-    padding: 14px 16px;
-  }
-  .fuel-card .f-label { font-size: 0.78rem; color: #94a3b8; font-weight: 600; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .fuel-card .f-val { font-size: 1.5rem; font-weight: 700; color: #fb923c; line-height: 1; }
-  .fuel-card .f-unit { font-size: 0.75rem; color: #78716c; margin-left: 2px; }
-  .fuel-bar-wrap { height: 5px; background: #2d3348; border-radius: 3px; margin-top: 8px; overflow: hidden; }
-  .fuel-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #fb923c, #fcd34d); }
-  .fuel-no-data { color: #475569; font-style: italic; font-size: 0.85rem; text-align: center; padding: 18px; }
-  @media (max-width: 640px) {
-    .crew-summary { grid-template-columns: repeat(2, 1fr); }
-    .fleet-summary { grid-template-columns: repeat(3, 1fr); }
-    .summary-card .value { font-size: 1.7rem; }
-    table { font-size: 0.82rem; }
-    .fuel-grid { grid-template-columns: repeat(2, 1fr); }
-  }
+  thead th { background: #0f172a; color: #64748b; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 10px 12px; text-align: left; white-space: nowrap; }
+  tbody tr { border-top: 1px solid #1e293b; transition: background 0.15s; }
+  tbody tr:hover { background: #1e293b44; }
+  td { padding: 10px 12px; font-size: 0.88rem; vertical-align: middle; white-space: nowrap; }
+  .td-right { text-align: right; }
+  .td-center { text-align: center; }
+
+  /* Employee table */
+  .emp-name { display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
+  .stat-zero { color: #334155; }
+  .stat-num  { color: #e2e8f0; font-weight: 600; }
+  .stat-moved { color: #38bdf8; font-weight: 700; }
+  .score-pts { font-weight: 800; color: #fbbf24; }
+  .vehicle-tag { color: #94a3b8; font-size: 0.82rem; }
+  .dash { color: #334155; }
+
+  /* Fleet status dots */
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot-moving { background: #22c55e; box-shadow: 0 0 6px #22c55e88; }
+  .dot-idle   { background: #f59e0b; }
+  .dot-unknown { background: #475569; }
+
+  /* Driver score bar */
+  .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .score-bar { flex: 1; min-width: 50px; height: 5px; background: #1e293b; border-radius: 3px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 3px; }
+
+  /* Footer */
+  .footer { text-align: center; color: #334155; font-size: 0.75rem; margin-top: 24px; }
 </style>
 </head>
 <body>
-<div class="header">
-  <h1> myBins Crew Dashboard</h1>
-  <div class="subtitle" id="dateStr">Loading...</div>
-  <div class="week-badge" id="weekBadge">Week </div>
-</div>
-<div class="crew-summary">
-  <div class="summary-card moved">
-    <div class="label">Bins Moved</div>
-    <div class="value-split stat-moved"><span id="crewMoved"></span><span class="split-sep">/</span><span id="schedMoved"></span></div>
-    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
-  </div>
-  <div class="summary-card cleaned">
-    <div class="label">Bins Cleaned</div>
-    <div class="value-split stat-cleaned"><span id="crewCleaned"></span><span class="split-sep">/</span><span id="schedCleaned"></span></div>
-    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
-  </div>
-  <div class="summary-card total">
-    <div class="label">Total Bins</div>
-    <div class="value-split stat-total"><span id="crewTotal"></span><span class="split-sep">/</span><span id="schedTotal"></span></div>
-    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
-  </div>
-  <div class="summary-card sites">
-    <div class="label">Sites Done</div>
-    <div class="value-split stat-sites"><span id="crewSites"></span><span class="split-sep">/</span><span id="schedSites"></span></div>
-    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
-  </div>
-</div>
-<div class="table-wrapper">
-  <table>
-    <thead>
-      <tr>
-        <th>Employee</th>
-        <th>Moved Out</th>
-        <th>Moved In</th>
-        <th>Moved</th>
-        <th>Cleaned</th>
-        <th>Vehicle</th>
-        <th>Score</th>
-        <th>Sites</th>
-      </tr>
-    </thead>
-    <tbody id="employeeRows"></tbody>
-  </table>
-</div>
-<div class="section-label">
-  <div class="section-line"></div>
-  <h2> Fleet</h2>
-  <div class="section-line"></div>
-</div>
-<div class="fleet-summary">
-  
-  <div class="summary-card trips">
-    <div class="label">Trips</div>
-    <div class="value" id="fleetTrips"></div>
-  </div>
-  <div class="summary-card active">
-    <div class="label">Active Vehicles</div>
-    <div class="value-split stat-moved" style="color:#fb923c"><span id="fleetMoving"></span><span class="split-sep">/</span><span id="fleetActive"></span></div>
-    <div class="split-labels"><span>MOVING</span><span style="flex:1;text-align:center">/</span><span>TODAY</span></div>
-  </div>
-</div>
-<div class="table-wrapper" style="max-width:900px;margin:0 auto 0;">
-  <table>
-    <thead>
-      <tr>
-        <th>Vehicle</th>
-        <th>Driver</th>
-        <th>Status</th>
-        <th>Trips</th>
-        <th>Driver Score</th>
-      </tr>
-    </thead>
-    <tbody id="vehicleRows"></tbody>
-  </table>
-</div>
-
-</div>
-<div class="footer" id="footer"></div>
-
-
-
-
-
 
 <script>
 const DASHBOARD_DATA = {
-  "generatedAt": "2026-04-21T02:38:09.158Z",
-  "date": "2026-04-21",
-  "day": "Tuesday",
+  "generatedAt": "21 Apr, 1:05 pm",
+  "today": "2026-04-21",
+  "displayDate": "Tuesday 21 April 2026",
   "week": 2,
-  "employees": [
+  "crew": {
+    "binsMoved": {
+      "done": 2765,
+      "scheduled": 597
+    },
+    "binsCleaned": {
+      "done": 23,
+      "scheduled": 50
+    },
+    "totalBins": {
+      "done": 2788,
+      "scheduled": 647
+    },
+    "sitesDone": {
+      "done": 23,
+      "scheduled": 647
+    }
+  },
+  "leaderboard": [
     {
       "name": "Joel Ansems-mills",
+      "vehicle": null,
+      "bins_moved_out": 524,
       "bins_moved_in": 0,
-      "bins_moved_out": 504,
-      "bins_moved": 504,
+      "bins_moved": 524,
       "bins_cleaned": 0,
-      "total_bins": 504,
-      "sites_done": 3
+      "total_bins": 524,
+      "sites_done": 3,
+      "km": null,
+      "driverScore": null,
+      "score": 524
     },
     {
       "name": "Cameron Gallo",
-      "bins_moved_in": 0,
+      "vehicle": "Ferrari",
       "bins_moved_out": 432,
+      "bins_moved_in": 0,
       "bins_moved": 432,
       "bins_cleaned": 0,
       "total_bins": 432,
-      "sites_done": 2
+      "sites_done": 2,
+      "km": 13,
+      "driverScore": 24,
+      "score": 432
     },
     {
       "name": "Zach Williams",
+      "vehicle": null,
+      "bins_moved_out": 401,
       "bins_moved_in": 0,
-      "bins_moved_out": 318,
-      "bins_moved": 318,
+      "bins_moved": 401,
       "bins_cleaned": 0,
-      "total_bins": 318,
-      "sites_done": 1
+      "total_bins": 401,
+      "sites_done": 1,
+      "km": null,
+      "driverScore": null,
+      "score": 401
     },
     {
       "name": "Ben Copley",
+      "vehicle": null,
+      "bins_moved_out": 378,
       "bins_moved_in": 0,
-      "bins_moved_out": 314,
-      "bins_moved": 314,
+      "bins_moved": 378,
       "bins_cleaned": 0,
-      "total_bins": 314,
-      "sites_done": 1
+      "total_bins": 378,
+      "sites_done": 1,
+      "km": null,
+      "driverScore": null,
+      "score": 378
     },
     {
       "name": "Luiz da Silva",
-      "bins_moved_in": 0,
+      "vehicle": null,
       "bins_moved_out": 261,
+      "bins_moved_in": 0,
       "bins_moved": 261,
       "bins_cleaned": 0,
       "total_bins": 261,
-      "sites_done": 1
+      "sites_done": 1,
+      "km": null,
+      "driverScore": null,
+      "score": 261
     },
     {
       "name": "Kalicique Carvalho",
+      "vehicle": null,
+      "bins_moved_out": 245,
       "bins_moved_in": 0,
-      "bins_moved_out": 219,
-      "bins_moved": 219,
+      "bins_moved": 245,
       "bins_cleaned": 0,
-      "total_bins": 219,
-      "sites_done": 1
+      "total_bins": 245,
+      "sites_done": 1,
+      "km": null,
+      "driverScore": null,
+      "score": 245
     },
     {
       "name": "Thassio Franco",
-      "bins_moved_in": 0,
+      "vehicle": null,
       "bins_moved_out": 187,
+      "bins_moved_in": 0,
       "bins_moved": 187,
       "bins_cleaned": 0,
       "total_bins": 187,
-      "sites_done": 2
+      "sites_done": 2,
+      "km": null,
+      "driverScore": null,
+      "score": 187
     },
     {
       "name": "Jacob Saxby",
-      "bins_moved_in": 0,
+      "vehicle": "TROOPY",
       "bins_moved_out": 135,
+      "bins_moved_in": 0,
       "bins_moved": 135,
       "bins_cleaned": 0,
       "total_bins": 135,
-      "sites_done": 1
+      "sites_done": 1,
+      "km": null,
+      "driverScore": null,
+      "score": 135
     },
     {
       "name": "Mitch Davis",
+      "vehicle": null,
+      "bins_moved_out": 115,
       "bins_moved_in": 10,
-      "bins_moved_out": 89,
-      "bins_moved": 99,
+      "bins_moved": 125,
       "bins_cleaned": 4,
-      "total_bins": 103,
-      "sites_done": 6
+      "total_bins": 129,
+      "sites_done": 6,
+      "km": null,
+      "driverScore": null,
+      "score": 129
     },
     {
       "name": "Paulo Penedo",
-      "bins_moved_in": 27,
+      "vehicle": null,
       "bins_moved_out": 44,
-      "bins_moved": 71,
+      "bins_moved_in": 33,
+      "bins_moved": 77,
       "bins_cleaned": 7,
-      "total_bins": 78,
-      "sites_done": 3
+      "total_bins": 84,
+      "sites_done": 3,
+      "km": null,
+      "driverScore": null,
+      "score": 84
     },
     {
       "name": "Mybins",
-      "bins_moved_in": 0,
+      "vehicle": null,
       "bins_moved_out": 0,
+      "bins_moved_in": 0,
       "bins_moved": 0,
       "bins_cleaned": 12,
       "total_bins": 12,
-      "sites_done": 2
+      "sites_done": 2,
+      "km": null,
+      "driverScore": null,
+      "score": 12
+    },
+    {
+      "name": "Ryan Hobbs",
+      "vehicle": null,
+      "bins_moved_out": 0,
+      "bins_moved_in": 0,
+      "bins_moved": 0,
+      "bins_cleaned": 0,
+      "total_bins": 0,
+      "sites_done": 0,
+      "km": null,
+      "driverScore": null,
+      "score": 0
+    },
+    {
+      "name": "Hugh Sellar",
+      "vehicle": "Moe",
+      "bins_moved_out": 0,
+      "bins_moved_in": 0,
+      "bins_moved": 0,
+      "bins_cleaned": 0,
+      "total_bins": 0,
+      "sites_done": 0,
+      "km": 1,
+      "driverScore": 100,
+      "score": 0
+    },
+    {
+      "name": "Luiz Eduardo",
+      "vehicle": "FROG",
+      "bins_moved_out": 0,
+      "bins_moved_in": 0,
+      "bins_moved": 0,
+      "bins_cleaned": 0,
+      "total_bins": 0,
+      "sites_done": 0,
+      "km": null,
+      "driverScore": null,
+      "score": 0
+    },
+    {
+      "name": "Joel",
+      "vehicle": "EMPTY",
+      "bins_moved_out": 0,
+      "bins_moved_in": 0,
+      "bins_moved": 0,
+      "bins_cleaned": 0,
+      "total_bins": 0,
+      "sites_done": 0,
+      "km": null,
+      "driverScore": null,
+      "score": 0
+    },
+    {
+      "name": "Zach",
+      "vehicle": "BARRA",
+      "bins_moved_out": 0,
+      "bins_moved_in": 0,
+      "bins_moved": 0,
+      "bins_cleaned": 0,
+      "total_bins": 0,
+      "sites_done": 0,
+      "km": null,
+      "driverScore": null,
+      "score": 0
+    },
+    {
+      "name": "Ben",
+      "vehicle": "Grouch",
+      "bins_moved_out": 0,
+      "bins_moved_in": 0,
+      "bins_moved": 0,
+      "bins_cleaned": 0,
+      "total_bins": 0,
+      "sites_done": 0,
+      "km": null,
+      "driverScore": null,
+      "score": 0
+    },
+    {
+      "name": "Thassio",
+      "vehicle": "Big Red",
+      "bins_moved_out": 0,
+      "bins_moved_in": 0,
+      "bins_moved": 0,
+      "bins_cleaned": 0,
+      "total_bins": 0,
+      "sites_done": 0,
+      "km": null,
+      "driverScore": null,
+      "score": 0
+    },
+    {
+      "name": "Kike",
+      "vehicle": "EMPTY",
+      "bins_moved_out": 0,
+      "bins_moved_in": 0,
+      "bins_moved": 0,
+      "bins_cleaned": 0,
+      "total_bins": 0,
+      "sites_done": 0,
+      "km": null,
+      "driverScore": null,
+      "score": 0
+    },
+    {
+      "name": "Mitchell Davis",
+      "vehicle": "FRIDGE",
+      "bins_moved_out": 0,
+      "bins_moved_in": 0,
+      "bins_moved": 0,
+      "bins_cleaned": 0,
+      "total_bins": 0,
+      "sites_done": 0,
+      "km": null,
+      "driverScore": null,
+      "score": 0
+    },
+    {
+      "name": "Paulo",
+      "vehicle": "Hippo",
+      "bins_moved_out": 0,
+      "bins_moved_in": 0,
+      "bins_moved": 0,
+      "bins_cleaned": 0,
+      "total_bins": 0,
+      "sites_done": 0,
+      "km": 15,
+      "driverScore": 54,
+      "score": 0
     }
   ],
-  "crew": {
-    "bins_moved": 2540,
-    "bins_cleaned": 23,
-    "total_bins": 2563,
-    "sites_done": 23,
-    "sched_moved": 597,
-    "sched_cleaned": 50,
-    "sched_total": 647,
-    "sched_sites": 647
+  "fleet": {
+    "totalTrips": 15,
+    "activeVehicles": 6,
+    "movingNow": 2,
+    "vehicles": [
+      {
+        "label": "Grouch",
+        "registration": "YJB11M",
+        "driver": "Ben",
+        "state": "idle",
+        "speed": 0,
+        "trips": 0,
+        "km": null,
+        "avgDriverScore": null
+      },
+      {
+        "label": "Hippo",
+        "registration": "CX8 3NL",
+        "driver": "Paulo",
+        "state": "idle",
+        "speed": 0,
+        "trips": 6,
+        "km": 15,
+        "avgDriverScore": 54
+      },
+      {
+        "label": "Blue",
+        "registration": "CG93MY",
+        "driver": null,
+        "state": "idle",
+        "speed": 0,
+        "trips": 0,
+        "km": null,
+        "avgDriverScore": null
+      },
+      {
+        "label": "DELTA",
+        "registration": "YNU35T",
+        "driver": null,
+        "state": "idle",
+        "speed": 0,
+        "trips": 0,
+        "km": null,
+        "avgDriverScore": null
+      },
+      {
+        "label": "Ferrari",
+        "registration": "EGZ71Q",
+        "driver": "Cameron Gallo",
+        "state": "moving",
+        "speed": 3,
+        "trips": 1,
+        "km": 13,
+        "avgDriverScore": 24
+      },
+      {
+        "label": "Troopie",
+        "registration": "YLS66H",
+        "driver": null,
+        "state": "idle",
+        "speed": 0,
+        "trips": 0,
+        "km": null,
+        "avgDriverScore": null
+      },
+      {
+        "label": "Bin Diesel",
+        "registration": "MYBINS",
+        "driver": null,
+        "state": "moving",
+        "speed": 36,
+        "trips": 1,
+        "km": null,
+        "avgDriverScore": 100
+      },
+      {
+        "label": "The Fridge",
+        "registration": "YLS62Z",
+        "driver": null,
+        "state": "idle",
+        "speed": 0,
+        "trips": 0,
+        "km": null,
+        "avgDriverScore": null
+      },
+      {
+        "label": "The Frog",
+        "registration": "FVF85Z",
+        "driver": null,
+        "state": "idle",
+        "speed": 0,
+        "trips": 0,
+        "km": null,
+        "avgDriverScore": null
+      },
+      {
+        "label": "The Barra",
+        "registration": "YLS89Q",
+        "driver": null,
+        "state": "idle",
+        "speed": 0,
+        "trips": 1,
+        "km": 3,
+        "avgDriverScore": 39
+      },
+      {
+        "label": "ALPHA",
+        "registration": "YNU15Q",
+        "driver": null,
+        "state": "idle",
+        "speed": 0,
+        "trips": 0,
+        "km": null,
+        "avgDriverScore": null
+      },
+      {
+        "label": "Big Red",
+        "registration": "CI69CU",
+        "driver": "Thassio",
+        "state": "idle",
+        "speed": 0,
+        "trips": 0,
+        "km": null,
+        "avgDriverScore": null
+      },
+      {
+        "label": "Big Bertha",
+        "registration": "CC52TG",
+        "driver": null,
+        "state": "idle",
+        "speed": 0,
+        "trips": 0,
+        "km": null,
+        "avgDriverScore": null
+      },
+      {
+        "label": "Hopper",
+        "registration": "FRL48A",
+        "driver": null,
+        "state": "idle",
+        "speed": 0,
+        "trips": 2,
+        "km": 6,
+        "avgDriverScore": 84
+      },
+      {
+        "label": "Commy",
+        "registration": "YKG81J",
+        "driver": null,
+        "state": "idle",
+        "speed": 0,
+        "trips": 0,
+        "km": null,
+        "avgDriverScore": null
+      },
+      {
+        "label": "Moe",
+        "registration": "YJB31S",
+        "driver": "Hugh Sellar",
+        "state": "idle",
+        "speed": 0,
+        "trips": 4,
+        "km": 1,
+        "avgDriverScore": 100
+      }
+    ]
   },
   "assignments": {
     "Hugh Sellar": "Moe",
@@ -327,678 +538,189 @@ const DASHBOARD_DATA = {
     "Kike": "EMPTY",
     "Mitchell Davis": "FRIDGE",
     "Paulo": "Hippo"
-  },
-  "fleet": {
-    "vehicles": [
-      {
-        "label": "Grouch",
-        "registration": "YJB11M",
-        "type": "ute",
-        "driver": "Ben",
-        "state": "idle",
-        "speed": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "km": null
-      },
-      {
-        "label": "Hippo",
-        "registration": "CX8 3NL",
-        "type": "ute",
-        "driver": "Paulo",
-        "state": "moving",
-        "speed": 51,
-        "trips": 4,
-        "avgDriverScore": 41,
-        "km": 10
-      },
-      {
-        "label": "Blue",
-        "registration": "CG93MY",
-        "type": "ute",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "km": null
-      },
-      {
-        "label": "DELTA",
-        "registration": "YNU35T",
-        "type": "ute",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "km": null
-      },
-      {
-        "label": "Ferrari",
-        "registration": "EGZ71Q",
-        "type": "ute",
-        "driver": "Cameron Gallo",
-        "state": "moving",
-        "speed": 48,
-        "trips": 1,
-        "avgDriverScore": 24,
-        "km": 13
-      },
-      {
-        "label": "Troopie",
-        "registration": "YLS66H",
-        "type": "ute",
-        "driver": null,
-        "state": "moving",
-        "speed": 4,
-        "trips": 0,
-        "avgDriverScore": null,
-        "km": null
-      },
-      {
-        "label": "Bin Diesel",
-        "registration": "MYBINS",
-        "type": "ute",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 1,
-        "avgDriverScore": 100,
-        "km": null
-      },
-      {
-        "label": "The Fridge",
-        "registration": "YLS62Z",
-        "type": "ute",
-        "driver": null,
-        "state": "moving",
-        "speed": 23,
-        "trips": 0,
-        "avgDriverScore": null,
-        "km": null
-      },
-      {
-        "label": "The Frog",
-        "registration": "FVF85Z",
-        "type": "ute",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "km": null
-      },
-      {
-        "label": "The Barra",
-        "registration": "YLS89Q",
-        "type": "ute",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 1,
-        "avgDriverScore": 39,
-        "km": 3
-      },
-      {
-        "label": "ALPHA",
-        "registration": "YNU15Q",
-        "type": "ute",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "km": null
-      },
-      {
-        "label": "Big Red",
-        "registration": "CI69CU",
-        "type": "ute",
-        "driver": "Thassio",
-        "state": "moving",
-        "speed": 37,
-        "trips": 0,
-        "avgDriverScore": null,
-        "km": null
-      },
-      {
-        "label": "Big Bertha",
-        "registration": "CC52TG",
-        "type": "box-truck",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "km": null
-      },
-      {
-        "label": "Hopper",
-        "registration": "FRL48A",
-        "type": "ute",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 2,
-        "avgDriverScore": 84,
-        "km": 6
-      },
-      {
-        "label": "Commy",
-        "registration": "YKG81J",
-        "type": "ute",
-        "driver": null,
-        "state": "idle",
-        "speed": 0,
-        "trips": 0,
-        "avgDriverScore": null,
-        "km": null
-      },
-      {
-        "label": "Moe",
-        "registration": "YJB31S",
-        "type": "ute",
-        "driver": "Hugh Sellar",
-        "state": "moving",
-        "speed": 6,
-        "trips": 2,
-        "avgDriverScore": 100,
-        "km": null
-      }
-    ],
-    "trips": [
-      {
-        "tripId": 104254979,
-        "tripKey": "20260421022736-ffbdc793-1c07-448e-a48e-8",
-        "tripStatusId": 0,
-        "tripStateId": 1,
-        "tripDistance": 0,
-        "dateFrom": "2026-04-21T02:27:35+0000",
-        "dateTo": "2026-04-21T02:32:51+0000",
-        "imei": "ffbdc793-1c07-448e-a48e-8",
-        "startEventId": 9902096568,
-        "endEventId": 9902118536,
-        "type": "N",
-        "fuelConsumptionStart": 88740,
-        "fuelConsumptionEnd": 88850,
-        "fuelConsumed": 110,
-        "odometerStart": 105019400,
-        "odometerEnd": 105019400,
-        "stopType": "U",
-        "engineHourStart": 95152,
-        "engineHourEnd": 95461,
-        "engineHourUsed": 309,
-        "totalDuration": 316,
-        "totalHarshBrakes": 0,
-        "totalHarshAccelerations": 0,
-        "totalSpeedingEvents": 0,
-        "driverScore": 100,
-        "tripDuration": 316,
-        "id": 104254979
-      },
-      {
-        "tripId": 104254354,
-        "tripKey": "20260421015912-2a2410e2-ab7b-4cbe-b125-a",
-        "tripStatusId": 0,
-        "tripStateId": 1,
-        "tripDistance": 390,
-        "dateFrom": "2026-04-21T01:59:11+0000",
-        "dateTo": "2026-04-21T02:01:40+0000",
-        "maxSpeed": 36,
-        "avgSpeed": 14,
-        "imei": "2a2410e2-ab7b-4cbe-b125-a",
-        "startEventId": 9901979422,
-        "endEventId": 9901990333,
-        "type": "N",
-        "fuelConsumptionStart": 460580,
-        "fuelConsumptionEnd": 460660,
-        "fuelConsumed": 80,
-        "odometerStart": 122855700,
-        "odometerEnd": 122856090,
-        "stopType": "U",
-        "engineHourStart": 168795,
-        "engineHourEnd": 168959,
-        "engineHourUsed": 164,
-        "totalDuration": 149,
-        "totalHarshBrakes": 0,
-        "totalHarshAccelerations": 0,
-        "totalSpeedingEvents": 0,
-        "driverScore": 100,
-        "tripDuration": 149,
-        "id": 104254354
-      },
-      {
-        "tripId": 104253740,
-        "tripKey": "20260421013246-ffbdc793-1c07-448e-a48e-8",
-        "tripStatusId": 0,
-        "tripStateId": 1,
-        "tripDistance": 0,
-        "dateFrom": "2026-04-21T01:32:45+0000",
-        "dateTo": "2026-04-21T01:35:09+0000",
-        "maxSpeed": 10,
-        "avgSpeed": 6,
-        "imei": "ffbdc793-1c07-448e-a48e-8",
-        "startEventId": 9901868872,
-        "endEventId": 9901879616,
-        "type": "N",
-        "fuelConsumptionStart": 88670,
-        "fuelConsumptionEnd": 88740,
-        "fuelConsumed": 70,
-        "odometerStart": 105019400,
-        "odometerEnd": 105019400,
-        "stopDuration": 3146,
-        "stopType": "U",
-        "engineHourStart": 95004,
-        "engineHourEnd": 95143,
-        "engineHourUsed": 139,
-        "totalDuration": 144,
-        "totalHarshBrakes": 0,
-        "totalHarshAccelerations": 0,
-        "totalSpeedingEvents": 0,
-        "driverScore": 100,
-        "tripDuration": 144,
-        "id": 104253740
-      },
-      {
-        "tripId": 104253466,
-        "tripKey": "20260421012004-2a2410e2-ab7b-4cbe-b125-a",
-        "tripStatusId": 0,
-        "tripStateId": 1,
-        "tripDistance": 4890,
-        "dateFrom": "2026-04-21T01:20:03+0000",
-        "dateTo": "2026-04-21T01:36:26+0000",
-        "maxSpeed": 51,
-        "avgSpeed": 26,
-        "imei": "2a2410e2-ab7b-4cbe-b125-a",
-        "startEventId": 9901815126,
-        "endEventId": 9901885186,
-        "type": "N",
-        "fuelConsumptionStart": 459600,
-        "fuelConsumptionEnd": 460580,
-        "fuelConsumed": 980,
-        "odometerStart": 122850810,
-        "odometerEnd": 122855700,
-        "stopDuration": 1365,
-        "stopType": "U",
-        "engineHourStart": 167797,
-        "engineHourEnd": 168795,
-        "engineHourUsed": 998,
-        "totalDuration": 983,
-        "totalHarshBrakes": 0,
-        "totalHarshAccelerations": 3,
-        "totalSpeedingEvents": 0,
-        "driverScore": 38,
-        "tripDuration": 983,
-        "id": 104253466
-      },
-      {
-        "tripId": 104253307,
-        "tripKey": "20260421011215-d8aa067b-9dc2-440a-9522-4",
-        "tripStatusId": 0,
-        "tripStateId": 1,
-        "tripDistance": 2300,
-        "dateFrom": "2026-04-21T01:12:14+0000",
-        "dateTo": "2026-04-21T01:18:48+0000",
-        "maxSpeed": 43,
-        "avgSpeed": 19,
-        "imei": "d8aa067b-9dc2-440a-9522-4",
-        "startEventId": 9901781076,
-        "endEventId": 9901810161,
-        "type": "N",
-        "fuelConsumptionStart": 1296360,
-        "fuelConsumptionEnd": 1296740,
-        "fuelConsumed": 380,
-        "odometerStart": 8838800,
-        "odometerEnd": 8841100,
-        "stopType": "U",
-        "engineHourStart": 1703831,
-        "engineHourEnd": 1704217,
-        "engineHourUsed": 386,
-        "totalDuration": 394,
-        "totalHarshBrakes": 0,
-        "totalHarshAccelerations": 0,
-        "totalSpeedingEvents": 0,
-        "driverScore": 100,
-        "tripDuration": 394,
-        "id": 104253307
-      },
-      {
-        "tripId": 104253237,
-        "tripKey": "20260421010919-87ea725a-341d-4e24-a739-c",
-        "tripStatusId": 0,
-        "tripStateId": 1,
-        "tripDistance": 0,
-        "dateFrom": "2026-04-21T01:09:18+0000",
-        "dateTo": "2026-04-21T01:10:21+0000",
-        "maxSpeed": 3,
-        "avgSpeed": 3,
-        "imei": "87ea725a-341d-4e24-a739-c",
-        "startEventId": 9901769849,
-        "endEventId": 9901774483,
-        "type": "N",
-        "fuelConsumptionStart": 1412260,
-        "fuelConsumptionEnd": 1412290,
-        "fuelConsumed": 30,
-        "odometerStart": 15623200,
-        "odometerEnd": 15623200,
-        "stopType": "U",
-        "engineHourStart": 1808743,
-        "engineHourEnd": 1808803,
-        "engineHourUsed": 60,
-        "totalDuration": 63,
-        "totalHarshBrakes": 0,
-        "totalHarshAccelerations": 0,
-        "totalSpeedingEvents": 0,
-        "driverScore": 100,
-        "tripDuration": 63,
-        "id": 104253237
-      },
-      {
-        "tripId": 104253031,
-        "tripKey": "20260421010013-d8aa067b-9dc2-440a-9522-4",
-        "tripStatusId": 0,
-        "tripStateId": 1,
-        "tripDistance": 3200,
-        "dateFrom": "2026-04-21T01:00:12+0000",
-        "dateTo": "2026-04-21T01:08:10+0000",
-        "maxSpeed": 57,
-        "avgSpeed": 23,
-        "imei": "d8aa067b-9dc2-440a-9522-4",
-        "startEventId": 9901726539,
-        "endEventId": 9901765464,
-        "type": "N",
-        "fuelConsumptionStart": 1295910,
-        "fuelConsumptionEnd": 1296360,
-        "fuelConsumed": 450,
-        "odometerStart": 8835600,
-        "odometerEnd": 8838800,
-        "stopDuration": 244,
-        "stopType": "U",
-        "engineHourStart": 1703352,
-        "engineHourEnd": 1703821,
-        "engineHourUsed": 469,
-        "totalDuration": 478,
-        "totalHarshBrakes": 0,
-        "totalHarshAccelerations": 1,
-        "totalSpeedingEvents": 0,
-        "driverScore": 68,
-        "tripDuration": 478,
-        "id": 104253031
-      },
-      {
-        "tripId": 104252785,
-        "tripKey": "20260421004822-2a2410e2-ab7b-4cbe-b125-a",
-        "tripStatusId": 0,
-        "tripStateId": 1,
-        "tripDistance": 1530,
-        "dateFrom": "2026-04-21T00:48:21+0000",
-        "dateTo": "2026-04-21T01:10:23+0000",
-        "maxSpeed": 41,
-        "avgSpeed": 20,
-        "imei": "2a2410e2-ab7b-4cbe-b125-a",
-        "startEventId": 9901677552,
-        "endEventId": 9901774492,
-        "type": "N",
-        "fuelConsumptionStart": 458930,
-        "fuelConsumptionEnd": 459600,
-        "fuelConsumed": 670,
-        "odometerStart": 122849280,
-        "odometerEnd": 122850810,
-        "stopDuration": 580,
-        "stopType": "U",
-        "engineHourStart": 166461,
-        "engineHourEnd": 167797,
-        "engineHourUsed": 1336,
-        "totalDuration": 1322,
-        "totalHarshBrakes": 0,
-        "totalHarshAccelerations": 7,
-        "totalSpeedingEvents": 0,
-        "driverScore": 0,
-        "tripDuration": 1322,
-        "id": 104252785
-      },
-      {
-        "tripId": 104251373,
-        "tripKey": "20260421003448-a5cf06d3-7295-4c87-b5f5-a",
-        "tripStatusId": 0,
-        "tripStateId": 1,
-        "tripDistance": 3300,
-        "dateFrom": "2026-04-21T00:34:47+0000",
-        "dateTo": "2026-04-21T02:09:08+0000",
-        "maxSpeed": 42,
-        "avgSpeed": 15,
-        "imei": "a5cf06d3-7295-4c87-b5f5-a",
-        "startEventId": 9901615311,
-        "endEventId": 9902021623,
-        "type": "N",
-        "fuelConsumptionStart": 546320,
-        "fuelConsumptionEnd": 548600,
-        "fuelConsumed": 2280,
-        "odometerStart": 54054400,
-        "odometerEnd": 54057700,
-        "stopType": "U",
-        "engineHourStart": 823647,
-        "engineHourEnd": 829218,
-        "engineHourUsed": 5571,
-        "totalDuration": 5661,
-        "totalHarshBrakes": 0,
-        "totalHarshAccelerations": 2,
-        "totalSpeedingEvents": 0,
-        "driverScore": 39,
-        "tripDuration": 5661,
-        "id": 104251373
-      },
-      {
-        "tripId": 104248747,
-        "tripKey": "20260421002138-745ad88d-f793-43a1-8890-4",
-        "tripStatusId": 0,
-        "tripStateId": 1,
-        "tripDistance": 13260,
-        "dateFrom": "2026-04-21T00:21:37+0000",
-        "dateTo": "2026-04-21T02:12:09+0000",
-        "maxSpeed": 53,
-        "avgSpeed": 20,
-        "imei": "745ad88d-f793-43a1-8890-4",
-        "startEventId": 9901550662,
-        "endEventId": 9902032759,
-        "type": "N",
-        "fuelConsumptionStart": 3049310,
-        "fuelConsumptionEnd": 3052690,
-        "fuelConsumed": 3380,
-        "odometerStart": 122246030,
-        "odometerEnd": 122259290,
-        "stopType": "U",
-        "engineHourStart": 22553567,
-        "engineHourEnd": 22559904,
-        "engineHourUsed": 6337,
-        "totalDuration": 6632,
-        "totalHarshBrakes": 1,
-        "totalHarshAccelerations": 9,
-        "totalSpeedingEvents": 0,
-        "driverScore": 24,
-        "tripDuration": 6632,
-        "id": 104248747
-      },
-      {
-        "tripId": 104245444,
-        "tripKey": "20260421000341-2a2410e2-ab7b-4cbe-b125-a",
-        "tripStatusId": 0,
-        "tripStateId": 1,
-        "tripDistance": 2690,
-        "dateFrom": "2026-04-21T00:03:40+0000",
-        "dateTo": "2026-04-21T00:31:33+0000",
-        "maxSpeed": 52,
-        "avgSpeed": 21,
-        "imei": "2a2410e2-ab7b-4cbe-b125-a",
-        "startEventId": 9901458840,
-        "endEventId": 9901600072,
-        "type": "N",
-        "fuelConsumptionStart": 458170,
-        "fuelConsumptionEnd": 458930,
-        "fuelConsumed": 760,
-        "odometerStart": 122846590,
-        "odometerEnd": 122849280,
-        "stopDuration": 1008,
-        "stopType": "U",
-        "engineHourStart": 164773,
-        "engineHourEnd": 166461,
-        "engineHourUsed": 1688,
-        "totalDuration": 1673,
-        "totalHarshBrakes": 0,
-        "totalHarshAccelerations": 2,
-        "totalSpeedingEvents": 0,
-        "driverScore": 25,
-        "tripDuration": 1673,
-        "id": 104245444
-      }
-    ],
-    "active": 9,
-    "moving": 6,
-    "totalTrips": 11,
-    "activeVehicles": 9,
-    "movingNow": 6
-  },
-  "fuel": null
+  }
 };
+</script>
 
-const COLOURS = [
-  ['#1e3a5f','#60a5fa'],['#1e3b2e','#34d399'],['#3b1f4e','#a78bfa'],
-  ['#3b2a1e','#fbbf24'],['#3b1e1e','#f87171'],['#1e3040','#38bdf8'],
-  ['#2e3b1e','#86efac'],['#3b351e','#fcd34d'],['#1e2b3b','#93c5fd'],
-  ['#2b1e3b','#c4b5fd'],['#3b1e2e','#f9a8d4']
-];
+<div style="text-align:center;margin-bottom:24px">
+  <h1>myBins Crew Dashboard</h1>
+  <div class="subtitle" id="dateLabel"></div>
+  <div class="week-badge" id="weekBadge"></div>
+</div>
 
-function initials(name) { return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
-function formatDate(dateStr, day) {
-  const d = new Date(dateStr+'T00:00:00');
-  return `${day}, ${d.toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'})}`;
-}
+<!-- Summary cards -->
+<div class="cards">
+  <div class="card">
+    <div class="card-label">Bins Moved</div>
+    <div class="card-val" id="cardMoved">â</div>
+    <div class="card-sub"><span>DONE <b id="cardMovedDone">â</b></span><span>SCHED <b id="cardMovedSched">â</b></span></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Bins Cleaned</div>
+    <div class="card-val" id="cardCleaned">â</div>
+    <div class="card-sub"><span>DONE <b id="cardCleanedDone">â</b></span><span>SCHED <b id="cardCleanedSched">â</b></span></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Total Bins</div>
+    <div class="card-val" id="cardTotal">â</div>
+    <div class="card-sub"><span>DONE <b id="cardTotalDone">â</b></span><span>SCHED <b id="cardTotalSched">â</b></span></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Sites Done</div>
+    <div class="card-val" id="cardSites">â</div>
+    <div class="card-sub"><span>DONE <b id="cardSitesDone">â</b></span><span>SCHED <b id="cardSitesSched">â</b></span></div>
+  </div>
+</div>
 
-function render() {
-  const { date, day, week, employees, crew, generatedAt } = DASHBOARD_DATA;
-  document.getElementById('dateStr').textContent = formatDate(date, day);
-  document.getElementById('weekBadge').textContent = `Week ${week}`;
-  const fmt = n => (n||0).toLocaleString();
-  document.getElementById('crewMoved').textContent    = fmt(crew.bins_moved);
-  document.getElementById('schedMoved').textContent   = fmt(crew.sched_moved);
-  document.getElementById('crewCleaned').textContent  = fmt(crew.bins_cleaned);
-  document.getElementById('schedCleaned').textContent = fmt(crew.sched_cleaned);
-  document.getElementById('crewTotal').textContent    = fmt(crew.total_bins);
-  document.getElementById('schedTotal').textContent   = fmt(crew.sched_total);
-  document.getElementById('crewSites').textContent    = fmt(crew.sites_done);
-  document.getElementById('schedSites').textContent   = fmt(crew.sched_sites);
+<!-- Employee leaderboard -->
+<div class="section">
+  <div class="section-title">Crew Leaderboard</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th class="td-right">Out</th>
+          <th class="td-right">In</th>
+          <th class="td-right">Moved</th>
+          <th class="td-right">Cleaned</th>
+          <th>Vehicle</th>
+          <th class="td-right">KMs</th>
+          <th>Driver Score</th>
+          <th class="td-right">Score</th>
+          <th class="td-right">Sites</th>
+        </tr>
+      </thead>
+      <tbody id="empRows"></tbody>
+    </table>
+  </div>
+</div>
 
-  // Score: 1pt per bin moved (in or out), 10pts per bin cleaned
-  // Score: 1pt per bin moved, 6pts per bin cleaned, 2pts per site visited
-  const withScore = employees
-    .filter(e => !['mybins','unknown'].includes(e.name.toLowerCase()))
-    .map(e=>({...e, score: e.bins_moved + e.bins_cleaned * 6 + e.sites_done * 2}));
-  const maxScore = Math.max(...withScore.map(e=>e.score), 1);
-  const sorted = [...withScore].sort((a,b)=>b.score-a.score);
+<!-- Fleet -->
+<div class="section">
+  <div class="section-title">Fleet</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;max-width:500px">
+    <div class="card">
+      <div class="card-label">Trips Today</div>
+      <div class="card-val" id="fleetTrips">â</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Active Vehicles</div>
+      <div class="card-val" id="fleetActive">â</div>
+      <div class="card-sub"><span>MOVING <b id="fleetMoving">â</b></span><span>TODAY <b id="fleetToday">â</b></span></div>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Vehicle</th>
+          <th>Driver</th>
+          <th>Status</th>
+          <th class="td-right">Trips</th>
+          <th class="td-right">KMs</th>
+          <th>Driver Score</th>
+        </tr>
+      </thead>
+      <tbody id="fleetRows"></tbody>
+    </table>
+  </div>
+</div>
 
-  const asgn = DASHBOARD_DATA.assignments || {};
-  const fleetVehicles = DASHBOARD_DATA.fleet?.vehicles || [];
+<div class="footer" id="footer"></div>
 
-  document.getElementById('employeeRows').innerHTML = sorted.map((emp,i) => {
-    const [bg,fg] = COLOURS[i%COLOURS.length];
-    const pct = Math.round((emp.score/maxScore)*100);
-    const vehicle = asgn[emp.name] || null;
-    const vdata = vehicle ? fleetVehicles.find(v => v.label === vehicle) : null;
-    const vCell = vehicle
-      ? `<span style="color:#94a3b8;font-size:0.82rem">${vehicle}</span>`
-      : `<span style="color:#334155">&mdash;</span>`;
-    const kmCell = vdata
-      ? `<span style="color:#60a5fa;font-weight:600">${vdata.km} km</span>`
-      : `<span style="color:#334155">&mdash;</span>`;
-    return `<tr>
-      <td><div class="name-cell"><div class="avatar" style="background:${bg};color:${fg}">${initials(emp.name)}</div><span>${emp.name}</span></div></td>
-      <td class="stat-muted">${emp.bins_moved_out>0?emp.bins_moved_out:'&mdash;'}</td>
-      <td class="stat-muted">${emp.bins_moved_in>0?emp.bins_moved_in:'&mdash;'}</td>
-      <td class="stat-moved">${emp.bins_moved>0?emp.bins_moved:'&mdash;'}</td>
-      <td class="stat-cleaned">${emp.bins_cleaned>0?emp.bins_cleaned:'&mdash;'}</td>
-      <td style="text-align:left">${vCell}</td>
-      <td>${kmCell}</td>
-      <td class="score-cell"><span class="score-val">${emp.score.toLocaleString()}</span><span class="score-pts">pts</span><div class="score-bar"><div class="score-bar-fill" style="width:${pct}%"></div></div></td>
-      <td class="stat-sites">${emp.sites_done}</td>
-    </tr>`;
-  }).join('');
+<script>
+(function render() {
+  const D   = DASHBOARD_DATA;
+  const fmt = (n, fallback='â') => (n != null && n !== '') ? n : fallback;
+  const num = (n) => n > 0 ? `<span class="stat-num">${n}</span>` : `<span class="dash">â</span>`;
 
-  const genTime = new Date(generatedAt).toLocaleTimeString('en-AU',{
-    timeZone:'Australia/Sydney', hour:'2-digit', minute:'2-digit', hour12:false
+  // Date / week
+  document.getElementById('dateLabel').textContent = D.displayDate || '';
+  document.getElementById('weekBadge').textContent = 'Week ' + (D.week || '?');
+
+  // Cards
+  const c = D.crew || {};
+  document.getElementById('cardMoved').innerHTML       = `${c.binsMoved?.done ?? 'â'}<span>/${c.binsMoved?.scheduled ?? 'â'}</span>`;
+  document.getElementById('cardMovedDone').textContent  = c.binsMoved?.done ?? 'â';
+  document.getElementById('cardMovedSched').textContent = c.binsMoved?.scheduled ?? 'â';
+  document.getElementById('cardCleaned').innerHTML      = `${c.binsCleaned?.done ?? 'â'}<span>/${c.binsCleaned?.scheduled ?? 'â'}</span>`;
+  document.getElementById('cardCleanedDone').textContent  = c.binsCleaned?.done ?? 'â';
+  document.getElementById('cardCleanedSched').textContent = c.binsCleaned?.scheduled ?? 'â';
+  document.getElementById('cardTotal').innerHTML        = `${c.totalBins?.done ?? 'â'}<span>/${c.totalBins?.scheduled ?? 'â'}</span`;
+  document.getElementById('cardTotalDone').textContent  = c.totalBins?.done ?? 'â';
+  document.getElementById('cardTotalSched').textContent = c.totalBins?.scheduled ?? 'â';
+  document.getElementById('cardSites').innerHTML        = `${c.sitesDone?.done ?? 'â'}<span>/${c.sitesDone?.scheduled ?? 'â'}</span>`;
+  document.getElementById('cardSitesDone').textContent  = c.sitesDone?.done ?? 'â';
+  document.getElementById('cardSitesSched').textContent = c.sitesDone?.scheduled ?? 'â';
+
+  // Colours
+  const COLOURS = [
+    ['#7c3aed','#fff'],['#0369a1','#fff'],['#065f46','#fff'],['#92400e','#fff'],
+    ['#9d174d','#fff'],['#1e3a5f','#60a5fa'],['#374151','#e5e7eb'],['#1a1a2e','#818cf8'],
+  ];
+  const initials = n => n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+
+  // Score colour
+  const sc = s => s > 80 ? '#34d399' : s > 50 ? '#fbbf24' : '#f87171';
+
+  // Driver score cell
+  function scoreCell(val) {
+    if (val == null) return '<span class="dash">â</span>';
+    const bar = `<div class="score-bar"><div class="score-fill" style="width:${val}%;background:${sc(val)}"></div></div>`;
+    return `<div class="score-bar-wrap"><span style="color:${sc(val)};font-weight:700">${val}</span><span style="font-size:0.72rem;color:#78716c">/100</span>${bar}</div>`;
+  }
+
+  // Employee rows
+  const empRows = document.getElementById('empRows');
+  (D.leaderboard || []).forEach((e, i) => {
+    const [bg, fg] = COLOURS[i % COLOURS.length];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="emp-name"><div class="avatar" style="background:${bg};color:${fg}">${initials(e.name)}</div><span>${e.name}</span></div></td>
+      <td class="td-right">${e.bins_moved_out > 0 ? `<span class="stat-num">${e.bins_moved_out}</span>` : '<span class="dash">â</span>'}</td>
+      <td class="td-right">${e.bins_moved_in  > 0 ? `<span class="stat-num">${e.bins_moved_in}</span>`  : '<span class="dash">â</span>'}</td>
+      <td class="td-right">${e.bins_moved     > 0 ? `<span class="stat-moved">${e.bins_moved}</span>`   : '<span class="dash">â</span>'}</td>
+      <td class="td-right">${e.bins_cleaned   > 0 ? `<span class="stat-num">${e.bins_cleaned}</span>`   : '<span class="dash">â</span>'}</td>
+      <td>${e.vehicle ? `<span class="vehicle-tag">${e.vehicle}</span>` : '<span class="dash">â</span>'}</td>
+      <td class="td-right">${e.km != null ? `<span style="color:#60a5fa;font-weight:600">${e.km} km</span>` : '<span class="dash">â</span>'}</td>
+      <td>${scoreCell(e.driverScore)}</td>
+      <td class="td-right">${e.score > 0 ? `<span class="score-pts">${e.score}<span style="font-size:0.7rem">pts</span></span>` : '<span class="dash">â</span>'}</td>
+      <td class="td-right">${e.sites_done > 0 ? e.sites_done : '<span class="dash">â</span>'}</td>
+    `;
+    empRows.appendChild(tr);
   });
-  document.getElementById('footer').textContent = `Last updated ${genTime} AEST  auto-refreshes every 15 min`;
 
-  // Fuel section
-  const fuelVehicles = (DASHBOARD_DATA.fuel?.vehicles || [])
-    .filter(v => v.litres > 0)
-    .sort((a,b) => b.litres - a.litres);
-  const maxFuel = Math.max(...fuelVehicles.map(v => v.litres), 1);
-  const fuelGrid = document.getElementById('fuelGrid');
-  if (fuelVehicles.length > 0) {
-    fuelGrid.innerHTML = fuelVehicles.map(v => {
-      const pct = Math.round((v.litres / maxFuel) * 100);
-      return `<div class="fuel-card">
-        <div class="f-label">${v.label}</div>
-        <div><span class="f-val">${v.litres.toFixed(1)}</span><span class="f-unit">L</span></div>
-        <div class="fuel-bar-wrap"><div class="fuel-bar-fill" style="width:${pct}%"></div></div>
-      </div>`;
-    }).join('');
-  }
+  // Fleet summary
+  const fl = D.fleet || {};
+  document.getElementById('fleetTrips').textContent  = fl.totalTrips   ?? 'â';
+  document.getElementById('fleetActive').innerHTML   = `${fl.movingNow ?? 'â'}|span>/${fl.activeVehicles ?? 'â'}</span>`;
+  document.getElementById('fleetMoving').textContent = fl.movingNow    ?? 'â';
+  document.getElementById('fleetToday').textContent  = fl.activeVehicles ?? 'â';
 
-  // Fleet section
-  const { fleet } = DASHBOARD_DATA;
-  if (fleet) {
-        document.getElementById('fleetTrips').textContent = fleet.totalTrips;
-    document.getElementById('fleetMoving').textContent = fleet.movingNow;
-    document.getElementById('fleetActive').textContent = fleet.activeVehicles;
+  // Fleet rows
+  const stateLabel = { moving: 'Moving', idle: 'Idle', unknown: 'â' };
+  const stateDotClass = s => s === 'moving' ? 'dot-moving' : s === 'idle' ? 'dot-idle' : 'dot-unknown';
 
-    const stateLabel = { moving: 'Moving', idle: 'Idle', stopped: 'Stopped', unknown: '&mdash;' };
-    const stateDot   = s => `<span class="state-dot state-${s}"></span>`;
-    const scoreColor = sc => sc >= 80 ? '#34d399' : sc >= 50 ? '#fbbf24' : '#f87171';
+  const fleetRows = document.getElementById('fleetRows');
+  (fl.vehicles || []).forEach(v => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${v.label}</strong></td>
+      <td>${v.driver ? v.driver : '<span class="dash">â</span>'}</td>
+      <td><span class="dot ${stateDotClass(v.state)}"></span>${stateLabel[v.state] || 'â'}</td>
+      <td class="td-right">${v.trips > 0 ? `<span style="color:#60a5fa;font-weight:600">${v.trips}</span>` : '<span class="dash">0</span>'}</td>
+      <td class="td-right">${v.km != null ? `<span style="color:#60a5fa;font-weight:600">${v.km} km</span>` : '<span class="dash">â</span>'}</td>
+      <td>${scoreCell(v.avgDriverScore)}</td>
+    `;
+    fleetRows.appendChild(tr);
+  });
 
-    const reverseAsgn = Object.fromEntries(Object.entries(asgn).map(([emp,veh]) => [veh, emp]));
+  // Footer
+  document.getElementById('footer').textContent = `Last updated ${D.generatedAt || ''} Â· auto-refreshes every 15 min`;
 
-    document.getElementById('vehicleRows').innerHTML = (fleet.vehicles || []).map(v => {
-      const sc = v.avgDriverScore ?? null;
-      const scBar = sc !== null
-        ? `<div class="driver-score-bar"><div class="driver-score-fill" style="width:${sc}%;background:${scoreColor(sc)}"></div></div>`
-        : '';
-      const scVal = sc !== null
-        ? `<span style="color:${scoreColor(sc)};font-weight:700">${sc}</span><span style="font-size:0.72rem;color:#78716c">/100</span>${scBar}`
-        : '<span style="color:#475569">&mdash;</span>';
-      const driver = reverseAsgn[v.label] || null;
-      return `<tr>
-        <td><div class="name-cell"><span>${v.label}</span></div></td>
-        <td style="text-align:left;color:#e2e8f0;font-size:0.85rem">${driver || '<span style="color:#334155">&mdash;</span>'}</td>
-        <td style="text-align:left">${stateDot(v.state||'unknown')}<span style="font-size:0.82rem;color:#94a3b8">${stateLabel[v.state]||'&mdash;'}</span></td>
-        <td class="stat-sites">${v.trips}</td>
-        <td class="score-cell">${scVal}</td>
-      </tr>`;
-    }).join('');
-  }
-}
-render();
-
-
-//  Weekly leaderboard renderer 
-(function renderWeekly() {
-  const rows = (DASHBOARD_DATA.weeklyLeaderboard || []);
-  const tbody = document.getElementById('weekly-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = rows.map((e, i) => {
-    const out   = e.bins_out     > 0 ? e.bins_out     : '<span class="dash">—</span>';
-    const inn   = e.bins_in      > 0 ? e.bins_in      : '<span class="dash">—</span>';
-    const clean = e.bins_cleaned > 0 ? e.bins_cleaned : '<span class="dash">—</span>';
-    return `<tr>
-      <td class="w-rank">${i+1}</td>
-      <td class="w-name">${e.name}</td>
-      <td class="w-out">${out}</td>
-      <td class="w-in">${inn}</td>
-      <td class="w-clean">${clean}</td>
-      <td class="w-total">${e.total}</td>
-    </tr>`;
-  }).join('');
+  // Auto-refresh every 15 min
+  setTimeout(() => location.reload(), 15 * 60 * 1000);
 })();
 </script>
 </body>
