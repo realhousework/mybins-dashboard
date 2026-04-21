@@ -115,29 +115,29 @@
 </head>
 <body>
 <div class="header">
-  <h1>ðï¸ myBins Crew Dashboard</h1>
+  <h1> myBins Crew Dashboard</h1>
   <div class="subtitle" id="dateStr">Loading...</div>
-  <div class="week-badge" id="weekBadge">Week â</div>
+  <div class="week-badge" id="weekBadge">Week </div>
 </div>
 <div class="crew-summary">
   <div class="summary-card moved">
     <div class="label">Bins Moved</div>
-    <div class="value-split stat-moved"><span id="crewMoved">â</span><span class="split-sep">/</span><span id="schedMoved">â</span></div>
+    <div class="value-split stat-moved"><span id="crewMoved"></span><span class="split-sep">/</span><span id="schedMoved"></span></div>
     <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
   </div>
   <div class="summary-card cleaned">
     <div class="label">Bins Cleaned</div>
-    <div class="value-split stat-cleaned"><span id="crewCleaned">â</span><span class="split-sep">/</span><span id="schedCleaned">â</span></div>
+    <div class="value-split stat-cleaned"><span id="crewCleaned"></span><span class="split-sep">/</span><span id="schedCleaned"></span></div>
     <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
   </div>
   <div class="summary-card total">
     <div class="label">Total Bins</div>
-    <div class="value-split stat-total"><span id="crewTotal">â</span><span class="split-sep">/</span><span id="schedTotal">â</span></div>
+    <div class="value-split stat-total"><span id="crewTotal"></span><span class="split-sep">/</span><span id="schedTotal"></span></div>
     <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
   </div>
   <div class="summary-card sites">
     <div class="label">Sites Done</div>
-    <div class="value-split stat-sites"><span id="crewSites">â</span><span class="split-sep">/</span><span id="schedSites">â</span></div>
+    <div class="value-split stat-sites"><span id="crewSites"></span><span class="split-sep">/</span><span id="schedSites"></span></div>
     <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
   </div>
 </div>
@@ -160,18 +160,18 @@
 </div>
 <div class="section-label">
   <div class="section-line"></div>
-  <h2>ð Fleet</h2>
+  <h2> Fleet</h2>
   <div class="section-line"></div>
 </div>
 <div class="fleet-summary">
   
   <div class="summary-card trips">
     <div class="label">Trips</div>
-    <div class="value" id="fleetTrips">â</div>
+    <div class="value" id="fleetTrips"></div>
   </div>
   <div class="summary-card active">
     <div class="label">Active Vehicles</div>
-    <div class="value-split stat-moved" style="color:#fb923c"><span id="fleetMoving">â</span><span class="split-sep">/</span><span id="fleetActive">â</span></div>
+    <div class="value-split stat-moved" style="color:#fb923c"><span id="fleetMoving"></span><span class="split-sep">/</span><span id="fleetActive"></span></div>
     <div class="split-labels"><span>MOVING</span><span style="flex:1;text-align:center">/</span><span>TODAY</span></div>
   </div>
 </div>
@@ -191,7 +191,7 @@
 </div>
 
 </div>
-<div class="footer" id="footer">â</div>
+<div class="footer" id="footer"></div>
 
 
 
@@ -200,7 +200,7 @@
 
 <script>
 const DASHBOARD_DATA = {
-  "generatedAt": "2026-04-21T00:10:39.663Z",
+  "generatedAt": "2026-04-21T00:16:32.745Z",
   "date": "2026-04-21",
   "day": "Tuesday",
   "week": 2,
@@ -217,10 +217,10 @@ const DASHBOARD_DATA = {
     {
       "name": "Joel Ansems-mills",
       "bins_moved_in": 0,
-      "bins_moved_out": 202,
-      "bins_moved": 202,
+      "bins_moved_out": 243,
+      "bins_moved": 243,
       "bins_cleaned": 0,
-      "total_bins": 202,
+      "total_bins": 243,
       "sites_done": 3
     },
     {
@@ -270,9 +270,9 @@ const DASHBOARD_DATA = {
     }
   ],
   "crew": {
-    "bins_moved": 922,
+    "bins_moved": 963,
     "bins_cleaned": 12,
-    "total_bins": 934,
+    "total_bins": 975,
     "sites_done": 12,
     "sched_moved": 597,
     "sched_cleaned": 50,
@@ -331,7 +331,7 @@ function render() {
   // Score: 1pt per bin moved (in or out), 10pts per bin cleaned
   // Score: 1pt per bin moved, 6pts per bin cleaned, 2pts per site visited
   const withScore = employees
-    .filter(e=>e.name!=='myBins')
+    .filter(e => !['mybins','unknown'].includes(e.name.toLowerCase()))
     .map(e=>({...e, score: e.bins_moved + e.bins_cleaned * 6 + e.sites_done * 2}));
   const maxScore = Math.max(...withScore.map(e=>e.score), 1);
   const sorted = [...withScore].sort((a,b)=>b.score-a.score);
@@ -366,7 +366,7 @@ function render() {
   const genTime = new Date(generatedAt).toLocaleTimeString('en-AU',{
     timeZone:'Australia/Sydney', hour:'2-digit', minute:'2-digit', hour12:false
   });
-  document.getElementById('footer').textContent = `Last updated ${genTime} AEST Â· auto-refreshes every 15 min`;
+  document.getElementById('footer').textContent = `Last updated ${genTime} AEST  auto-refreshes every 15 min`;
 
   // Fuel section
   const fuelVehicles = (DASHBOARD_DATA.fuel?.vehicles || [])
@@ -420,7 +420,7 @@ function render() {
 render();
 
 
-// ── Weekly leaderboard renderer ──────────────────────────────────────────────
+//  Weekly leaderboard renderer 
 (function renderWeekly() {
   const rows = (DASHBOARD_DATA.weeklyLeaderboard || []);
   const tbody = document.getElementById('weekly-tbody');
