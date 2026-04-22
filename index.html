@@ -2,434 +2,290 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>myBins Live Crew Dashboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>myBins Dashboard</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; padding: 24px 16px 48px; }
-  h1 { text-align: center; font-size: 1.9rem; font-weight: 800; color: #f1f5f9; letter-spacing: -0.5px; }
-  .subtitle { text-align: center; color: #94a3b8; font-size: 0.95rem; margin: 6px 0 4px; }
-  .week-badge { display: inline-block; background: #1e3a5f; color: #60a5fa; font-size: 0.8rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; margin-bottom: 24px; }
-
-  /* Summary cards */
-  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; max-width: 860px; margin: 0 auto 28px; }
-  @media (max-width: 640px) { .cards { grid-template-columns: repeat(2, 1fr); } }
-  .card { background: #1e293b; border-radius: 12px; padding: 16px 20px; text-align: center; }
-  .card-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; color: #64748b; text-transform: uppercase; margin-bottom: 6px; }
-  .card-val { font-size: 1.8rem; font-weight: 800; color: #38bdf8; }
-  .card-val span { color: #475569; font-size: 1.2rem; }
-  .card-sub { font-size: 0.7rem; color: #475569; margin-top: 2px; display: flex; justify-content: space-around; }
-  .card-sub b { color: #94a3b8; }
-
-  /* Tables */
-  .section { max-width: 1100px; margin: 0 auto 36px; }
-  .section-title { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #1e293b; }
-  .tbl-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid #1e293b; }
-  table { width: 100%; border-collapse: collapse; }
-  thead th { background: #0f172a; color: #64748b; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 10px 12px; text-align: left; white-space: nowrap; }
-  tbody tr { border-top: 1px solid #1e293b; transition: background 0.15s; }
-  tbody tr:hover { background: #1e293b44; }
-  td { padding: 10px 12px; font-size: 0.88rem; vertical-align: middle; white-space: nowrap; }
-  .td-right { text-align: right; }
-  .td-center { text-align: center; }
-
-  /* Employee table */
-  .emp-name { display: flex; align-items: center; gap: 10px; }
-  .avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
-  .stat-zero { color: #334155; }
-  .stat-num  { color: #e2e8f0; font-weight: 600; }
-  .stat-moved { color: #38bdf8; font-weight: 700; }
-  .score-pts { font-weight: 800; color: #fbbf24; }
-  .vehicle-tag { color: #94a3b8; font-size: 0.82rem; }
-  .dash { color: #334155; }
-
-  /* Fleet status dots */
-  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-  .dot-moving { background: #22c55e; box-shadow: 0 0 6px #22c55e88; }
-  .dot-idle   { background: #f59e0b; }
-  .dot-unknown { background: #475569; }
-
-  /* Driver score bar */
-  .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
-  .score-bar { flex: 1; min-width: 50px; height: 5px; background: #1e293b; border-radius: 3px; overflow: hidden; }
-  .score-fill { height: 100%; border-radius: 3px; }
-
-  /* Footer */
-  .footer { text-align: center; color: #334155; font-size: 0.75rem; margin-top: 24px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a14; color: #eee; font-family: system-ui, sans-serif; font-size: 13px; padding: 16px; }
+  h2 { color: #e94560; font-size: 15px; margin-bottom: 8px; letter-spacing: .5px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  th { background: #0a0a18; color: #555; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; padding: 6px 8px; border-bottom: 1px solid #1e1e30; }
+  td { font-size: 12px; }
+  .section { background: #12121f; border-radius: 10px; padding: 14px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
+  .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #1e1e30; }
+  .stat { display: flex; flex-direction: column; align-items: center; }
+  .stat .val { font-size: 22px; font-weight: 700; color: #e94560; }
+  .stat .lbl { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: .5px; }
+  .footer { color: #2a2a3a; font-size: 10px; padding-top: 8px; border-top: 1px solid #1a1a2e; display: flex; justify-content: space-between; }
 </style>
 </head>
 <body>
 
-<script>
-const DASHBOARD_DATA = {
-  "generatedAt": "22 Apr, 9:51 am",
-  "today": "2026-04-22",
-  "displayDate": "Wednesday 22 April 2026",
-  "week": 2,
-  "crew": {
-    "binsMoved": {
-      "done": 263,
-      "scheduled": 4661
-    },
-    "binsCleaned": {
-      "done": 20,
-      "scheduled": 569
-    },
-    "totalBins": {
-      "done": 283,
-      "scheduled": 5230
-    },
-    "sitesDone": {
-      "done": 39,
-      "scheduled": 685
-    }
-  },
-  "leaderboard": [
-    {
-      "name": "Joel",
-      "vehicle": "DELTA EMPTY",
-      "bins_moved_out": 138,
-      "bins_moved_in": 0,
-      "bins_moved": 138,
-      "bins_cleaned": 0,
-      "total_bins": 138,
-      "km": null,
-      "driverScore": null,
-      "score": 138
-    },
-    {
-      "name": "Kalicique Carvalho",
-      "vehicle": null,
-      "bins_moved_out": 74,
-      "bins_moved_in": 0,
-      "bins_moved": 74,
-      "bins_cleaned": 0,
-      "total_bins": 74,
-      "km": null,
-      "driverScore": null,
-      "score": 74
-    },
-    {
-      "name": "Thassio",
-      "vehicle": "Big Red",
-      "bins_moved_out": 51,
-      "bins_moved_in": 0,
-      "bins_moved": 51,
-      "bins_cleaned": 0,
-      "total_bins": 51,
-      "km": null,
-      "driverScore": null,
-      "score": 51
-    },
-    {
-      "name": "Jacob Saxby",
-      "vehicle": "TROOPY",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 8,
-      "total_bins": 8,
-      "km": null,
-      "driverScore": null,
-      "score": 8
-    },
-    {
-      "name": "Ben",
-      "vehicle": "Blue",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 8,
-      "total_bins": 8,
-      "km": null,
-      "driverScore": null,
-      "score": 8
-    },
-    {
-      "name": "Paulo",
-      "vehicle": "Grouch",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 4,
-      "total_bins": 4,
-      "km": null,
-      "driverScore": null,
-      "score": 4
-    },
-    {
-      "name": "Cameron Gallo",
-      "vehicle": "Ferrari",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "km": null,
-      "driverScore": null,
-      "score": 0
-    },
-    {
-      "name": "Luiz Eduardo",
-      "vehicle": "FROG",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "km": null,
-      "driverScore": null,
-      "score": 0
-    },
-    {
-      "name": "Ryan Hobbs",
-      "vehicle": "Hippo",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "km": null,
-      "driverScore": null,
-      "score": 0
-    },
-    {
-      "name": "Zach",
-      "vehicle": "BARRA",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "km": null,
-      "driverScore": null,
-      "score": 0
-    },
-    {
-      "name": "Kike",
-      "vehicle": "EMPTY",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "km": null,
-      "driverScore": null,
-      "score": 0
-    },
-    {
-      "name": "Mitchell Davis",
-      "vehicle": "Commy",
-      "bins_moved_out": 0,
-      "bins_moved_in": 0,
-      "bins_moved": 0,
-      "bins_cleaned": 0,
-      "total_bins": 0,
-      "km": null,
-      "driverScore": null,
-      "score": 0
-    }
-  ],
-  "fleet": {
-    "totalTrips": 0,
-    "activeVehicles": 0,
-    "movingNow": 0,
-    "vehicles": []
-  },
-  "assignments": {
-    "Cameron Gallo": "Ferrari",
-    "Luiz Eduardo": "FROG",
-    "Jacob Saxby": "TROOPY",
-    "Ryan Hobbs": "Hippo",
-    "Joel": "DELTA EMPTY",
-    "Zach": "BARRA",
-    "Ben": "Blue",
-    "Thassio": "Big Red",
-    "Kike": "EMPTY",
-    "Mitchell Davis": "Commy",
-    "Paulo": "Grouch"
-  }
-};
-</script>
-
-<div style="text-align:center;margin-bottom:24px">
-  <h1>myBins Crew Dashboard</h1>
-  <div class="subtitle" id="dateLabel"></div>
-  <div class="week-badge" id="weekBadge"></div>
-</div>
-
-<!-- Summary cards -->
-<div class="cards">
-  <div class="card">
-    <div class="card-label">Bins Moved</div>
-    <div class="card-val" id="cardMoved">â</div>
-    <div class="card-sub"><span>DONE <b id="cardMovedDone">â</b></span><span>SCHED <b id="cardMovedSched">â</b></span></div>
-  </div>
-  <div class="card">
-    <div class="card-label">Bins Cleaned</div>
-    <div class="card-val" id="cardCleaned">â</div>
-    <div class="card-sub"><span>DONE <b id="cardCleanedDone">â</b></span><span>SCHED <b id="cardCleanedSched">â</b></span></div>
-  </div>
-  <div class="card">
-    <div class="card-label">Total Bins</div>
-    <div class="card-val" id="cardTotal">â</div>
-    <div class="card-sub"><span>DONE <b id="cardTotalDone">â</b></span><span>SCHED <b id="cardTotalSched">â</b></span></div>
-  </div>
-  <div class="card">
-    <div class="card-label">Sites Done</div>
-    <div class="card-val" id="cardSites">â</div>
-    <div class="card-sub"><span>DONE <b id="cardSitesDone">â</b></span><span>SCHED <b id="cardSitesSched">â</b></span></div>
-  </div>
-</div>
-
-<!-- Employee leaderboard -->
 <div class="section">
-  <div class="section-title">Crew Leaderboard</div>
-  <div class="tbl-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Employee</th>
-          <th class="td-right">Out</th>
-          <th class="td-right">In</th>
-          <th class="td-right">Moved</th>
-          <th class="td-right">Cleaned</th>
-          <th>Vehicle</th>
-          <th class="td-right">KMs</th>
-          <th>Driver Score</th>
-          <th class="td-right">Score</th>
-        </tr>
-      </thead>
-      <tbody id="empRows"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- Fleet -->
-<div class="section">
-  <div class="section-title">Fleet</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;max-width:500px">
-    <div class="card">
-      <div class="card-label">Trips Today</div>
-      <div class="card-val" id="fleetTrips">â</div>
+  <div class="header">
+    <div>
+      <span style="font-size:20px;font-weight:800;color:#e94560;">myBins</span>
+      <span style="color:#444;margin-left:10px;font-size:12px;">Wednesday 22 April 2026 · Week 2</span>
     </div>
-    <div class="card">
-      <div class="card-label">Active Vehicles</div>
-      <div class="card-val" id="fleetActive">â</div>
-      <div class="card-sub"><span>MOVING <b id="fleetMoving">â</b></span><span>TODAY <b id="fleetToday">â</b></span></div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;">
+      <div class="stat"><span class="val">322</span><span class="lbl">Remaining</span></div>
+      <div class="stat"><span class="val" style="color:#f7b731">47%</span><span class="lbl">Complete</span></div>
+      <div class="stat"><span class="val" style="color:#82aaff">239/514</span><span class="lbl">Move Sites</span></div>
+      <div class="stat"><span class="val" style="color:#82aaff">2573/4331</span><span class="lbl">Move Bins</span></div>
+      <div class="stat"><span class="val" style="color:#c3e88d">51/98</span><span class="lbl">Clean Sites</span></div>
+      <div class="stat"><span class="val" style="color:#c3e88d">348/559</span><span class="lbl">Clean Bins</span></div>
     </div>
   </div>
-  <div class="tbl-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Vehicle</th>
-          <th>Driver</th>
-          <th>Status</th>
-          <th class="td-right">Trips</th>
-          <th class="td-right">KMs</th>
-          <th>Driver Score</th>
-        </tr>
-      </thead>
-      <tbody id="fleetRows"></tbody>
-    </table>
+
+  <h2>Crew</h2>
+  <table>
+    <thead>
+      <tr>
+        <th rowspan="2" style="text-align:left;">Employee</th>
+        <th rowspan="2" style="text-align:left;">Zones</th>
+        <th colspan="3" style="color:#82aaff;border-right:1px solid #1e1e30;">Moves (Out + In)</th>
+        <th colspan="3" style="color:#c3e88d;border-right:1px solid #1e1e30;">Bin Cleans</th>
+        <th rowspan="2">Progress</th>
+      </tr>
+      <tr>
+        <th style="color:#5a6a8a;">Sites</th>
+        <th style="color:#5a6a8a;">Bins</th>
+        <th style="color:#7a6010;border-right:1px solid #1e1e30;">Partial</th>
+        <th style="color:#6a8a5a;">Sites</th>
+        <th style="color:#6a8a5a;">Bins</th>
+        <th style="color:#7a6010;border-right:1px solid #1e1e30;">Partial</th>
+      </tr>
+    </thead>
+    <tbody><tr style="background:#12121f;border-bottom:1px solid #181828;">
+      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
+        <div style="font-weight:600;color:#ddd;">Kike</div>
+        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">EMPTY</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#888">North Sydney Council</span><span style="color:#252535">, </span><span style="color:#888">Mosman Council</span><span style="color:#252535">, </span><span style="color:#888">Warringah B2</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">51</span><span style="color:#444">/81</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">411</span><span style="color:#444">/683</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">1s</span><span style="color:#555">/</span><span style="color:#a07810">6b</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">0</span><span style="color:#444">/2</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">0</span><span style="color:#444">/14</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
+      <td style="padding:8px 8px;text-align:center;min-width:80px;">
+        
+          <div style="background:#1e1e30;border-radius:3px;height:5px;margin-bottom:3px;">
+            <div style="background:#f7b731;width:61%;height:100%;border-radius:3px;"></div>
+          </div>
+          <span style="color:#f7b731;font-weight:600;font-size:11px;">61%</span>
+        
+      </td>
+    </tr><tr style="background:#161628;border-bottom:1px solid #181828;">
+      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
+        <div style="font-weight:600;color:#ddd;">Thassio</div>
+        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Big Red</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#888">Mosman Council</span><span style="color:#252535">, </span><span style="color:#888">Lane Cove Council</span><span style="color:#252535">, </span><span style="color:#888">Willoughby Council</span><span style="color:#252535">, </span><span style="color:#888">Lane Cove Council</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">42</span><span style="color:#444">/40</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">358</span><span style="color:#444">/392</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">3</span><span style="color:#444">/4</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">22</span><span style="color:#444">/25</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
+      <td style="padding:8px 8px;text-align:center;min-width:80px;">
+        
+          <div style="background:#1e1e30;border-radius:3px;height:5px;margin-bottom:3px;">
+            <div style="background:#4ecdc4;width:100%;height:100%;border-radius:3px;"></div>
+          </div>
+          <span style="color:#4ecdc4;font-weight:600;font-size:11px;">102%</span>
+        
+      </td>
+    </tr><tr style="background:#12121f;border-bottom:1px solid #181828;">
+      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
+        <div style="font-weight:600;color:#ddd;">Luiz Eduardo</div>
+        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">The Frog</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#888">Manly B6</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">32</span><span style="color:#444">/51</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">269</span><span style="color:#444">/407</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">6s</span><span style="color:#555">/</span><span style="color:#a07810">31b</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">8</span><span style="color:#444">/10</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">27</span><span style="color:#444">/41</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">1s</span><span style="color:#555">/</span><span style="color:#a07810">1b</span></td>
+      <td style="padding:8px 8px;text-align:center;min-width:80px;">
+        
+          <div style="background:#1e1e30;border-radius:3px;height:5px;margin-bottom:3px;">
+            <div style="background:#f7b731;width:66%;height:100%;border-radius:3px;"></div>
+          </div>
+          <span style="color:#f7b731;font-weight:600;font-size:11px;">66%</span>
+        
+      </td>
+    </tr><tr style="background:#161628;border-bottom:1px solid #181828;">
+      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
+        <div style="font-weight:600;color:#ddd;">Ben</div>
+        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Blue</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#383848">18 CAMPBELL CLEAN (JOEL WILL DO THE INS)</span><span style="color:#252535">, </span><span style="color:#888">Manly B7</span><span style="color:#252535">, </span><span style="color:#888">Manly B4</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">35</span><span style="color:#444">/79</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">335</span><span style="color:#444">/674</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">31s</span><span style="color:#555">/</span><span style="color:#a07810">168b</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">5</span><span style="color:#444">/11</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">29</span><span style="color:#444">/56</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">1s</span><span style="color:#555">/</span><span style="color:#a07810">3b</span></td>
+      <td style="padding:8px 8px;text-align:center;min-width:80px;">
+        
+          <div style="background:#1e1e30;border-radius:3px;height:5px;margin-bottom:3px;">
+            <div style="background:#e94560;width:44%;height:100%;border-radius:3px;"></div>
+          </div>
+          <span style="color:#e94560;font-weight:600;font-size:11px;">44%</span>
+        
+      </td>
+    </tr><tr style="background:#12121f;border-bottom:1px solid #181828;">
+      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
+        <div style="font-weight:600;color:#ddd;">Ryan Hobbs</div>
+        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Hippo</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#383848">1 WENTWORTH (EARLY)</span><span style="color:#252535">, </span><span style="color:#383848">17 DARLEY (EARLY)</span><span style="color:#252535">, </span><span style="color:#888">Manly B3</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">21</span><span style="color:#444">/51</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">351</span><span style="color:#444">/495</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">19s</span><span style="color:#555">/</span><span style="color:#a07810">171b</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">6</span><span style="color:#444">/10</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">41</span><span style="color:#444">/51</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
+      <td style="padding:8px 8px;text-align:center;min-width:80px;">
+        
+          <div style="background:#1e1e30;border-radius:3px;height:5px;margin-bottom:3px;">
+            <div style="background:#e94560;width:44%;height:100%;border-radius:3px;"></div>
+          </div>
+          <span style="color:#e94560;font-weight:600;font-size:11px;">44%</span>
+        
+      </td>
+    </tr><tr style="background:#161628;border-bottom:1px solid #181828;">
+      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
+        <div style="font-weight:600;color:#ddd;">Mitchell Davis</div>
+        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Commy</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#888">Randwick Council</span><span style="color:#252535">, </span><span style="color:#383848">57 LIVERPOOL</span><span style="color:#252535">, </span><span style="color:#888">City of Sydney</span><span style="color:#252535">, </span><span style="color:#888">Mosman Council</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">24</span><span style="color:#444">/39</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">148</span><span style="color:#444">/219</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">3</span><span style="color:#444">/7</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">8</span><span style="color:#444">/21</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">1s</span><span style="color:#555">/</span><span style="color:#a07810">2b</span></td>
+      <td style="padding:8px 8px;text-align:center;min-width:80px;">
+        
+          <div style="background:#1e1e30;border-radius:3px;height:5px;margin-bottom:3px;">
+            <div style="background:#f7b731;width:59%;height:100%;border-radius:3px;"></div>
+          </div>
+          <span style="color:#f7b731;font-weight:600;font-size:11px;">59%</span>
+        
+      </td>
+    </tr><tr style="background:#12121f;border-bottom:1px solid #181828;">
+      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
+        <div style="font-weight:600;color:#ddd;">Cameron Gallo</div>
+        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Ferrari</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#888">Warringah B1</span><span style="color:#252535">, </span><span style="color:#888">Warringah B1</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">7</span><span style="color:#444">/20</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">69</span><span style="color:#444">/178</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">1s</span><span style="color:#555">/</span><span style="color:#a07810">5b</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">8</span><span style="color:#444">/11</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">101</span><span style="color:#444">/88</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">2s</span><span style="color:#555">/</span><span style="color:#a07810">18b</span></td>
+      <td style="padding:8px 8px;text-align:center;min-width:80px;">
+        
+          <div style="background:#1e1e30;border-radius:3px;height:5px;margin-bottom:3px;">
+            <div style="background:#e94560;width:48%;height:100%;border-radius:3px;"></div>
+          </div>
+          <span style="color:#e94560;font-weight:600;font-size:11px;">48%</span>
+        
+      </td>
+    </tr><tr style="background:#161628;border-bottom:1px solid #181828;">
+      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
+        <div style="font-weight:600;color:#ddd;">Zach</div>
+        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">The Barra</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#888">Manly B4</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">10</span><span style="color:#444">/27</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">301</span><span style="color:#444">/242</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">15s</span><span style="color:#555">/</span><span style="color:#a07810">95b</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">5</span><span style="color:#444">/6</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">30</span><span style="color:#444">/27</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">1s</span><span style="color:#555">/</span><span style="color:#a07810">3b</span></td>
+      <td style="padding:8px 8px;text-align:center;min-width:80px;">
+        
+          <div style="background:#1e1e30;border-radius:3px;height:5px;margin-bottom:3px;">
+            <div style="background:#e94560;width:45%;height:100%;border-radius:3px;"></div>
+          </div>
+          <span style="color:#e94560;font-weight:600;font-size:11px;">45%</span>
+        
+      </td>
+    </tr><tr style="background:#12121f;border-bottom:1px solid #181828;">
+      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
+        <div style="font-weight:600;color:#ddd;">Paulo</div>
+        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Grouch</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#888">Woollahra Council</span><span style="color:#252535">, </span><span style="color:#888">Waverley Council</span><span style="color:#252535">, </span><span style="color:#888">Mosman Council</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">8</span><span style="color:#444">/32</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">52</span><span style="color:#444">/192</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">7</span><span style="color:#444">/12</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">46</span><span style="color:#444">/67</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">1s</span><span style="color:#555">/</span><span style="color:#a07810">2b</span></td>
+      <td style="padding:8px 8px;text-align:center;min-width:80px;">
+        
+          <div style="background:#1e1e30;border-radius:3px;height:5px;margin-bottom:3px;">
+            <div style="background:#e94560;width:34%;height:100%;border-radius:3px;"></div>
+          </div>
+          <span style="color:#e94560;font-weight:600;font-size:11px;">34%</span>
+        
+      </td>
+    </tr><tr style="background:#161628;border-bottom:1px solid #181828;">
+      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
+        <div style="font-weight:600;color:#ddd;">Jacob Saxby</div>
+        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Troopie</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#888">Manly B5</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">5</span><span style="color:#444">/66</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">206</span><span style="color:#444">/521</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">35s</span><span style="color:#555">/</span><span style="color:#a07810">188b</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">6</span><span style="color:#444">/12</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">44</span><span style="color:#444">/67</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">3s</span><span style="color:#555">/</span><span style="color:#a07810">14b</span></td>
+      <td style="padding:8px 8px;text-align:center;min-width:80px;">
+        
+          <div style="background:#1e1e30;border-radius:3px;height:5px;margin-bottom:3px;">
+            <div style="background:#e94560;width:14%;height:100%;border-radius:3px;"></div>
+          </div>
+          <span style="color:#e94560;font-weight:600;font-size:11px;">14%</span>
+        
+      </td>
+    </tr><tr style="background:#12121f;border-bottom:1px solid #181828;">
+      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
+        <div style="font-weight:600;color:#ddd;">Joel</div>
+        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">DELTA EMPTY</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#383848">ZONE 1,2,3 & 4 OUTS</span><span style="color:#252535">, </span><span style="color:#888">Warringah B2</span><span style="color:#252535">, </span><span style="color:#383848">ZONE 5 OUTS</span><span style="color:#252535">, </span><span style="color:#888">Warringah B1</span><span style="color:#252535">, </span><span style="color:#383848">3/180</span><span style="color:#252535">, </span><span style="color:#888">Warringah B1</span><span style="color:#252535">, </span><span style="color:#383848">KOORALA IF NEEDED</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">4</span><span style="color:#444">/28</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#ddd">73</span><span style="color:#444">/328</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">2s</span><span style="color:#555">/</span><span style="color:#a07810">11b</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">0</span><span style="color:#444">/13</span></td>
+      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#ddd">0</span><span style="color:#444">/102</span></td>
+      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#c8a020">2s</span><span style="color:#555">/</span><span style="color:#a07810">18b</span></td>
+      <td style="padding:8px 8px;text-align:center;min-width:80px;">
+        
+          <div style="background:#1e1e30;border-radius:3px;height:5px;margin-bottom:3px;">
+            <div style="background:#e94560;width:10%;height:100%;border-radius:3px;"></div>
+          </div>
+          <span style="color:#e94560;font-weight:600;font-size:11px;">10%</span>
+        
+      </td>
+    </tr></tbody>
+  </table>
+  <div class="footer">
+    <span>Partial = visited but not finished · bins ticked at those sites</span>
+    <span id="footer">Last updated 22 Apr, 2:19 pm · auto-refreshes every 15 min</span>
   </div>
 </div>
 
-<div class="footer" id="footer"></div>
 
-<script>
-(function render() {
-  const D   = DASHBOARD_DATA;
-  const fmt = (n, fallback='â') => (n != null && n !== '') ? n : fallback;
-  const num = (n) => n > 0 ? `<span class="stat-num">${n}</span>` : `<span class="dash">â</span>`;
 
-  // Date / week
-  document.getElementById('dateLabel').textContent = D.displayDate || '';
-  document.getElementById('weekBadge').textContent = 'Week ' + (D.week || '?');
-
-  // Cards
-  const c = D.crew || {};
-  document.getElementById('cardMoved').innerHTML       = `${c.binsMoved?.done ?? 'â'}<span>/${c.binsMoved?.scheduled ?? 'â'}</span>`;
-  document.getElementById('cardMovedDone').textContent  = c.binsMoved?.done ?? 'â';
-  document.getElementById('cardMovedSched').textContent = c.binsMoved?.scheduled ?? 'â';
-  document.getElementById('cardCleaned').innerHTML      = `${c.binsCleaned?.done ?? 'â'}<span>/${c.binsCleaned?.scheduled ?? 'â'}</span>`;
-  document.getElementById('cardCleanedDone').textContent  = c.binsCleaned?.done ?? 'â';
-  document.getElementById('cardCleanedSched').textContent = c.binsCleaned?.scheduled ?? 'â';
-  document.getElementById('cardTotal').innerHTML        = `${c.totalBins?.done ?? 'â'}<span>/${c.totalBins?.scheduled ?? 'â'}</span>`;
-  document.getElementById('cardTotalDone').textContent  = c.totalBins?.done ?? 'â';
-  document.getElementById('cardTotalSched').textContent = c.totalBins?.scheduled ?? 'â';
-  document.getElementById('cardSites').innerHTML        = `${c.sitesDone?.done ?? 'â'}<span>/${c.sitesDone?.scheduled ?? 'â'}</span>`;
-  document.getElementById('cardSitesDone').textContent  = c.sitesDone?.done ?? 'â';
-  document.getElementById('cardSitesSched').textContent = c.sitesDone?.scheduled ?? 'â';
-
-  // Colours
-  const COLOURS = [
-    ['#7c3aed','#fff'],['#0369a1','#fff'],['#065f46','#fff'],['#92400e','#fff'],
-    ['#9d174d','#fff'],['#1e3a5f','#60a5fa'],['#374151','#e5e7eb'],['#1a1a2e','#818cf8'],
-  ];
-  const initials = n => n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-
-  // Score colour
-  const sc = s => s > 80 ? '#34d399' : s > 50 ? '#fbbf24' : '#f87171';
-
-  // Driver score cell
-  function scoreCell(val) {
-    if (val == null) return '<span class="dash">â</span>';
-    const bar = `<div class="score-bar"><div class="score-fill" style="width:${val}%;background:${sc(val)}"></div></div>`;
-    return `<div class="score-bar-wrap"><span style="color:${sc(val)};font-weight:700">${val}</span><span style="font-size:0.72rem;color:#78716c">/100</span>${bar}</div>`;
-  }
-
-  // Employee rows
-  const empRows = document.getElementById('empRows');
-  (D.leaderboard || []).forEach((e, i) => {
-    const [bg, fg] = COLOURS[i % COLOURS.length];
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><div class="emp-name"><div class="avatar" style="background:${bg};color:${fg}">${initials(e.name)}</div><span>${e.name}</span></div></td>
-      <td class="td-right">${e.bins_moved_out > 0 ? `<span class="stat-num">${e.bins_moved_out}</span>` : '<span class="dash">â</span>'}</td>
-      <td class="td-right">${e.bins_moved_in  > 0 ? `<span class="stat-num">${e.bins_moved_in}</span>`  : '<span class="dash">â</span>'}</td>
-      <td class="td-right">${e.bins_moved     > 0 ? `<span class="stat-moved">${e.bins_moved}</span>`   : '<span class="dash">â</span>'}</td>
-      <td class="td-right">${e.bins_cleaned   > 0 ? `<span class="stat-num">${e.bins_cleaned}</span>`   : '<span class="dash">â</span>'}</td>
-      <td>${e.vehicle ? `<span class="vehicle-tag">${e.vehicle}</span>` : '<span class="dash">â</span>'}</td>
-      <td class="td-right">${e.km != null ? `<span style="color:#60a5fa;font-weight:600">${e.km} km</span>` : '<span class="dash">â</span>'}</td>
-      <td>${scoreCell(e.driverScore)}</td>
-      <td class="td-right">${e.score > 0 ? `<span class="score-pts">${e.score}<span style="font-size:0.7rem">pts</span></span>` : '<span class="dash">â</span>'}</td>
-    `;
-    empRows.appendChild(tr);
-  });
-
-  // Fleet summary
-  const fl = D.fleet || {};
-  document.getElementById('fleetTrips').textContent  = fl.totalTrips   ?? 'â';
-  document.getElementById('fleetActive').innerHTML   = `${fl.movingNow ?? 'â'}<span>/${fl.activeVehicles ?? 'â'}</span>`;
-  document.getElementById('fleetMoving').textContent = fl.movingNow    ?? 'â';
-  document.getElementById('fleetToday').textContent  = fl.activeVehicles ?? 'â';
-
-  // Fleet rows
-  const stateLabel = { moving: 'Moving', idle: 'Idle', unknown: 'â' };
-  const stateDotClass = s => s === 'moving' ? 'dot-moving' : s === 'idle' ? 'dot-idle' : 'dot-unknown';
-
-  const fleetRows = document.getElementById('fleetRows');
-  (fl.vehicles || []).forEach(v => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><strong>${v.label}</strong></td>
-      <td>${v.driver ? v.driver : '<span class="dash">â</span>'}</td>
-      <td><span class="dot ${stateDotClass(v.state)}"></span>${stateLabel[v.state] || 'â'}</td>
-      <td class="td-right">${v.trips > 0 ? `<span style="color:#60a5fa;font-weight:600">${v.trips}</span>` : '<span class="dash">0</span>'}</td>
-      <td class="td-right">${v.km != null ? `<span style="color:#60a5fa;font-weight:600">${v.km} km</span>` : '<span class="dash">â</span>'}</td>
-      <td>${scoreCell(v.avgDriverScore)}</td>
-    `;
-    fleetRows.appendChild(tr);
-  });
-
-  // Footer
-  document.getElementById('footer').textContent = `Last updated ${D.generatedAt || ''} Â· auto-refreshes every 15 min`;
-
-  // Auto-refresh every 15 min
-  setTimeout(() => location.reload(), 15 * 60 * 1000);
-})();
-</script>
+<script>setTimeout(() => location.reload(), 15 * 60 * 1000);</script>
 </body>
 </html>
