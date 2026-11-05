@@ -2,220 +2,361 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>myBins Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>myBins Live Crew Dashboard</title>
+<meta http-equiv="refresh" content="900">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0a0a14; color: #eee; font-family: system-ui, sans-serif; font-size: 13px; padding: 16px; }
-  h2 { color: #e94560; font-size: 15px; margin-bottom: 8px; letter-spacing: .5px; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-  th { background: #0a0a18; color: #555; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; padding: 6px 8px; border-bottom: 1px solid #1e1e30; }
-  td { font-size: 12px; }
-  .section { background: #12121f; border-radius: 10px; padding: 14px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
-  .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #1e1e30; }
-  .stat { display: flex; flex-direction: column; align-items: center; }
-  .stat .val { font-size: 22px; font-weight: 700; color: #e94560; }
-  .stat .lbl { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: .5px; }
-  .footer { color: #2a2a3a; font-size: 10px; padding-top: 8px; border-top: 1px solid #1a1a2e; display: flex; justify-content: space-between; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .header { text-align: center; margin-bottom: 28px; }
+  .header h1 { font-size: 2rem; font-weight: 700; color: #60a5fa; letter-spacing: -0.5px; }
+  .header .subtitle { font-size: 0.95rem; color: #94a3b8; margin-top: 6px; }
+  .header .week-badge {
+    display: inline-block; background: #1e3a5f; color: #60a5fa;
+    border: 1px solid #2563eb; border-radius: 20px; padding: 3px 14px;
+    font-size: 0.82rem; font-weight: 600; margin-top: 8px; letter-spacing: 0.5px;
+  }
+  .crew-summary {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+    margin-bottom: 28px; max-width: 900px; margin-left: auto; margin-right: auto;
+  }
+  .summary-card {
+    background: #1e2130; border: 1px solid #2d3348; border-radius: 12px;
+    padding: 18px; text-align: center;
+  }
+  .summary-card .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .summary-card .value { font-size: 2.2rem; font-weight: 700; line-height: 1; }
+  .summary-card .value-split { font-size: 1.45rem; font-weight: 700; line-height: 1; }
+  .summary-card .split-sep { color: #475569; font-weight: 400; margin: 0 2px; }
+  .summary-card .split-labels { font-size: 0.65rem; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 5px; display: flex; justify-content: center; gap: 6px; }
+  .summary-card .split-labels span { display: inline-block; }
+  .summary-card.moved .value { color: #34d399; }
+  .summary-card.cleaned .value { color: #a78bfa; }
+  .summary-card.total .value { color: #fbbf24; }
+  .summary-card.sites .value { color: #60a5fa; }
+  .table-wrapper {
+    max-width: 900px; margin: 0 auto; background: #1e2130;
+    border: 1px solid #2d3348; border-radius: 14px; overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: #161926; color: #64748b; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.8px; padding: 12px 16px;
+    text-align: right; font-weight: 600;
+  }
+  thead th:first-child { text-align: left; }
+  tbody tr { border-top: 1px solid #2d3348; transition: background 0.15s; }
+  tbody tr:hover { background: #262c42; }
+  tbody td { padding: 13px 16px; font-size: 0.9rem; text-align: right; }
+  tbody td:first-child { text-align: left; font-weight: 600; color: #e2e8f0; }
+  .name-cell { display: flex; align-items: center; gap: 10px; }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; font-size: 0.75rem;
+    font-weight: 700; flex-shrink: 0;
+  }
+  .stat-moved { color: #34d399; font-weight: 600; }
+  .stat-cleaned { color: #a78bfa; font-weight: 600; }
+  .stat-total { color: #fbbf24; font-weight: 700; }
+  .stat-sites { color: #60a5fa; }
+  .stat-muted { color: #475569; font-size: 0.8rem; }
+  .footer { text-align: center; margin-top: 22px; color: #334155; font-size: 0.75rem; }
+  .score-cell { min-width: 100px; }
+  .score-val { color: #f59e0b; font-weight: 700; }
+  .score-pts { font-size: 0.72rem; color: #78716c; font-weight: 400; margin-left: 1px; }
+  .score-bar { height: 6px; border-radius: 3px; background: #2d3348; margin-top: 5px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #f59e0b, #fcd34d); transition: width 0.4s ease; }
+  .section-label {
+    max-width: 900px; margin: 32px auto 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-label h2 { font-size: 1.1rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.3px; }
+  .section-label .section-line { flex: 1; height: 1px; background: #2d3348; }
+  .fleet-summary {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+    margin-bottom: 14px; max-width: 900px; margin-left: auto; margin-right: auto;
+  }
+  .summary-card.km .value { color: #34d399; }
+  .summary-card.trips .value { color: #60a5fa; }
+  .summary-card.active .value { color: #fb923c; }
+  .state-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .state-moving { background: #34d399; box-shadow: 0 0 6px #34d399; }
+  .state-idle   { background: #fbbf24; }
+  .state-stopped{ background: #475569; }
+  .driver-score-bar { height: 5px; border-radius: 3px; background: #2d3348; margin-top: 5px; overflow: hidden; }
+  .driver-score-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .fuel-grid {
+    max-width: 900px; margin: 0 auto; display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;
+  }
+  .fuel-card {
+    background: #1e2130; border: 1px solid #2d3348; border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .fuel-card .f-label { font-size: 0.78rem; color: #94a3b8; font-weight: 600; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fuel-card .f-val { font-size: 1.5rem; font-weight: 700; color: #fb923c; line-height: 1; }
+  .fuel-card .f-unit { font-size: 0.75rem; color: #78716c; margin-left: 2px; }
+  .fuel-bar-wrap { height: 5px; background: #2d3348; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+  .fuel-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #fb923c, #fcd34d); }
+  .fuel-no-data { color: #475569; font-style: italic; font-size: 0.85rem; text-align: center; padding: 18px; }
+  @media (max-width: 640px) {
+    .crew-summary { grid-template-columns: repeat(2, 1fr); }
+    .fleet-summary { grid-template-columns: repeat(3, 1fr); }
+    .summary-card .value { font-size: 1.7rem; }
+    table { font-size: 0.82rem; }
+    .fuel-grid { grid-template-columns: repeat(2, 1fr); }
+  }
 </style>
 </head>
 <body>
-
-<div class="section">
-  <div class="header">
-    <div>
-      <span style="font-size:20px;font-weight:800;color:#e94560;">myBins</span>
-      <span style="color:#444;margin-left:10px;font-size:12px;">Thursday 5 November 2026 · Week 1</span>
-    </div>
-    <div style="display:flex;gap:20px;flex-wrap:wrap;">
-      <div class="stat"><span class="val">0</span><span class="lbl">Remaining</span></div>
-      <div class="stat"><span class="val" style="color:#f7b731">0%</span><span class="lbl">Complete</span></div>
-      <div class="stat"><span class="val" style="color:#82aaff">0/0</span><span class="lbl">Move Sites</span></div>
-      <div class="stat"><span class="val" style="color:#82aaff">0/0</span><span class="lbl">Move Bins</span></div>
-      <div class="stat"><span class="val" style="color:#c3e88d">0/0</span><span class="lbl">Clean Sites</span></div>
-      <div class="stat"><span class="val" style="color:#c3e88d">0/0</span><span class="lbl">Clean Bins</span></div>
-    </div>
+<div class="header">
+  <h1> myBins Crew Dashboard</h1>
+  <div class="subtitle" id="dateStr">Loading...</div>
+  <div class="week-badge" id="weekBadge">Week </div>
+</div>
+<div class="crew-summary">
+  <div class="summary-card moved">
+    <div class="label">Bins Moved</div>
+    <div class="value-split stat-moved"><span id="crewMoved"></span><span class="split-sep">/</span><span id="schedMoved"></span></div>
+    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
   </div>
-
-  <h2>Crew</h2>
+  <div class="summary-card cleaned">
+    <div class="label">Bins Cleaned</div>
+    <div class="value-split stat-cleaned"><span id="crewCleaned"></span><span class="split-sep">/</span><span id="schedCleaned"></span></div>
+    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
+  </div>
+  <div class="summary-card total">
+    <div class="label">Total Bins</div>
+    <div class="value-split stat-total"><span id="crewTotal"></span><span class="split-sep">/</span><span id="schedTotal"></span></div>
+    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
+  </div>
+  <div class="summary-card sites">
+    <div class="label">Sites Done</div>
+    <div class="value-split stat-sites"><span id="crewSites"></span><span class="split-sep">/</span><span id="schedSites"></span></div>
+    <div class="split-labels"><span>DONE</span><span style="flex:1;text-align:center">/</span><span>SCHEDULED</span></div>
+  </div>
+</div>
+<div class="table-wrapper">
   <table>
     <thead>
       <tr>
-        <th rowspan="2" style="text-align:left;">Employee</th>
-        <th rowspan="2" style="text-align:left;">Zones</th>
-        <th colspan="3" style="color:#82aaff;border-right:1px solid #1e1e30;">Moves (Out + In)</th>
-        <th colspan="3" style="color:#c3e88d;border-right:1px solid #1e1e30;">Bin Cleans</th>
-        <th rowspan="2">Progress</th>
-      </tr>
-      <tr>
-        <th style="color:#5a6a8a;">Sites</th>
-        <th style="color:#5a6a8a;">Bins</th>
-        <th style="color:#7a6010;border-right:1px solid #1e1e30;">Partial</th>
-        <th style="color:#6a8a5a;">Sites</th>
-        <th style="color:#6a8a5a;">Bins</th>
-        <th style="color:#7a6010;border-right:1px solid #1e1e30;">Partial</th>
+        <th>Employee</th>
+        <th>Moved Out</th>
+        <th>Moved In</th>
+        <th>Moved</th>
+        <th>Cleaned</th>
+        <th>Vehicle</th>
+        <th>Score</th>
+        <th>Sites</th>
       </tr>
     </thead>
-    <tbody><tr style="background:#12121f;border-bottom:1px solid #181828;">
-      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
-        <div style="font-weight:600;color:#ddd;">Blake</div>
-        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Hopper</div>
-      </td>
-      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;min-width:80px;">
-        <span style="color:#333">—</span>
-      </td>
-    </tr><tr style="background:#161628;border-bottom:1px solid #181828;">
-      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
-        <div style="font-weight:600;color:#ddd;">Julen</div>
-        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Hopper</div>
-      </td>
-      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;min-width:80px;">
-        <span style="color:#333">—</span>
-      </td>
-    </tr><tr style="background:#12121f;border-bottom:1px solid #181828;">
-      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
-        <div style="font-weight:600;color:#ddd;">Cameron Gallo</div>
-        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">EMPTY</div>
-      </td>
-      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;min-width:80px;">
-        <span style="color:#333">—</span>
-      </td>
-    </tr><tr style="background:#161628;border-bottom:1px solid #181828;">
-      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
-        <div style="font-weight:600;color:#ddd;">Joel</div>
-        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">The Frog</div>
-      </td>
-      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;min-width:80px;">
-        <span style="color:#333">—</span>
-      </td>
-    </tr><tr style="background:#12121f;border-bottom:1px solid #181828;">
-      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
-        <div style="font-weight:600;color:#ddd;">Zach</div>
-        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Ferrari</div>
-      </td>
-      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;min-width:80px;">
-        <span style="color:#333">—</span>
-      </td>
-    </tr><tr style="background:#161628;border-bottom:1px solid #181828;">
-      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
-        <div style="font-weight:600;color:#ddd;">Ben</div>
-        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Blue</div>
-      </td>
-      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;min-width:80px;">
-        <span style="color:#333">—</span>
-      </td>
-    </tr><tr style="background:#12121f;border-bottom:1px solid #181828;">
-      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
-        <div style="font-weight:600;color:#ddd;">Thassio</div>
-        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">COMMY FOR BIG CLEAN</div>
-      </td>
-      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;min-width:80px;">
-        <span style="color:#333">—</span>
-      </td>
-    </tr><tr style="background:#161628;border-bottom:1px solid #181828;">
-      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
-        <div style="font-weight:600;color:#ddd;">Kike</div>
-        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Hippo</div>
-      </td>
-      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;min-width:80px;">
-        <span style="color:#333">—</span>
-      </td>
-    </tr><tr style="background:#12121f;border-bottom:1px solid #181828;">
-      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
-        <div style="font-weight:600;color:#ddd;">Stuart Sneddon</div>
-        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">Troopie</div>
-      </td>
-      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;min-width:80px;">
-        <span style="color:#333">—</span>
-      </td>
-    </tr><tr style="background:#161628;border-bottom:1px solid #181828;">
-      <td style="padding:8px 10px;white-space:nowrap;border-right:1px solid #181828;">
-        <div style="font-weight:600;color:#ddd;">Paulo</div>
-        <div style="color:#3a3a5a;font-size:10px;margin-top:1px;">FRIDGE</div>
-      </td>
-      <td style="padding:8px 10px;font-size:11px;max-width:220px;line-height:1.6;border-right:1px solid #181828;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#82aaff;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;color:#c3e88d;"><span style="color:#333">—</span></td>
-      <td style="padding:8px 8px;text-align:center;border-right:1px solid #1e1e30;"><span style="color:#252535">—</span></td>
-      <td style="padding:8px 8px;text-align:center;min-width:80px;">
-        <span style="color:#333">—</span>
-      </td>
-    </tr></tbody>
+    <tbody id="employeeRows"></tbody>
   </table>
-  <div class="footer">
-    <span>Partial = visited but not finished · bins ticked at those sites</span>
-    <span id="footer">Last updated 5 Nov, 12:18 pm · auto-refreshes every 15 min</span>
+</div>
+<div class="section-label">
+  <div class="section-line"></div>
+  <h2> Fleet</h2>
+  <div class="section-line"></div>
+</div>
+<div class="fleet-summary">
+  
+  <div class="summary-card trips">
+    <div class="label">Trips</div>
+    <div class="value" id="fleetTrips"></div>
+  </div>
+  <div class="summary-card active">
+    <div class="label">Active Vehicles</div>
+    <div class="value-split stat-moved" style="color:#fb923c"><span id="fleetMoving"></span><span class="split-sep">/</span><span id="fleetActive"></span></div>
+    <div class="split-labels"><span>MOVING</span><span style="flex:1;text-align:center">/</span><span>TODAY</span></div>
   </div>
 </div>
+<div class="table-wrapper" style="max-width:900px;margin:0 auto 0;">
+  <table>
+    <thead>
+      <tr>
+        <th>Vehicle</th>
+        <th>Driver</th>
+        <th>Status</th>
+        <th>Trips</th>
+        <th>Driver Score</th>
+      </tr>
+    </thead>
+    <tbody id="vehicleRows"></tbody>
+  </table>
+</div>
+
+</div>
+<div class="footer" id="footer"></div>
 
 
 
-<script>setTimeout(() => location.reload(), 15 * 60 * 1000);</script>
+
+
+
+<script>
+const DASHBOARD_DATA = {
+  generatedAt: "2026-04-15T06:33:00.000Z",
+  date: "2026-04-15",
+  day: "Wednesday",
+  week: 1,
+  employees: [{"name":"Mitch Davis","bins_moved_in":30,"bins_moved_out":113,"bins_moved":143,"bins_cleaned":24,"total_bins":167,"sites_done":39},{"name":"Thassio Franco","bins_moved_in":179,"bins_moved_out":306,"bins_moved":485,"bins_cleaned":26,"total_bins":511,"sites_done":63},{"name":"Paulo Penedo","bins_moved_in":106,"bins_moved_out":58,"bins_moved":164,"bins_cleaned":30,"total_bins":194,"sites_done":29},{"name":"Kalicique Carvalho","bins_moved_in":264,"bins_moved_out":304,"bins_moved":568,"bins_cleaned":0,"total_bins":568,"sites_done":78},{"name":"myBins","bins_moved_in":0,"bins_moved_out":0,"bins_moved":0,"bins_cleaned":33,"total_bins":33,"sites_done":6},{"name":"Cameron Gallo","bins_moved_in":56,"bins_moved_out":0,"bins_moved":56,"bins_cleaned":127,"total_bins":183,"sites_done":26},{"name":"Joel Ansems-Mills","bins_moved_in":454,"bins_moved_out":330,"bins_moved":784,"bins_cleaned":0,"total_bins":784,"sites_done":102},{"name":"Ben Copley","bins_moved_in":248,"bins_moved_out":0,"bins_moved":248,"bins_cleaned":77,"total_bins":325,"sites_done":50},{"name":"Ryan Hobbs","bins_moved_in":487,"bins_moved_out":0,"bins_moved":487,"bins_cleaned":92,"total_bins":579,"sites_done":71},{"name":"Zach Williams","bins_moved_in":356,"bins_moved_out":0,"bins_moved":356,"bins_cleaned":33,"total_bins":389,"sites_done":52},{"name":"Jacob Saxby","bins_moved_in":451,"bins_moved_out":0,"bins_moved":451,"bins_cleaned":80,"total_bins":531,"sites_done":83},{"name":"Luiz da Silva","bins_moved_in":346,"bins_moved_out":0,"bins_moved":346,"bins_cleaned":65,"total_bins":411,"sites_done":64}],
+  crew: {"bins_moved":4088,"bins_cleaned":587,"total_bins":4675,"sites_done":663,"sched_moved":4373,"sched_cleaned":672,"sched_total":5045,"sched_sites":702},
+  assignments: {"Ryan Hobbs":"Grouch","Ben Copley":"Moe","Cameron Gallo":"Ferrari","Luiz da Silva":"The Frog","Jacob Saxby":"Troopie","Zach Williams":"The Barra","Thassio Franco":"Big Red","Kalicique Carvalho":"Hippo","Mitch Davis":"The Fridge","Paulo Penedo":"Blue"},
+  fleet: {
+    totalKm: 454.4,
+    totalTrips: 66,
+    activeVehicles: 9,
+    movingNow: 3,
+    vehicles: [{"label":"DELTA","km":87,"trips":2,"durationMin":565,"harshBrakes":7,"avgDriverScore":5,"state":"idle"},{"label":"Blue","km":74,"trips":24,"durationMin":285,"harshBrakes":0,"avgDriverScore":82,"state":"idle"},{"label":"The Fridge","km":72.9,"trips":6,"durationMin":515,"harshBrakes":0,"avgDriverScore":92,"state":"idle"},{"label":"ALPHA","km":70.5,"trips":10,"durationMin":490,"harshBrakes":4,"avgDriverScore":17,"state":"idle"},{"label":"Ferrari","km":65.9,"trips":11,"durationMin":385,"harshBrakes":8,"avgDriverScore":15,"state":"idle"},{"label":"Bin Diesel","km":29.6,"trips":6,"durationMin":75,"harshBrakes":0,"avgDriverScore":19,"state":"moving"},{"label":"Troopie","km":29,"trips":3,"durationMin":482,"harshBrakes":0,"avgDriverScore":38,"state":"idle"},{"label":"The Frog","km":23.9,"trips":3,"durationMin":309,"harshBrakes":2,"avgDriverScore":2,"state":"moving"},{"label":"Hopper","km":1.6,"trips":1,"durationMin":4,"harshBrakes":0,"avgDriverScore":100,"state":"idle"}]
+  },
+  fuel: {
+    vehicles: []
+  }
+};
+
+const COLOURS = [
+  ['#1e3a5f','#60a5fa'],['#1e3b2e','#34d399'],['#3b1f4e','#a78bfa'],
+  ['#3b2a1e','#fbbf24'],['#3b1e1e','#f87171'],['#1e3040','#38bdf8'],
+  ['#2e3b1e','#86efac'],['#3b351e','#fcd34d'],['#1e2b3b','#93c5fd'],
+  ['#2b1e3b','#c4b5fd'],['#3b1e2e','#f9a8d4']
+];
+
+function initials(name) { return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function formatDate(dateStr, day) {
+  const d = new Date(dateStr+'T00:00:00');
+  return `${day}, ${d.toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'})}`;
+}
+
+function render() {
+  const { date, day, week, employees, crew, generatedAt } = DASHBOARD_DATA;
+  document.getElementById('dateStr').textContent = formatDate(date, day);
+  document.getElementById('weekBadge').textContent = `Week ${week}`;
+  const fmt = n => (n||0).toLocaleString();
+  document.getElementById('crewMoved').textContent    = fmt(crew.bins_moved);
+  document.getElementById('schedMoved').textContent   = fmt(crew.sched_moved);
+  document.getElementById('crewCleaned').textContent  = fmt(crew.bins_cleaned);
+  document.getElementById('schedCleaned').textContent = fmt(crew.sched_cleaned);
+  document.getElementById('crewTotal').textContent    = fmt(crew.total_bins);
+  document.getElementById('schedTotal').textContent   = fmt(crew.sched_total);
+  document.getElementById('crewSites').textContent    = fmt(crew.sites_done);
+  document.getElementById('schedSites').textContent   = fmt(crew.sched_sites);
+
+  // Score: 1pt per bin moved (in or out), 10pts per bin cleaned
+  // Score: 1pt per bin moved, 6pts per bin cleaned, 2pts per site visited
+  const withScore = employees
+    .filter(e => !['mybins','unknown'].includes(e.name.toLowerCase()))
+    .map(e=>({...e, score: e.bins_moved + e.bins_cleaned * 6 + e.sites_done * 2}));
+  const maxScore = Math.max(...withScore.map(e=>e.score), 1);
+  const sorted = [...withScore].sort((a,b)=>b.score-a.score);
+
+  const asgn = DASHBOARD_DATA.assignments || {};
+  const fleetVehicles = DASHBOARD_DATA.fleet?.vehicles || [];
+
+  document.getElementById('employeeRows').innerHTML = sorted.map((emp,i) => {
+    const [bg,fg] = COLOURS[i%COLOURS.length];
+    const pct = Math.round((emp.score/maxScore)*100);
+    const vehicle = asgn[emp.name] || null;
+    const vdata = vehicle ? fleetVehicles.find(v => v.label === vehicle) : null;
+    const vCell = vehicle
+      ? `<span style="color:#94a3b8;font-size:0.82rem">${vehicle}</span>`
+      : `<span style="color:#334155">&mdash;</span>`;
+    const kmCell = vdata
+      ? `<span style="color:#60a5fa;font-weight:600">${vdata.km} km</span>`
+      : `<span style="color:#334155">&mdash;</span>`;
+    return `<tr>
+      <td><div class="name-cell"><div class="avatar" style="background:${bg};color:${fg}">${initials(emp.name)}</div><span>${emp.name}</span></div></td>
+      <td class="stat-muted">${emp.bins_moved_out>0?emp.bins_moved_out:'&mdash;'}</td>
+      <td class="stat-muted">${emp.bins_moved_in>0?emp.bins_moved_in:'&mdash;'}</td>
+      <td class="stat-moved">${emp.bins_moved>0?emp.bins_moved:'&mdash;'}</td>
+      <td class="stat-cleaned">${emp.bins_cleaned>0?emp.bins_cleaned:'&mdash;'}</td>
+      <td style="text-align:left">${vCell}</td>
+      <td>${kmCell}</td>
+      <td class="score-cell"><span class="score-val">${emp.score.toLocaleString()}</span><span class="score-pts">pts</span><div class="score-bar"><div class="score-bar-fill" style="width:${pct}%"></div></div></td>
+      <td class="stat-sites">${emp.sites_done}</td>
+    </tr>`;
+  }).join('');
+
+  const genTime = new Date(generatedAt).toLocaleTimeString('en-AU',{
+    timeZone:'Australia/Sydney', hour:'2-digit', minute:'2-digit', hour12:false
+  });
+  document.getElementById('footer').textContent = `Last updated ${genTime} AEST  auto-refreshes every 15 min`;
+
+  // Fuel section
+  const fuelVehicles = (DASHBOARD_DATA.fuel?.vehicles || [])
+    .filter(v => v.litres > 0)
+    .sort((a,b) => b.litres - a.litres);
+  const maxFuel = Math.max(...fuelVehicles.map(v => v.litres), 1);
+  const fuelGrid = document.getElementById('fuelGrid');
+  if (fuelVehicles.length > 0) {
+    fuelGrid.innerHTML = fuelVehicles.map(v => {
+      const pct = Math.round((v.litres / maxFuel) * 100);
+      return `<div class="fuel-card">
+        <div class="f-label">${v.label}</div>
+        <div><span class="f-val">${v.litres.toFixed(1)}</span><span class="f-unit">L</span></div>
+        <div class="fuel-bar-wrap"><div class="fuel-bar-fill" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // Fleet section
+  const { fleet } = DASHBOARD_DATA;
+  if (fleet) {
+        document.getElementById('fleetTrips').textContent = fleet.totalTrips;
+    document.getElementById('fleetMoving').textContent = fleet.movingNow;
+    document.getElementById('fleetActive').textContent = fleet.activeVehicles;
+
+    const stateLabel = { moving: 'Moving', idle: 'Idle', stopped: 'Stopped', unknown: '&mdash;' };
+    const stateDot   = s => `<span class="state-dot state-${s}"></span>`;
+    const scoreColor = sc => sc >= 80 ? '#34d399' : sc >= 50 ? '#fbbf24' : '#f87171';
+
+    const reverseAsgn = Object.fromEntries(Object.entries(asgn).map(([emp,veh]) => [veh, emp]));
+
+    document.getElementById('vehicleRows').innerHTML = (fleet.vehicles || []).map(v => {
+      const sc = v.avgDriverScore ?? null;
+      const scBar = sc !== null
+        ? `<div class="driver-score-bar"><div class="driver-score-fill" style="width:${sc}%;background:${scoreColor(sc)}"></div></div>`
+        : '';
+      const scVal = sc !== null
+        ? `<span style="color:${scoreColor(sc)};font-weight:700">${sc}</span><span style="font-size:0.72rem;color:#78716c">/100</span>${scBar}`
+        : '<span style="color:#475569">&mdash;</span>';
+      const driver = reverseAsgn[v.label] || null;
+      return `<tr>
+        <td><div class="name-cell"><span>${v.label}</span></div></td>
+        <td style="text-align:left;color:#e2e8f0;font-size:0.85rem">${driver || '<span style="color:#334155">&mdash;</span>'}</td>
+        <td style="text-align:left">${stateDot(v.state||'unknown')}<span style="font-size:0.82rem;color:#94a3b8">${stateLabel[v.state]||'&mdash;'}</span></td>
+        <td class="stat-sites">${v.trips}</td>
+        <td class="score-cell">${scVal}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+render();
+
+
+//  Weekly leaderboard renderer 
+(function renderWeekly() {
+  const rows = (DASHBOARD_DATA.weeklyLeaderboard || []);
+  const tbody = document.getElementById('weekly-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = rows.map((e, i) => {
+    const out   = e.bins_out     > 0 ? e.bins_out     : '<span class="dash">—</span>';
+    const inn   = e.bins_in      > 0 ? e.bins_in      : '<span class="dash">—</span>';
+    const clean = e.bins_cleaned > 0 ? e.bins_cleaned : '<span class="dash">—</span>';
+    return `<tr>
+      <td class="w-rank">${i+1}</td>
+      <td class="w-name">${e.name}</td>
+      <td class="w-out">${out}</td>
+      <td class="w-in">${inn}</td>
+      <td class="w-clean">${clean}</td>
+      <td class="w-total">${e.total}</td>
+    </tr>`;
+  }).join('');
+})();
+</script>
 </body>
 </html>
