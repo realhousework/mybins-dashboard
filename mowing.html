@@ -173,7 +173,7 @@ function vehiclePanels(a){
 function jobRow(j){
   return '<div class=job'+(j.done?' style="opacity:.45"':'')+'><div class=jmins>'+(j.est!=null?j.est+'m':'—')+'</div><div style="flex:1">'+
     '<div class=jaddr>'+(j.done?'\u2713 ':'')+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span>'+(j.appt?'<span class=appt>'+esc(j.appt)+'</span>':'')+'</div>'+
-    '<div class=jsvc>'+esc(j.service||'')+' · '+esc(j.area)+' · <a href="'+j.url+'" target=_blank style="color:#2e8b57">Zenkit ↗</a></div>'+
+    '<div class=jsvc>'+esc(j.service||'')+' · '+esc(j.area)+'</div>'+
     (j.subtasks&&j.subtasks.length?'<details style="margin-top:4px"><summary class=note style="cursor:pointer">'+j.subtasks.length+' tasks</summary><ul style="margin:4px 0;padding-left:18px;font-size:12.5px;color:#5b6b60">'+j.subtasks.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ul></details>':'')+
     '</div></div>';
 }
@@ -352,7 +352,7 @@ function reschedPanel(a){
   if(!a.resched.length)return '';
   const mins=a.resched.reduce((s,j)=>s+(j.est||0),0);
   return '<details class=card style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;color:#8a6d1a;list-style:none">↩ Rescheduled / postponed / cancelled — '+a.resched.length+' job'+(a.resched.length>1?'s':'')+' <span class=note style="font-weight:400">(ticked done ahead of the day · not counted in the '+(Math.round(a.workH*10)/10)+'h above · ~'+(Math.round(mins/60*10)/10)+'h freed)</span></summary>'+
-    '<div style="margin-top:8px">'+a.resched.map(j=>'<div class=job style="opacity:.7"><div class=jmins>'+(j.est!=null?j.est+'m':'—')+'</div><div style="flex:1"><div class=jaddr>'+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span></div><div class=jsvc>'+esc(j.service||'')+' · '+esc(j.area)+' · <a href="'+j.url+'" target=_blank style="color:#2e8b57">Zenkit ↗</a></div></div></div>').join('')+'</div></details>';
+    '<div style="margin-top:8px">'+a.resched.map(j=>'<div class=job style="opacity:.7"><div class=jmins>'+(j.est!=null?j.est+'m':'—')+'</div><div style="flex:1"><div class=jaddr>'+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span></div><div class=jsvc>'+esc(j.service||'')+' · '+esc(j.area)+'</div></div></div>').join('')+'</div></details>';
 }
 function staffOverview(a){
   const rostered=new Set(a.ros.map(r=>r.emp));
