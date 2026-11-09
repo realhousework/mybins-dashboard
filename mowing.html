@@ -340,12 +340,14 @@ function renderDay(){
   // what-if
   h+='<h2>What-if planner</h2><div id=wiMount>'+renderScenario()+'</div>';
   // whatsapp
-  h+='<div style="margin:16px 0"><button class=btn id=wa>📲 Copy tomorrow’s plan to WhatsApp</button> <button class="btn ghost" id=waday>Copy this day</button></div>';
+  h+='<div style="margin:16px 0;display:flex;gap:8px;flex-wrap:wrap"><button class=btn id=wa>📲 Tomorrow — summary</button> <button class=btn id=wadet>📋 Tomorrow — detailed run sheet</button> <button class="btn ghost" id=waday>Copy this day</button> <button class="btn ghost" id=wadayd>This day — detailed</button></div>';
   $('p-day').innerHTML=daySelector()+h;
   wireSel();
   wireScenario();
   $('wa').onclick=()=>copyWA(nextPlannableDay());
+  $('wadet').onclick=()=>copyWA(nextPlannableDay(),true);
   $('waday').onclick=()=>copyWA(curDay);
+  $('wadayd').onclick=()=>copyWA(curDay,true);
 }
 function vehiclePanelsSafe(a){try{return vehiclePanels(a);}catch(e){return '<div class=note>Vehicle view unavailable.</div>';}}
 function reschedPanel(a){
@@ -375,14 +377,19 @@ function daySelector(){
 function wireSel(){[...document.querySelectorAll('[data-sel]')].forEach(b=>b.onclick=()=>{curDay=b.dataset.sel;resetScenario();renderDay();});}
 function nextPlannableDay(){const t=new Date();const todayStr=new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Sydney'}).format(t);
   const fut=DATA.week.filter(d=>d>todayStr&&jobsOn(d).length); return fut[0]||DATA.week.find(d=>jobsOn(d).length)||curDay;}
-function copyWA(date){
+function copyWA(date,detailed){
   const a=assess(date); const emo=a.status==='g'?'🟢':a.status==='a'?'🟡':a.status==='r'?'🔴':'⚪';
-  let m='📅 *MYMOWING — '+fmtDate(date).toUpperCase()+'*\n\n'+emo+' *STATUS: '+STLABEL[a.status].toUpperCase()+'*\n\n';
-  m+='*Overview*\n• Jobs: '+a.jobs.length+'\n• Workload: ~'+(Math.round(a.workH*10)/10)+'h (one-person-equiv)\n• Crew: '+a.ros.map(r=>r.emp).join(', ')+'\n• Capacity: '+a.personH+'h'+(a.util!=null?' ('+a.util+'% used)':'')+'\n\n';
+  let m='📅 *MYMOWING — '+fmtDate(date).toUpperCase()+'*'+(detailed?' (RUN SHEET)':'')+'\n\n'+emo+' *STATUS: '+STLABEL[a.status].toUpperCase()+'*\n\n';
+  m+='*Overview*\n• Jobs: '+a.jobs.length+'\n• Workload: ~'+(Math.round(a.workH*10)/10)+'h (one-person-equiv)'+(a.travelH?' + ~'+(Math.round(a.travelH*10)/10)+'h travel':'')+'\n• Crew: '+a.ros.map(r=>r.emp).join(', ')+'\n• Capacity: '+a.personH+'h'+(a.util!=null?' ('+a.util+'% used, '+(a.utilT||a.util)+'% w/ travel)':'')+'\n\n';
   const crewByVeh={}; a.ros.forEach(r=>{(crewByVeh[r.vehicle]=crewByVeh[r.vehicle]||[]).push(r.emp);});
   Object.keys(crewByVeh).forEach(v=>{const jobs=a.vehicles.length>1?a.jobs.filter(j=>{const cr=a.ros.find(r=>r.vehicle===v);return cr&&cr.areas&&cr.areas.some(ar=>j.area.indexOf(ar)>-1);}):a.jobs;
     const mins=jobs.reduce((s,j)=>s+(j.est||0),0);
-    m+='🚚 *'+v+'* — '+crewByVeh[v].join(' + ')+'\n'+[...new Set(jobs.map(j=>j.area))].join(', ')+' · ~'+(Math.round(mins/60*10)/10)+'h\n\n';});
+    m+='🚚 *'+v+'* — '+crewByVeh[v].join(' + ')+'\n'+[...new Set(jobs.map(j=>j.area))].join(', ')+' · '+jobs.length+' stops · ~'+(Math.round(mins/60*10)/10)+'h\n';
+    if(detailed){
+      jobs.forEach((j,i)=>{ m+=(i+1)+'. '+(j.est!=null?j.est+'m':'—')+'  '+j.address+(j.skill&&j.skill!=='Basic'&&j.skill!=='Unknown'?' ['+j.skill+']':'')+(j.appt?(j.appt==='STRICT'?' ⏰STRICT TIMING':' ⏰'+j.appt):'')+'\n'; });
+    }
+    m+='\n';});
+  if(detailed && a.resched.length){ m+='↩ *Rescheduled / cancelled* ('+a.resched.length+') — NOT in today\'s run\n'+a.resched.map(j=>'• '+j.address).join('\n')+'\n\n'; }
   const rr=recs(a); m+='💡 *Recommendation*\n'+rr[0][1]+'\n\n✅ Review and give a 👍 if you’re happy with the plan.';
   navigator.clipboard.writeText(m).then(()=>{const t=$('toast');t.textContent='Copied — paste into WhatsApp';t.className='toast show';setTimeout(()=>t.className='toast',1800);});
 }
