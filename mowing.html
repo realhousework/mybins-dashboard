@@ -1,0 +1,222 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>myMowing Operations Planner</title><style>
+:root{color-scheme:light}*{box-sizing:border-box}
+body{margin:0;background:#f4f6f4;color:#17201a;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:16px 18px 60px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-bottom:3px solid #2e8b57;padding-bottom:12px}
+.logo{font-size:22px;font-weight:800;letter-spacing:-.02em}.logo b{color:#2e8b57}
+.ttl{font-size:14px;color:#5b6b60;font-weight:600}
+.asof{font-size:12.5px;background:#e7f4ec;color:#0f7a43;border:1px solid #cfe9d9;border-radius:999px;padding:4px 12px;font-weight:700}
+.sub{color:#5b6b60;font-size:13px;margin:8px 0 2px}
+.tabs{display:flex;gap:4px;margin:14px 0 2px;border-bottom:1px solid #e3eae5}
+.tb{border:0;background:none;color:#5b6b60;font:inherit;font-weight:700;font-size:14px;padding:9px 16px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.tb.on{color:#2e8b57;border-bottom-color:#2e8b57}
+.weekstrip{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0}
+.daycard{background:#fff;border:1px solid #e3eae5;border-radius:12px;padding:12px;cursor:pointer;transition:box-shadow .12s;position:relative}
+.daycard:hover{box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.daycard .dn{font-weight:800;font-size:13px}.daycard .dd{font-size:11px;color:#8a988f;margin-bottom:8px}
+.daycard .big{font-size:22px;font-weight:800}.daycard .u{font-size:11px;color:#5b6b60}
+.pill{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;margin-top:8px}
+.g{background:#e7f4ec;color:#1a7a43}.a{background:#fff4d6;color:#8a6d1a}.r{background:#fde8e4;color:#b4452b}.n{background:#eef2ef;color:#8a988f}
+.statusbar{height:5px;border-radius:4px;background:#eef2ef;overflow:hidden;margin-top:9px}.statusbar>span{display:block;height:100%}
+.card{background:#fff;border:1px solid #e3eae5;border-radius:12px;padding:14px 16px;margin:12px 0}
+h2{font-size:15px;margin:18px 0 8px}h3{font-size:14px;margin:0 0 8px}
+.vhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.veh-badge{font-size:11px;font-weight:800;background:#eef3f0;color:#2e8b57;border-radius:6px;padding:3px 8px}
+.job{border-top:1px solid #eef2ef;padding:9px 0;display:flex;gap:10px;align-items:flex-start}
+.job:first-of-type{border-top:0}
+.jmins{font-variant-numeric:tabular-nums;font-weight:800;min-width:52px;text-align:right}
+.jaddr{font-weight:700}.jsvc{font-size:12px;color:#5b6b60}
+.sk{display:inline-block;font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:middle}
+.sk.Specialist{background:#efe3fb;color:#6b2fb3}.sk.Mixed{background:#e3eefb;color:#2f6fb3}.sk.Basic{background:#e7f4ec;color:#1a7a43}.sk.Unknown{background:#eef2ef;color:#8a988f}
+.appt{font-size:10px;font-weight:800;color:#b4452b;background:#fde8e4;border-radius:999px;padding:1px 7px;margin-left:6px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:6px 0}
+.kv .k{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;letter-spacing:.03em}.kv .v{font-size:20px;font-weight:800}
+.rec{background:#fff8ec;border:1px solid #f0e2c4;border-radius:10px;padding:11px 14px;font-size:13.5px;color:#5a4a22;margin:8px 0}
+.rec.ok{background:#e7f4ec;border-color:#cfe9d9;color:#1a5a34}.rec.bad{background:#fde8e4;border-color:#f3c9bf;color:#8a2f1a}
+.note{font-size:12px;color:#64726a}
+.btn{border:1px solid #2e8b57;background:#2e8b57;color:#fff;font:inherit;font-weight:700;font-size:13px;border-radius:8px;padding:9px 14px;cursor:pointer}
+.btn.ghost{background:#fff;color:#2e8b57}
+.staffrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #eef2ef;font-size:13.5px}.staffrow:first-child{border-top:0}
+.ava{width:26px;height:26px;border-radius:50%;background:#2e8b57;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.tag{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;background:#eef2ef;color:#5b6b60}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#17201a;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+@media(max-width:720px){.weekstrip{grid-template-columns:1fr 1fr}}
+</style></head><body><div class=wrap>
+<header><div><div class=logo>my<b>Mowing</b> <span style="font-weight:600;color:#5b6b60;font-size:15px">Operations Planner</span></div></div>
+<div class=asof id=asof></div></header>
+<div class=sub id=sub></div>
+<div class=tabs><button class="tb on" data-p=week>Weekly</button><button class=tb data-p=day>Daily plan</button></div>
+<div id=p-week></div>
+<div id=p-day hidden></div>
+<div class=note style="margin-top:22px">Prototype on a live snapshot of your Zenkit jobs + Deputy roster. Workload = summed <b>EST (one-person-equivalent) minutes</b> of each day's <b>dated</b> jobs; capacity = rostered person-hours. Two-person crews finish faster than this (driving isn't halved), so a green here is conservative. Days you haven't dated yet show as "not scheduled".</div>
+</div>
+<div class=toast id=toast></div>
+<script>
+let DATA=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const ini=n=>n.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const fmtDate=d=>{const x=new Date(d+'T12:00:00');return x.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'short'});};
+const C=DATA.config;
+function jobsOn(date){return DATA.jobs.filter(j=>j.date===date);}
+function rosterOn(date){return DATA.roster[date]||[];}
+// capacity assessment for a day
+function assess(date){
+  const jobs=jobsOn(date), ros=rosterOn(date);
+  const workMin=jobs.reduce((s,j)=>s+(j.est||0),0);
+  const missing=jobs.filter(j=>j.est==null && !/^BLAKE\b/i.test(j.address)).length;
+  const admin=jobs.filter(j=>j.est==null).length;
+  const done=jobs.filter(j=>j.done).length;
+  const personH=ros.reduce((s,r)=>s+r.hours,0);
+  const workH=workMin/60;
+  const util=personH>0?Math.round(workH/personH*100):null;
+  const needSpec=jobs.some(j=>j.skill==='Specialist'||j.skill==='Mixed');
+  const haveSpec=ros.some(r=>DATA.staff[r.emp]&&DATA.staff[r.emp].specialist);
+  const skillGap=needSpec&&!haveSpec;
+  const vehicles=[...new Set(ros.map(r=>r.vehicle).filter(Boolean))];
+  let status='g', why=[];
+  if(!ros.length||!jobs.length){status='n';}
+  else if(skillGap){status='r';why.push('No specialist (Blake/Julen) rostered for garden/hedge work');}
+  else if(util!=null&&util>100){status='r';why.push('Workload over rostered capacity');}
+  else if((util!=null&&util>90)||missing>0){status='a'; if(util>90)why.push('Near capacity'); if(missing>0)why.push(missing+' job(s) missing an EST');}
+  return {jobs,ros,workMin,workH,personH,util,missing,admin,done,needSpec,haveSpec,skillGap,vehicles,status,why};
+}
+const STLABEL={g:'Green',a:'Amber',r:'Red',n:'Not scheduled'};
+// ---- weekly ----
+function renderWeek(){
+  $('p-week').innerHTML='<div class=weekstrip>'+DATA.week.map(date=>{
+    const a=assess(date); const d=new Date(date+'T12:00:00');
+    const barcol=a.status==='g'?'#2e8b57':a.status==='a'?'#d9a520':a.status==='r'?'#c4452b':'#cfd8d2';
+    const pct=a.util==null?0:Math.min(100,a.util);
+    return '<div class=daycard data-d="'+date+'">'+
+      '<div class=dn>'+DOW[d.getDay()]+'</div><div class=dd>'+d.getDate()+' '+d.toLocaleDateString('en-AU',{month:'short'})+'</div>'+
+      (a.jobs.length?('<div class=big>'+(Math.round(a.workH*10)/10)+'<span style="font-size:12px;color:#8a988f"> h</span></div>'+
+      '<div class=u>'+a.jobs.length+' jobs \u00b7 '+a.ros.length+' staff'+(a.done===a.jobs.length?' \u00b7 \u2713 done':a.done?' \u00b7 \u2713'+a.done+'/'+a.jobs.length:'')+'</div>'+
+      '<div class=statusbar><span style="width:'+pct+'%;background:'+barcol+'"></span></div>'+
+      '<span class="pill '+a.status+'">'+(a.util!=null?a.util+'% · ':'')+STLABEL[a.status]+'</span>')
+      :'<div class=big style="color:#cfd8d2;font-size:15px;margin-top:12px">Not scheduled</div><div class=u>'+(a.ros.length?esc(a.ros.map(x=>x.emp).join(' + '))+' rostered':'no roster')+'</div><span class="pill n">awaiting jobs</span>')+
+      '</div>';
+  }).join('')+'</div>'+
+  '<div class=note>Tap a day for the full plan. Figures use only jobs that are <b>dated</b> in Zenkit for that day.</div>';
+  [...document.querySelectorAll('.daycard')].forEach(c=>c.onclick=()=>{openDay(c.dataset.d);});
+}
+// ---- daily ----
+let curDay=DATA.week[0];
+function openDay(date){curDay=date;document.querySelector('.tb[data-p=day]').click();renderDay();}
+function vehiclePanels(a){
+  // group jobs to the vehicle whose crew covers the job's area; if one vehicle, all go there
+  const vehs=a.vehicles.length?a.vehicles:['(unassigned)'];
+  const crewByVeh={}; a.ros.forEach(r=>{(crewByVeh[r.vehicle]=crewByVeh[r.vehicle]||[]).push(r.emp);});
+  return vehs.map(v=>{
+    let jobs;
+    if(vehs.length===1){jobs=a.jobs;}
+    else{jobs=a.jobs.filter(j=>{const cr=a.ros.find(r=>r.vehicle===v); return cr&&cr.areas&&cr.areas.some(ar=>j.area.indexOf(ar)>-1);});
+      if(!jobs.length&&v===vehs[0]) jobs=a.jobs.filter(j=>!a.ros.some(r=>r.vehicle!==v&&r.areas&&r.areas.some(ar=>j.area.indexOf(ar)>-1)));}
+    const crew=crewByVeh[v]||[];
+    const mins=jobs.reduce((s,j)=>s+(j.est||0),0);
+    const cap=crew.reduce((s,e)=>{const r=a.ros.find(x=>x.emp===e);return s+(r?r.hours:0);},0);
+    const util=cap>0?Math.round(mins/60/cap*100):null;
+    const pct=util==null?0:Math.min(100,util);
+    const barcol=util>100?'#c4452b':util>90?'#d9a520':'#2e8b57';
+    const spec=crew.some(e=>DATA.staff[e]&&DATA.staff[e].specialist);
+    return '<div class=card><div class=vhead><h3>🚚 '+esc(v)+' — '+esc(crew.join(' + ')||'no crew')+(spec?'':' <span class=appt>no specialist</span>')+'</h3>'+
+      '<span class=veh-badge>'+(Math.round(mins/60*10)/10)+'h work · '+cap+'h crew'+(util!=null?' · '+util+'%':'')+'</span></div>'+
+      '<div class=statusbar><span style="width:'+pct+'%;background:'+barcol+'"></span></div>'+
+      (jobs.length?jobs.map(jobRow).join(''):'<div class=note style="margin-top:8px">No jobs allocated to this vehicle.</div>')+
+      '</div>';
+  }).join('');
+}
+function jobRow(j){
+  return '<div class=job'+(j.done?' style="opacity:.45"':'')+'><div class=jmins>'+(j.est!=null?j.est+'m':'—')+'</div><div style="flex:1">'+
+    '<div class=jaddr>'+(j.done?'\u2713 ':'')+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span>'+(j.appt?'<span class=appt>'+esc(j.appt)+'</span>':'')+'</div>'+
+    '<div class=jsvc>'+esc(j.service||'')+' · '+esc(j.area)+' · <a href="'+j.url+'" target=_blank style="color:#2e8b57">Zenkit ↗</a></div>'+
+    (j.subtasks&&j.subtasks.length?'<details style="margin-top:4px"><summary class=note style="cursor:pointer">'+jsubtasksLen(j)+' tasks</summary><ul style="margin:4px 0;padding-left:18px;font-size:12.5px;color:#5b6b60">'+j.subtasks.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ul></details>':'')+
+    '</div></div>';
+}
+function jsubtasksLen(j){return j.subtasks.length;}
+function recs(a){
+  const out=[];
+  if(!a.ros.length){out.push(['bad','No one is rostered to myMowing on this day in Deputy. Nothing can run until crew is assigned.']);return out;}
+  if(a.skillGap)out.push(['bad','Garden/hedge jobs are scheduled but no specialist (Blake or Julen) is rostered. Add Blake or Julen, or reclassify these as basic mowing.']);
+  if(a.util!=null&&a.util>100)out.push(['bad','Workload (~'+(Math.round(a.workH*10)/10)+'h one-person) exceeds rostered capacity ('+a.personH+'h). Add crew, split a vehicle, or defer non-fixed work.']);
+  else if(a.util!=null&&a.util>90)out.push(['','Tight day — '+a.util+'% of rostered capacity before travel. Watch the big/strict-timing jobs and confirm travel between areas.']);
+  if(a.missing>0)out.push(['','Treat with caution: '+a.missing+' job(s) have no EST in Zenkit, so the workload is understated. Add an EST line to those jobs.']);
+  if(a.jobs.some(j=>j.appt))out.push(['','Some jobs are STRICT TIMING / fixed appointments — sequence the run so those windows are hit.']);
+  if(!out.length)out.push(['ok','Looks good — '+(Math.round(a.workH*10)/10)+'h of work across '+a.jobs.length+' jobs, '+a.personH+'h crew capacity ('+(a.util||0)+'% utilised), specialist cover in place. No extra resources needed.']);
+  return out;
+}
+function renderDay(){
+  const a=assess(curDay);
+  let h='<div class=card><div class=vhead><h2 style="margin:0">'+fmtDate(curDay)+'</h2>'+
+    '<span class="pill '+a.status+'" style="font-size:12px">'+STLABEL[a.status]+'</span></div>';
+  if(!a.ros.length){ h+='<div class=note style="margin-top:8px">No myMowing roster for this day yet, and '+a.jobs.length+' job(s) dated. Roster crew in Deputy to plan it.</div></div>'; $('p-day').innerHTML=h+daySelector(); wireSel(); return; }
+  h+='<div class=kv>'+
+    '<div><div class=k>Jobs</div><div class=v>'+a.jobs.length+'</div></div>'+
+    '<div><div class=k>Workload</div><div class=v>'+(Math.round(a.workH*10)/10)+'h</div></div>'+
+    '<div><div class=k>Crew</div><div class=v>'+a.ros.length+'</div></div>'+
+    '<div><div class=k>Capacity</div><div class=v>'+a.personH+'h</div></div>'+
+    '<div><div class=k>Utilisation</div><div class=v>'+(a.util!=null?a.util+'%':'—')+'</div></div>'+
+    '<div><div class=k>Done</div><div class=v>'+a.done+'/'+a.jobs.length+'</div></div>'+
+    '</div></div>';
+  h+='<h2>Recommendation</h2>'+recs(a).map(r=>'<div class="rec '+(r[0]||'')+'">'+r[1]+'</div>').join('');
+  h+='<h2>Vehicles</h2>'+vehiclePanelsSafe(a);
+  h+='<h2>Staffing</h2><div class=card>'+staffOverview(a)+'</div>';
+  h+='<div style="margin:16px 0"><button class=btn id=wa>📲 Copy tomorrow’s plan to WhatsApp</button> <button class="btn ghost" id=waday>Copy this day</button></div>';
+  $('p-day').innerHTML=daySelector()+h;
+  wireSel();
+  $('wa').onclick=()=>copyWA(nextPlannableDay());
+  $('waday').onclick=()=>copyWA(curDay);
+}
+function vehiclePanelsSafe(a){try{return vehiclePanels(a);}catch(e){return '<div class=note>Vehicle view unavailable.</div>';}}
+function staffOverview(a){
+  const rostered=new Set(a.ros.map(r=>r.emp));
+  return Object.keys(DATA.staff).map(e=>{
+    const s=DATA.staff[e]; const r=a.ros.find(x=>x.emp===e);
+    let st,tag;
+    if(r){st='Rostered — '+esc(r.vehicle)+' ('+r.start+'–'+r.end+')';tag='g';}
+    else {st='Not on myMowing today (per Deputy)';tag='n';}
+    return '<div class=staffrow><div class=ava>'+ini(e)+'</div><div style="flex:1"><b>'+esc(e)+'</b> '+
+      (s.leader?'<span class=tag>lead</span> ':'')+(s.specialist?'<span class=tag>specialist</span>':'<span class=tag>mowing</span>').replace(' <span','<span')+
+      '<div class=note>'+st+'</div></div></div>';
+  }).join('');
+}
+function daySelector(){
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'+DATA.week.map(d=>{
+    const dd=new Date(d+'T12:00:00');const on=d===curDay;
+    return '<button class="btn '+(on?'':'ghost')+'" data-sel="'+d+'" style="padding:7px 12px;font-size:12.5px">'+DOW[dd.getDay()]+' '+dd.getDate()+'</button>';
+  }).join('')+'</div>';
+}
+function wireSel(){[...document.querySelectorAll('[data-sel]')].forEach(b=>b.onclick=()=>{curDay=b.dataset.sel;renderDay();});}
+function nextPlannableDay(){const t=new Date();const todayStr=new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Sydney'}).format(t);
+  const fut=DATA.week.filter(d=>d>todayStr&&jobsOn(d).length); return fut[0]||DATA.week.find(d=>jobsOn(d).length)||curDay;}
+function copyWA(date){
+  const a=assess(date); const emo=a.status==='g'?'🟢':a.status==='a'?'🟡':a.status==='r'?'🔴':'⚪';
+  let m='📅 *MYMOWING — '+fmtDate(date).toUpperCase()+'*\n\n'+emo+' *STATUS: '+STLABEL[a.status].toUpperCase()+'*\n\n';
+  m+='*Overview*\n• Jobs: '+a.jobs.length+'\n• Workload: ~'+(Math.round(a.workH*10)/10)+'h (one-person-equiv)\n• Crew: '+a.ros.map(r=>r.emp).join(', ')+'\n• Capacity: '+a.personH+'h'+(a.util!=null?' ('+a.util+'% used)':'')+'\n\n';
+  const crewByVeh={}; a.ros.forEach(r=>{(crewByVeh[r.vehicle]=crewByVeh[r.vehicle]||[]).push(r.emp);});
+  Object.keys(crewByVeh).forEach(v=>{const jobs=a.vehicles.length>1?a.jobs.filter(j=>{const cr=a.ros.find(r=>r.vehicle===v);return cr&&cr.areas&&cr.areas.some(ar=>j.area.indexOf(ar)>-1);}):a.jobs;
+    const mins=jobs.reduce((s,j)=>s+(j.est||0),0);
+    m+='🚚 *'+v+'* — '+crewByVeh[v].join(' + ')+'\n'+[...new Set(jobs.map(j=>j.area))].join(', ')+' · ~'+(Math.round(mins/60*10)/10)+'h\n\n';});
+  const rr=recs(a); m+='💡 *Recommendation*\n'+rr[0][1]+'\n\n✅ Review and give a 👍 if you’re happy with the plan.';
+  navigator.clipboard.writeText(m).then(()=>{const t=$('toast');t.textContent='Copied — paste into WhatsApp';t.className='toast show';setTimeout(()=>t.className='toast',1800);});
+}
+// tabs
+[...document.querySelectorAll('.tb')].forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tb').forEach(x=>x.classList.toggle('on',x===b));
+  $('p-week').hidden=b.dataset.p!=='week'; $('p-day').hidden=b.dataset.p!=='day';
+  if(b.dataset.p==='day')renderDay();
+});
+function weekOf(today){var t=new Date(today+'T12:00:00');var dow=t.getDay();var mon=new Date(t);mon.setDate(t.getDate()+(dow===0?-6:1-dow));var wk=[];for(var i=0;i<5;i++){var d=new Date(mon);d.setDate(mon.getDate()+i);wk.push(d.toISOString().slice(0,10));}return wk;}
+(async function(){
+  try{var r=await fetch('mowing.json?cb='+Date.now());if(!r.ok)throw 0;DATA=await r.json();}
+  catch(e){document.getElementById('p-week').innerHTML='<div class=card>Live feed not published yet \u2014 it appears after the next scheduled run.</div>';document.getElementById('asof').textContent='no data';return;}
+  DATA.week=weekOf(DATA.today);
+  document.getElementById('asof').textContent='Updated '+DATA.generatedAt;
+  document.getElementById('sub').innerHTML='Week of '+fmtDate(DATA.week[0])+' \u00b7 Zenkit jobs + Deputy roster \u00b7 <b>read-only</b>';
+  renderWeek();
+  setTimeout(function(){try{location.replace(location.pathname+'?t='+Date.now());}catch(e){location.reload();}},300000);
+})();
+</script></body></html>
