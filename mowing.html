@@ -96,7 +96,11 @@ function travelEstimate(jobs,vehicles){
 }
 // capacity assessment for a day
 function assess(date){
-  const jobs=jobsOn(date), ros=rosterOn(date);
+  const all=jobsOn(date), ros=rosterOn(date);
+  // A job ticked Done but dated in the future is a reschedule/postpone/cancel (office clears it),
+  // not outstanding work — pull it out of the day's workload and show it in a separate dropdown.
+  const resched=all.filter(j=>j.done && DATA.today && j.date>DATA.today);
+  const jobs=all.filter(j=>!(j.done && DATA.today && j.date>DATA.today));
   const workMin=jobs.reduce((s,j)=>s+(j.est||0),0);
   const missing=jobs.filter(j=>j.est==null && !/^BLAKE\b/i.test(j.address)).length;
   const admin=jobs.filter(j=>j.est==null).length;
@@ -117,7 +121,7 @@ function assess(date){
   else if(skillGap){status='r';why.push('No specialist (Blake/Julen) rostered for garden/hedge work');}
   else if(util!=null&&util>100){status='r';why.push('Workload over rostered capacity');}
   else if((util!=null&&util>90)||missing>0){status='a'; if(util>90)why.push('Near capacity'); if(missing>0)why.push(missing+' job(s) missing an EST');}
-  return {jobs,ros,workMin,workH,personH,util,missing,admin,done,needSpec,haveSpec,skillGap,vehicles,travelMin,travelH,effWorkH,utilT,status,why};
+  return {jobs,resched,ros,workMin,workH,personH,util,missing,admin,done,needSpec,haveSpec,skillGap,vehicles,travelMin,travelH,effWorkH,utilT,status,why};
 }
 const STLABEL={g:'Green',a:'Amber',r:'Red',n:'Not scheduled'};
 // ---- weekly ----
@@ -129,7 +133,7 @@ function renderWeek(){
     return '<div class=daycard data-d="'+date+'">'+
       '<div class=dn>'+DOW[d.getDay()]+'</div><div class=dd>'+d.getDate()+' '+d.toLocaleDateString('en-AU',{month:'short'})+'</div>'+
       (a.jobs.length?('<div class=big>'+(Math.round(a.workH*10)/10)+'<span style="font-size:12px;color:#8a988f"> h</span></div>'+
-      '<div class=u>'+a.jobs.length+' jobs \u00b7 '+a.ros.length+' staff'+(a.done===a.jobs.length?' \u00b7 \u2713 done':a.done?' \u00b7 \u2713'+a.done+'/'+a.jobs.length:'')+'</div>'+
+      '<div class=u>'+a.jobs.length+' jobs \u00b7 '+a.ros.length+' staff'+(a.done===a.jobs.length&&a.jobs.length?' \u00b7 \u2713 done':a.done?' \u00b7 \u2713'+a.done+'/'+a.jobs.length:'')+(a.resched.length?' \u00b7 \u21a9 '+a.resched.length+' resched':'')+'</div>'+
       '<div class=u style="color:#8a988f">+~'+(Math.round(a.travelH*10)/10)+'h drive \u2192 '+(a.utilT!=null?a.utilT+'% w/ travel':'')+'</div>'+
       '<div class=statusbar><span style="width:'+pct+'%;background:'+barcol+'"></span></div>'+
       '<span class="pill '+a.status+'">'+(a.util!=null?a.util+'% · ':'')+STLABEL[a.status]+'</span>')
@@ -329,6 +333,8 @@ function renderDay(){
   h+='<h2>Recommendation</h2>'+recs(a).map(r=>'<div class="rec '+(r[0]||'')+'">'+r[1]+'</div>').join('');
   // vehicle panels
   h+='<h2>Vehicles</h2>'+vehiclePanelsSafe(a);
+  // rescheduled / postponed / cancelled — collapsed, excluded from the day's hours
+  h+=reschedPanel(a);
   // staffing
   h+='<h2>Staffing</h2><div class=card>'+staffOverview(a)+'</div>';
   // what-if
@@ -342,6 +348,12 @@ function renderDay(){
   $('waday').onclick=()=>copyWA(curDay);
 }
 function vehiclePanelsSafe(a){try{return vehiclePanels(a);}catch(e){return '<div class=note>Vehicle view unavailable.</div>';}}
+function reschedPanel(a){
+  if(!a.resched.length)return '';
+  const mins=a.resched.reduce((s,j)=>s+(j.est||0),0);
+  return '<details class=card style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;color:#8a6d1a;list-style:none">↩ Rescheduled / postponed / cancelled — '+a.resched.length+' job'+(a.resched.length>1?'s':'')+' <span class=note style="font-weight:400">(ticked done ahead of the day · not counted in the '+(Math.round(a.workH*10)/10)+'h above · ~'+(Math.round(mins/60*10)/10)+'h freed)</span></summary>'+
+    '<div style="margin-top:8px">'+a.resched.map(j=>'<div class=job style="opacity:.7"><div class=jmins>'+(j.est!=null?j.est+'m':'—')+'</div><div style="flex:1"><div class=jaddr>'+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span></div><div class=jsvc>'+esc(j.service||'')+' · '+esc(j.area)+' · <a href="'+j.url+'" target=_blank style="color:#2e8b57">Zenkit ↗</a></div></div></div>').join('')+'</div></details>';
+}
 function staffOverview(a){
   const rostered=new Set(a.ros.map(r=>r.emp));
   return Object.keys(DATA.staff).map(e=>{
