@@ -103,7 +103,7 @@ function renderWeek(){
   [...document.querySelectorAll('.daycard')].forEach(c=>c.onclick=()=>{openDay(c.dataset.d);});
 }
 // ---- daily ----
-let curDay=DATA.week[0];
+let curDay=null;
 function openDay(date){curDay=date;document.querySelector('.tb[data-p=day]').click();renderDay();}
 function vehiclePanels(a){
   // group jobs to the vehicle whose crew covers the job's area; if one vehicle, all go there
@@ -217,6 +217,7 @@ function weekOf(today){var t=new Date(today+'T12:00:00');var dow=t.getDay();var 
   try{var r=await fetch('mowing.json?cb='+Date.now());if(!r.ok)throw 0;DATA=await r.json();}
   catch(e){document.getElementById('p-week').innerHTML='<div class=card>Live feed not published yet \u2014 it appears after the next scheduled run.</div>';document.getElementById('asof').textContent='no data';return;}
   DATA.week=weekOf(DATA.today);
+  curDay=DATA.week[0];
   document.getElementById('asof').textContent='Updated '+DATA.generatedAt;
   document.getElementById('sub').innerHTML='Week of '+fmtDate(DATA.week[0])+' \u00b7 Zenkit jobs + Deputy roster \u00b7 <b>read-only</b>';
   renderWeek();
