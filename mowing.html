@@ -42,15 +42,28 @@ h2{font-size:15px;margin:18px 0 8px}h3{font-size:14px;margin:0 0 8px}
 .tag{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;background:#eef2ef;color:#5b6b60}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#17201a;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
+.wi{background:#f7faf8;border:1px solid #e3eae5;border-radius:12px;padding:14px 16px;margin:12px 0}
+.wirow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.chipb{display:inline-flex;align-items:center;gap:6px;background:#eef3f0;border:1px solid #d6e5dc;border-radius:999px;padding:4px 6px 4px 10px;font-size:12.5px;font-weight:700}
+.chipb button{border:0;background:#cfe0d6;color:#2e6b47;border-radius:50%;width:18px;height:18px;cursor:pointer;font-weight:800;line-height:1}
+.step{display:inline-flex;align-items:center;border:1px solid #cfe0d6;border-radius:8px;overflow:hidden}
+.step button{border:0;background:#eef3f0;color:#2e8b57;font-weight:800;font-size:15px;width:30px;height:30px;cursor:pointer}
+.step span{min-width:30px;text-align:center;font-weight:800}
+.inp{border:1px solid #cfe0d6;border-radius:8px;padding:7px 10px;font:inherit;font-size:14px;width:90px}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px;margin-top:10px}
+.res .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:#5b6b60;font-weight:700}.res .v{font-size:19px;font-weight:800}
+.findrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #eef2ef}.findrow:first-of-type{border-top:0}
+.findrow.fit{background:#f3fbf6}.dot{width:10px;height:10px;border-radius:50%;flex:none}
 @media(max-width:720px){.weekstrip{grid-template-columns:1fr 1fr}}
 </style></head><body><div class=wrap>
 <header><div><div class=logo>my<b>Mowing</b> <span style="font-weight:600;color:#5b6b60;font-size:15px">Operations Planner</span></div></div>
 <div class=asof id=asof></div></header>
 <div class=sub id=sub></div>
-<div class=tabs><button class="tb on" data-p=week>Weekly</button><button class=tb data-p=day>Daily plan</button></div>
+<div class=tabs><button class="tb on" data-p=week>Weekly</button><button class=tb data-p=day>Daily plan</button><button class=tb data-p=find>Find capacity</button></div>
 <div id=p-week></div>
 <div id=p-day hidden></div>
-<div class=note style="margin-top:22px">Prototype on a live snapshot of your Zenkit jobs + Deputy roster. Workload = summed <b>EST (one-person-equivalent) minutes</b> of each day's <b>dated</b> jobs; capacity = rostered person-hours. Two-person crews finish faster than this (driving isn't halved), so a green here is conservative. Days you haven't dated yet show as "not scheduled".</div>
+<div id=p-find hidden></div>
+<div class=note style="margin-top:22px">Prototype on a live snapshot of your Zenkit jobs + Deputy roster. Workload = summed <b>EST (one-person-equivalent) minutes</b> of each day's <b>dated</b> jobs; capacity = rostered person-hours. Two-person crews finish faster than this (driving isn't halved), so a green here is conservative. Travel is an <b>area-based estimate</b> (depot + hops between Manly / North Shore / Warringah-Pittwater), not live GPS. Days you haven't dated yet show as "not scheduled".</div>
 </div>
 <div class=toast id=toast></div>
 <script>
@@ -62,6 +75,25 @@ const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const fmtDate=d=>{const x=new Date(d+'T12:00:00');return x.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'short'});};
 function jobsOn(date){return DATA.jobs.filter(j=>j.date===date);}
 function rosterOn(date){return DATA.roster[date]||[];}
+// ---- travel-time model (area-based estimate, not GPS) ----
+// one-way drive estimate between the three operating regions, minutes
+const REGION_MIN={'Manly Council|Warringah/Pittwater':20,'Manly Council|North Shore':25,'North Shore|Warringah/Pittwater':30};
+const REGION_ORDER=['North Shore','Manly Council','Warringah/Pittwater'];
+const DEPOT_MIN=30, HOP_MIN=8; // depot out+back; avg hop between stops within a region
+function pairKey(a,b){return [a,b].sort().join('|');}
+// estimate total driving minutes for a set of jobs run as one route
+function travelEstimate(jobs,vehicles){
+  const stops=jobs.filter(j=>j.est!=null);
+  if(!stops.length)return 0;
+  const regs=[...new Set(stops.map(j=>j.area))];
+  const ordered=REGION_ORDER.filter(r=>regs.includes(r)).concat(regs.filter(r=>!REGION_ORDER.includes(r)));
+  let inter=0;
+  for(let i=0;i<ordered.length-1;i++){inter+=REGION_MIN[pairKey(ordered[i],ordered[i+1])]||25;}
+  const intra=Math.max(0,(stops.length-ordered.length))*HOP_MIN;
+  const v=Math.max(1,vehicles||1);
+  // two crews run in parallel: inter+intra roughly shared, depot legs per vehicle
+  return DEPOT_MIN*v + Math.round((inter+intra)/v);
+}
 // capacity assessment for a day
 function assess(date){
   const jobs=jobsOn(date), ros=rosterOn(date);
@@ -72,16 +104,20 @@ function assess(date){
   const personH=ros.reduce((s,r)=>s+r.hours,0);
   const workH=workMin/60;
   const util=personH>0?Math.round(workH/personH*100):null;
+  const vehicles=[...new Set(ros.map(r=>r.vehicle).filter(Boolean))];
+  const travelMin=travelEstimate(jobs,vehicles.length||1);
+  const travelH=travelMin/60;
+  const effWorkH=workH+travelH;
+  const utilT=personH>0?Math.round(effWorkH/personH*100):null;
   const needSpec=jobs.some(j=>j.skill==='Specialist'||j.skill==='Mixed');
   const haveSpec=ros.some(r=>DATA.staff[r.emp]&&DATA.staff[r.emp].specialist);
   const skillGap=needSpec&&!haveSpec;
-  const vehicles=[...new Set(ros.map(r=>r.vehicle).filter(Boolean))];
   let status='g', why=[];
   if(!ros.length||!jobs.length){status='n';}
   else if(skillGap){status='r';why.push('No specialist (Blake/Julen) rostered for garden/hedge work');}
   else if(util!=null&&util>100){status='r';why.push('Workload over rostered capacity');}
   else if((util!=null&&util>90)||missing>0){status='a'; if(util>90)why.push('Near capacity'); if(missing>0)why.push(missing+' job(s) missing an EST');}
-  return {jobs,ros,workMin,workH,personH,util,missing,admin,done,needSpec,haveSpec,skillGap,vehicles,status,why};
+  return {jobs,ros,workMin,workH,personH,util,missing,admin,done,needSpec,haveSpec,skillGap,vehicles,travelMin,travelH,effWorkH,utilT,status,why};
 }
 const STLABEL={g:'Green',a:'Amber',r:'Red',n:'Not scheduled'};
 // ---- weekly ----
@@ -94,6 +130,7 @@ function renderWeek(){
       '<div class=dn>'+DOW[d.getDay()]+'</div><div class=dd>'+d.getDate()+' '+d.toLocaleDateString('en-AU',{month:'short'})+'</div>'+
       (a.jobs.length?('<div class=big>'+(Math.round(a.workH*10)/10)+'<span style="font-size:12px;color:#8a988f"> h</span></div>'+
       '<div class=u>'+a.jobs.length+' jobs \u00b7 '+a.ros.length+' staff'+(a.done===a.jobs.length?' \u00b7 \u2713 done':a.done?' \u00b7 \u2713'+a.done+'/'+a.jobs.length:'')+'</div>'+
+      '<div class=u style="color:#8a988f">+~'+(Math.round(a.travelH*10)/10)+'h drive \u2192 '+(a.utilT!=null?a.utilT+'% w/ travel':'')+'</div>'+
       '<div class=statusbar><span style="width:'+pct+'%;background:'+barcol+'"></span></div>'+
       '<span class="pill '+a.status+'">'+(a.util!=null?a.util+'% · ':'')+STLABEL[a.status]+'</span>')
       :'<div class=big style="color:#cfd8d2;font-size:15px;margin-top:12px">Not scheduled</div><div class=u>'+(a.ros.length?esc(a.ros.map(x=>x.emp).join(' + '))+' rostered':'no roster')+'</div><span class="pill n">awaiting jobs</span>')+
@@ -104,7 +141,7 @@ function renderWeek(){
 }
 // ---- daily ----
 let curDay=null;
-function openDay(date){curDay=date;document.querySelector('.tb[data-p=day]').click();renderDay();}
+function openDay(date){curDay=date;resetScenario();document.querySelector('.tb[data-p=day]').click();renderDay();}
 function vehiclePanels(a){
   // group jobs to the vehicle whose crew covers the job's area; if one vehicle, all go there
   const vehs=a.vehicles.length?a.vehicles:['(unassigned)'];
@@ -144,8 +181,134 @@ function recs(a){
   else if(a.util!=null&&a.util>90)out.push(['','Tight day — '+a.util+'% of rostered capacity before travel. Watch the big/strict-timing jobs and confirm travel between areas.']);
   if(a.missing>0)out.push(['','Treat with caution: '+a.missing+' job(s) have no EST in Zenkit, so the workload is understated. Add an EST line to those jobs.']);
   if(a.jobs.some(j=>j.appt))out.push(['','Some jobs are STRICT TIMING / fixed appointments — sequence the run so those windows are hit.']);
-  if(!out.length)out.push(['ok','Looks good — '+(Math.round(a.workH*10)/10)+'h of work across '+a.jobs.length+' jobs, '+a.personH+'h crew capacity ('+(a.util||0)+'% utilised), specialist cover in place. No extra resources needed.']);
+  if(a.utilT!=null&&a.utilT>100&&(a.util==null||a.util<=100))out.push(['bad','Mowing time fits, but once ~'+(Math.round(a.travelH*10)/10)+'h of estimated driving is added the day runs to '+a.utilT+'% of capacity. Tighten the route (group by region), add crew, or defer a job.']);
+  else if(a.travelH>=2.5)out.push(['','Heavy travel day — ~'+(Math.round(a.travelH*10)/10)+'h estimated driving across '+[...new Set(a.jobs.filter(j=>j.est!=null).map(j=>j.area))].length+' regions. Sequence the run '+REGION_ORDER.filter(r=>a.jobs.some(j=>j.area===r)).join(' → ')+' to cut back-tracking.']);
+  if(!out.length)out.push(['ok','Looks good — '+(Math.round(a.workH*10)/10)+'h of work across '+a.jobs.length+' jobs, '+a.personH+'h crew capacity ('+(a.util||0)+'% utilised, '+(a.utilT||0)+'% with ~'+(Math.round(a.travelH*10)/10)+'h travel), specialist cover in place. No extra resources needed.']);
   return out;
+}
+// ---- what-if scenario planner ----
+let scenario={add:[],defer:0};
+function resetScenario(){scenario={add:[],defer:0};}
+function flexJobs(date){return jobsOn(date).filter(j=>!j.appt&&!j.done&&j.est!=null).sort((x,y)=>y.est-x.est);}
+function assessScenario(date){
+  const a=assess(date);
+  const flex=flexJobs(date);
+  const deferN=Math.min(scenario.defer,flex.length);
+  const deferred=flex.slice(0,deferN);
+  const deferMin=deferred.reduce((s,j)=>s+j.est,0);
+  const addH=scenario.add.reduce((s,p)=>s+p.hours,0);
+  const addSpec=scenario.add.some(p=>p.specialist);
+  const crewCount=a.ros.length+scenario.add.length;
+  const vehicles=Math.max(a.vehicles.length||1, scenario.add.length?2:1);
+  const remainMin=a.workMin-deferMin, workH=remainMin/60;
+  const personH=a.personH+addH;
+  const util=personH>0?Math.round(workH/personH*100):null;
+  const travelMin=travelEstimate(a.jobs.filter(j=>!deferred.includes(j)),vehicles);
+  const effWorkH=workH+travelMin/60;
+  const utilT=personH>0?Math.round(effWorkH/personH*100):null;
+  const haveSpec=a.haveSpec||addSpec, skillGap=a.needSpec&&!haveSpec;
+  let status='g';
+  if(!crewCount||!a.jobs.length)status='n';
+  else if(skillGap)status='r';
+  else if(util!=null&&util>100)status='r';
+  else if((util!=null&&util>90)||(utilT!=null&&utilT>100)||(a.missing>0&&deferN<a.missing))status='a';
+  return {base:a,workH,personH,crewCount,vehicles,util,utilT,travelH:travelMin/60,effWorkH,haveSpec,skillGap,status,deferN,deferred,deferMin,addH};
+}
+function autoBalance(date){
+  resetScenario();
+  const a=assess(date);
+  if(a.needSpec&&!a.haveSpec)scenario.add.push({name:'Blake',hours:8,specialist:true});
+  let g=0;
+  while(g++<24){
+    const r=assessScenario(date);
+    if(r.status==='g'||r.status==='n')break;
+    const mowers=scenario.add.filter(p=>!p.specialist).length;
+    if((r.util>90||r.utilT>100)&&mowers<2)scenario.add.push({name:'Extra mower',hours:8,specialist:false});
+    else {if(scenario.defer>=flexJobs(date).length)break;scenario.defer++;}
+  }
+}
+function scenarioVerdict(r){
+  const adds=scenario.add.length, def=r.deferN;
+  const chg=[]; if(adds)chg.push('+'+adds+' crew'); if(def)chg.push('defer '+def+' job'+(def>1?'s':''));
+  const prefix=chg.length?'With '+chg.join(' and ')+': ':'As rostered: ';
+  if(r.status==='n')return 'No jobs or no crew on this day.';
+  if(r.status==='g')return prefix+'Green — ~'+(Math.round(r.workH*10)/10)+'h mowing + ~'+(Math.round(r.travelH*10)/10)+'h travel across '+r.crewCount+' crew / '+r.vehicles+' vehicle'+(r.vehicles>1?'s':'')+' ('+r.personH+'h, '+r.utilT+'% incl travel). This works.';
+  if(r.status==='r'){
+    if(r.skillGap)return prefix+'still Red — no specialist rostered for garden/hedge work. Add Blake or Julen.';
+    return prefix+'still Red — '+(Math.round(r.workH*10)/10)+'h mowing over '+r.personH+'h capacity ('+r.util+'%). Add crew or defer more.';
+  }
+  return prefix+'Amber — '+r.util+'% on mowing, '+r.utilT+'% once ~'+(Math.round(r.travelH*10)/10)+'h travel is added'+(r.base.missing&&def<r.base.missing?'; '+r.base.missing+' job(s) still missing an EST':'')+'. Tight but doable.';
+}
+function renderScenario(){
+  const r=assessScenario(curDay);
+  const pill='<span class="pill '+r.status+'">'+STLABEL[r.status]+(r.util!=null?' · '+r.util+'%':'')+'</span>';
+  let h='<div class=wi><div class=vhead><h3 style="margin:0">What-if planner</h3>'+pill+'</div>'+
+    '<div class=note>Model crew and job changes before you commit them in Deputy/Zenkit. Nothing here is saved.</div>'+
+    '<div class=wirow><button class="btn ghost" id=addMow>+ Add mower (8h)</button>'+
+    '<button class="btn ghost" id=addSpec>+ Add specialist (8h)</button>'+
+    '<span style="margin-left:4px">Defer flexible jobs</span><span class=step><button id=dMinus>−</button><span id=dN>'+r.deferN+'</span><button id=dPlus>+</button></span>'+
+    '<button class=btn id=auto>Auto-balance to Green</button>'+
+    '<button class="btn ghost" id=scReset>Reset</button></div>';
+  if(scenario.add.length)h+='<div class=wirow>'+scenario.add.map((p,i)=>'<span class=chipb>'+esc(p.name)+(p.specialist?' ⭐':'')+' · '+p.hours+'h<button data-rm="'+i+'">×</button></span>').join('')+'</div>';
+  if(r.deferN)h+='<div class=note>Deferring '+r.deferN+' job(s), freeing ~'+(Math.round(r.deferMin/60*10)/10)+'h mowing: '+r.deferred.map(j=>esc(j.address)).join(', ')+'</div>';
+  h+='<div class=res>'+
+    '<div><div class=k>Mowing</div><div class=v>'+(Math.round(r.workH*10)/10)+'h</div></div>'+
+    '<div><div class=k>Travel</div><div class=v>'+(Math.round(r.travelH*10)/10)+'h</div></div>'+
+    '<div><div class=k>Crew</div><div class=v>'+r.crewCount+'</div></div>'+
+    '<div><div class=k>Capacity</div><div class=v>'+r.personH+'h</div></div>'+
+    '<div><div class=k>Util (travel)</div><div class=v>'+(r.utilT!=null?r.utilT+'%':'—')+'</div></div>'+
+    '<div><div class=k>Specialist</div><div class=v>'+(r.haveSpec?'✓':'✗')+'</div></div>'+
+    '</div>'+
+    '<div class="rec '+(r.status==='g'?'ok':r.status==='r'?'bad':'')+'" style="margin-top:10px">'+scenarioVerdict(r)+'</div>'+
+    '</div>';
+  return h;
+}
+function wireScenario(){
+  const re=()=>{$('wiMount').innerHTML=renderScenario();wireScenario();};
+  if($('addMow'))$('addMow').onclick=()=>{scenario.add.push({name:'Extra mower',hours:8,specialist:false});re();};
+  if($('addSpec'))$('addSpec').onclick=()=>{scenario.add.push({name:'Specialist',hours:8,specialist:true});re();};
+  if($('dPlus'))$('dPlus').onclick=()=>{scenario.defer=Math.min(scenario.defer+1,flexJobs(curDay).length);re();};
+  if($('dMinus'))$('dMinus').onclick=()=>{scenario.defer=Math.max(0,scenario.defer-1);re();};
+  if($('auto'))$('auto').onclick=()=>{autoBalance(curDay);re();};
+  if($('scReset'))$('scReset').onclick=()=>{resetScenario();re();};
+  [...document.querySelectorAll('[data-rm]')].forEach(b=>b.onclick=()=>{scenario.add.splice(+b.dataset.rm,1);re();});
+}
+// ---- find capacity for an urgent job ----
+let findEst=120, findSpec=false;
+function findResults(){
+  const rows=DATA.week.map(date=>{
+    const a=assess(date);
+    const spareH=a.personH-a.effWorkH;
+    const skillOk=!findSpec||a.haveSpec;
+    const fits=a.ros.length>0 && spareH*60>=findEst && skillOk;
+    const newUtil=a.personH>0?Math.round((a.effWorkH+findEst/60)/a.personH*100):null;
+    return {date,a,spareH,skillOk,fits,newUtil};
+  });
+  rows.sort((x,y)=>(y.fits-x.fits)||(y.spareH-x.spareH));
+  let h='<div class=card>'+rows.map(r=>{
+    const d=new Date(r.date+'T12:00:00');const dow=DOW[d.getDay()]+' '+d.getDate()+' '+d.toLocaleDateString('en-AU',{month:'short'});
+    const col=r.fits?'#2e8b57':'#c4452b';
+    let msg;
+    if(!r.a.ros.length)msg='no crew rostered';
+    else if(!r.skillOk)msg='no specialist rostered';
+    else if(r.spareH*60<findEst)msg='full — only '+(Math.round(r.spareH*10)/10)+'h spare';
+    else msg='fits ✓ — '+(Math.round(r.spareH*10)/10)+'h spare → '+r.newUtil+'% after';
+    return '<div class="findrow'+(r.fits?' fit':'')+'"><span class=dot style="background:'+col+'"></span><div style="flex:1"><b>'+dow+'</b> <span class=note>'+r.a.jobs.length+' jobs · '+(Math.round(r.a.effWorkH*10)/10)+'h/'+r.a.personH+'h incl travel</span></div><div style="font-weight:700;color:'+col+'">'+msg+'</div></div>';
+  }).join('')+'</div>';
+  const best=rows.find(r=>r.fits);
+  h+='<div class="rec '+(best?'ok':'bad')+'">'+(best?('Best fit: <b>'+new Date(best.date+'T12:00:00').toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'short'})+'</b> — '+(Math.round(best.spareH*10)/10)+'h spare after travel'+(findSpec?', specialist on site':'')+'. Slot it there.'):'No day this week has room'+(findSpec?' with a specialist':'')+'. Add crew to a day in the What-if planner, or push the job to next week.')+'</div>';
+  return h;
+}
+function renderFind(){
+  return '<div class=card><h2 style="margin:0 0 8px">Find capacity for an urgent job</h2>'+
+    '<div class=note>Enter the job’s estimated time and whether it needs a specialist (garden/hedge). We rank this week’s days by spare capacity after estimated travel.</div>'+
+    '<div class=wirow style="margin-top:10px">Est. time <input class=inp id=fEst type=number min=15 step=15 value="'+findEst+'"> mins'+
+    '<label style="display:inline-flex;gap:6px;align-items:center;margin-left:8px"><input type=checkbox id=fSpec '+(findSpec?'checked':'')+'> needs specialist</label></div></div>'+
+    '<div id=findRes>'+findResults()+'</div>';
+}
+function wireFind(){
+  if($('fEst'))$('fEst').oninput=()=>{findEst=Math.max(15,+$('fEst').value||0);$('findRes').innerHTML=findResults();};
+  if($('fSpec'))$('fSpec').onchange=()=>{findSpec=$('fSpec').checked;$('findRes').innerHTML=findResults();};
 }
 function renderDay(){
   const a=assess(curDay);
@@ -158,6 +321,8 @@ function renderDay(){
     '<div><div class=k>Crew</div><div class=v>'+a.ros.length+'</div></div>'+
     '<div><div class=k>Capacity</div><div class=v>'+a.personH+'h</div></div>'+
     '<div><div class=k>Utilisation</div><div class=v>'+(a.util!=null?a.util+'%':'—')+'</div></div>'+
+    '<div><div class=k>Travel (est)</div><div class=v>'+(Math.round(a.travelH*10)/10)+'h</div></div>'+
+    '<div><div class=k>Load +travel</div><div class=v>'+(Math.round(a.effWorkH*10)/10)+'h'+(a.utilT!=null?' <span style="font-size:12px;color:#8a988f">'+a.utilT+'%</span>':'')+'</div></div>'+
     '<div><div class=k>Done</div><div class=v>'+a.done+'/'+a.jobs.length+'</div></div>'+
     '</div></div>';
   // recommendations
@@ -166,10 +331,13 @@ function renderDay(){
   h+='<h2>Vehicles</h2>'+vehiclePanelsSafe(a);
   // staffing
   h+='<h2>Staffing</h2><div class=card>'+staffOverview(a)+'</div>';
+  // what-if
+  h+='<h2>What-if planner</h2><div id=wiMount>'+renderScenario()+'</div>';
   // whatsapp
   h+='<div style="margin:16px 0"><button class=btn id=wa>📲 Copy tomorrow’s plan to WhatsApp</button> <button class="btn ghost" id=waday>Copy this day</button></div>';
   $('p-day').innerHTML=daySelector()+h;
   wireSel();
+  wireScenario();
   $('wa').onclick=()=>copyWA(nextPlannableDay());
   $('waday').onclick=()=>copyWA(curDay);
 }
@@ -192,7 +360,7 @@ function daySelector(){
     return '<button class="btn '+(on?'':'ghost')+'" data-sel="'+d+'" style="padding:7px 12px;font-size:12.5px">'+DOW[dd.getDay()]+' '+dd.getDate()+'</button>';
   }).join('')+'</div>';
 }
-function wireSel(){[...document.querySelectorAll('[data-sel]')].forEach(b=>b.onclick=()=>{curDay=b.dataset.sel;renderDay();});}
+function wireSel(){[...document.querySelectorAll('[data-sel]')].forEach(b=>b.onclick=()=>{curDay=b.dataset.sel;resetScenario();renderDay();});}
 function nextPlannableDay(){const t=new Date();const todayStr=new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Sydney'}).format(t);
   const fut=DATA.week.filter(d=>d>todayStr&&jobsOn(d).length); return fut[0]||DATA.week.find(d=>jobsOn(d).length)||curDay;}
 function copyWA(date){
@@ -209,8 +377,9 @@ function copyWA(date){
 // tabs
 [...document.querySelectorAll('.tb')].forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tb').forEach(x=>x.classList.toggle('on',x===b));
-  $('p-week').hidden=b.dataset.p!=='week'; $('p-day').hidden=b.dataset.p!=='day';
+  $('p-week').hidden=b.dataset.p!=='week'; $('p-day').hidden=b.dataset.p!=='day'; $('p-find').hidden=b.dataset.p!=='find';
   if(b.dataset.p==='day')renderDay();
+  if(b.dataset.p==='find'){$('p-find').innerHTML=renderFind();wireFind();}
 });
 function weekOf(today){var t=new Date(today+'T12:00:00');var dow=t.getDay();var mon=new Date(t);mon.setDate(t.getDate()+(dow===0?-6:1-dow));var wk=[];for(var i=0;i<5;i++){var d=new Date(mon);d.setDate(mon.getDate()+i);wk.push(d.toISOString().slice(0,10));}return wk;}
 (async function(){
