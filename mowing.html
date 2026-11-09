@@ -60,7 +60,6 @@ const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const ini=n=>n.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
 const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const fmtDate=d=>{const x=new Date(d+'T12:00:00');return x.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'short'});};
-const C=DATA.config;
 function jobsOn(date){return DATA.jobs.filter(j=>j.date===date);}
 function rosterOn(date){return DATA.roster[date]||[];}
 // capacity assessment for a day
@@ -110,6 +109,7 @@ function vehiclePanels(a){
   // group jobs to the vehicle whose crew covers the job's area; if one vehicle, all go there
   const vehs=a.vehicles.length?a.vehicles:['(unassigned)'];
   const crewByVeh={}; a.ros.forEach(r=>{(crewByVeh[r.vehicle]=crewByVeh[r.vehicle]||[]).push(r.emp);});
+  // default area->vehicle: if 2 vehicles, split by roster COUNCILS hint else North Shore vs others; simple: assign all to first veh unless job area matches a crew's stated area
   return vehs.map(v=>{
     let jobs;
     if(vehs.length===1){jobs=a.jobs;}
@@ -133,10 +133,9 @@ function jobRow(j){
   return '<div class=job'+(j.done?' style="opacity:.45"':'')+'><div class=jmins>'+(j.est!=null?j.est+'m':'—')+'</div><div style="flex:1">'+
     '<div class=jaddr>'+(j.done?'\u2713 ':'')+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span>'+(j.appt?'<span class=appt>'+esc(j.appt)+'</span>':'')+'</div>'+
     '<div class=jsvc>'+esc(j.service||'')+' · '+esc(j.area)+' · <a href="'+j.url+'" target=_blank style="color:#2e8b57">Zenkit ↗</a></div>'+
-    (j.subtasks&&j.subtasks.length?'<details style="margin-top:4px"><summary class=note style="cursor:pointer">'+jsubtasksLen(j)+' tasks</summary><ul style="margin:4px 0;padding-left:18px;font-size:12.5px;color:#5b6b60">'+j.subtasks.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ul></details>':'')+
+    (j.subtasks&&j.subtasks.length?'<details style="margin-top:4px"><summary class=note style="cursor:pointer">'+j.subtasks.length+' tasks</summary><ul style="margin:4px 0;padding-left:18px;font-size:12.5px;color:#5b6b60">'+j.subtasks.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ul></details>':'')+
     '</div></div>';
 }
-function jsubtasksLen(j){return j.subtasks.length;}
 function recs(a){
   const out=[];
   if(!a.ros.length){out.push(['bad','No one is rostered to myMowing on this day in Deputy. Nothing can run until crew is assigned.']);return out;}
@@ -161,9 +160,13 @@ function renderDay(){
     '<div><div class=k>Utilisation</div><div class=v>'+(a.util!=null?a.util+'%':'—')+'</div></div>'+
     '<div><div class=k>Done</div><div class=v>'+a.done+'/'+a.jobs.length+'</div></div>'+
     '</div></div>';
+  // recommendations
   h+='<h2>Recommendation</h2>'+recs(a).map(r=>'<div class="rec '+(r[0]||'')+'">'+r[1]+'</div>').join('');
+  // vehicle panels
   h+='<h2>Vehicles</h2>'+vehiclePanelsSafe(a);
+  // staffing
   h+='<h2>Staffing</h2><div class=card>'+staffOverview(a)+'</div>';
+  // whatsapp
   h+='<div style="margin:16px 0"><button class=btn id=wa>📲 Copy tomorrow’s plan to WhatsApp</button> <button class="btn ghost" id=waday>Copy this day</button></div>';
   $('p-day').innerHTML=daySelector()+h;
   wireSel();
@@ -179,7 +182,7 @@ function staffOverview(a){
     if(r){st='Rostered — '+esc(r.vehicle)+' ('+r.start+'–'+r.end+')';tag='g';}
     else {st='Not on myMowing today (per Deputy)';tag='n';}
     return '<div class=staffrow><div class=ava>'+ini(e)+'</div><div style="flex:1"><b>'+esc(e)+'</b> '+
-      (s.leader?'<span class=tag>lead</span> ':'')+(s.specialist?'<span class=tag>specialist</span>':'<span class=tag>mowing</span>').replace(' <span','<span')+
+      (s.leader?'<span class=tag>lead</span> ':'')+(s.specialist?'<span class=tag>specialist</span>':'<span class=tag>mowing</span>')+
       '<div class=note>'+st+'</div></div></div>';
   }).join('');
 }
