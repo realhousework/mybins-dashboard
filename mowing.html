@@ -21,7 +21,6 @@ header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-betw
 .card{background:#fff;border:1px solid #e3eae5;border-radius:12px;padding:14px 16px;margin:12px 0}
 h2{font-size:15px;margin:18px 0 8px}h3{font-size:14px;margin:0 0 8px}
 .vhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-.veh-badge{font-size:11px;font-weight:800;background:#eef3f0;color:#2e8b57;border-radius:6px;padding:3px 8px}
 .job{border-top:1px solid #eef2ef;padding:9px 0;display:flex;gap:10px;align-items:flex-start}
 .job:first-of-type{border-top:0}
 .jmins{font-variant-numeric:tabular-nums;font-weight:800;min-width:52px;text-align:right}
@@ -56,8 +55,6 @@ h2{font-size:15px;margin:18px 0 8px}h3{font-size:14px;margin:0 0 8px}
 .fin{width:100%;padding:9px 11px;border:1px solid #cfe0d6;border-radius:8px;font:inherit;font-size:14px}
 label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;letter-spacing:.03em;display:block;margin-bottom:3px}
 .banner{background:#fff4d6;border:1px solid #f0e2c4;color:#7a5e12;border-radius:10px;padding:10px 14px;font-size:13px;margin:10px 0}
-.rt{list-style:none;margin:6px 0 0;padding:0;font-size:12.5px;color:#5b6b60}
-.rt li{padding:2px 0}.rt .n{display:inline-block;width:20px;color:#8a988f;font-weight:800}
 .vehgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
 .vstat{display:grid;grid-template-columns:repeat(3,1fr);gap:7px 12px;margin:9px 0 2px}
 .vstat .k{color:#8a988f;font-weight:700;text-transform:uppercase;font-size:9.5px;letter-spacing:.03em}
@@ -67,13 +64,27 @@ label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;l
 .daybar{position:relative;height:26px;border-radius:6px;background:#eef2ef;overflow:visible;display:flex}
 .daybar>span{display:block;height:100%}
 .daybar>span:first-child{border-radius:6px 0 0 6px}
-.seg-site{background:#2e8b57}.seg-drive{background:#e8912e}.seg-break{background:#c3ccc6}
+.seg-site{background:#2e8b57}.seg-drive{background:#e8912e}.seg-break{background:#c3ccc6}.seg-wait{background:#d9c38a}
 .seg-un{background:repeating-linear-gradient(45deg,#d9b38a 0,#d9b38a 6px,#efd8bf 6px,#efd8bf 12px)}
 .mark{position:absolute;top:-4px;bottom:-4px;width:2px;background:#17201a;z-index:2}
 .marklbl{position:absolute;top:-15px;font-size:9px;font-weight:800;color:#17201a;transform:translateX(-50%);white-space:nowrap}
 .legrow{display:flex;gap:8px;font-size:12px;padding:5px 0;border-top:1px dashed #eef2ef}
 .legrow:first-child{border-top:0}
 .legrow .t{color:#8a7a5a;min-width:70px;font-variant-numeric:tabular-nums;font-weight:700}
+.chip{display:inline-block;font-size:11px;font-weight:700;background:#eef3f0;border:1px solid #dce8e1;border-radius:999px;padding:2px 9px;margin:2px 4px 2px 0}
+.chip .h{color:#5b6b60;font-weight:600}
+.chip.warn{background:#fff4d6;border-color:#f0e2c4;color:#8a6d1a}
+.chip.spec{background:#efe3fb;border-color:#e0cff5;color:#6b2fb3}
+.helperbox{border:1px dashed #cfe0d6;border-radius:9px;padding:8px 10px;margin:8px 0;background:#fff}
+.helperrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:4px 0}
+.helperrow select,.helperrow input{padding:6px 8px;border:1px solid #cfe0d6;border-radius:7px;font:inherit;font-size:13px}
+.lockbtn{border:1px solid #cfe0d6;background:#fff;border-radius:6px;font-size:11px;font-weight:700;padding:2px 7px;cursor:pointer;color:#5b6b60}
+.lockbtn.on{background:#17201a;color:#fff;border-color:#17201a}
+.ordbtn{border:1px solid #cfe0d6;background:#fff;border-radius:6px;font-size:12px;padding:0 7px;cursor:pointer;line-height:1.5;color:#5b6b60}
+.ordbtn:disabled{opacity:.35;cursor:default}
+.cmp{font-size:12.5px;color:#1a5a34;background:#e7f4ec;border:1px solid #cfe9d9;border-radius:8px;padding:7px 11px;margin:7px 0}
+.cmp.neutral{color:#5b6b60;background:#f3f6f4;border-color:#e3eae5}
+.viol{color:#b4452b;font-weight:800}
 @media(max-width:720px){.weekstrip{grid-template-columns:1fr 1fr}.vehgrid{grid-template-columns:1fr}.vstat{grid-template-columns:repeat(2,1fr)}}
 </style></head><body><div class=wrap>
 <header><div><div class=logo>my<b>Mowing</b> <span style="font-weight:600;color:#5b6b60;font-size:15px">Operations Planner</span></div></div>
@@ -102,10 +113,14 @@ const STLABEL={g:'Green',a:'Amber',r:'Red',n:'No work'};
 const REGIONS=['Manly Council','Warringah/Pittwater','North Shore'];
 const VEH=()=>(DATA.config&&DATA.config.vehicles)||['HOPPER','MOE'];
 const MAXH=()=>(DATA.config&&DATA.config.maxHours)||10;
-const BREAK=()=>((DATA.config&&DATA.config.breakMins)||30)/60;   // hours
+const BREAKM=()=>((DATA.config&&DATA.config.breakMins)||30);        // minutes
+const BREAK=()=>BREAKM()/60;                                        // hours
 const ROUTING=()=>!!(DATA.config&&DATA.config.routingAvailable);
 const parseHM=s=>{const m=/(\d{1,2}):(\d{2})/.exec(s||'');return m?(+m[1])*60+(+m[2]):null;};
+const CFGSTART=()=>parseHM((DATA.config&&DATA.config.startTime)||'07:00')||420;
 function fmtClock(mins){let h=Math.floor(mins/60),m=Math.round(mins%60);if(m===60){h++;m=0;}const ap=(h%24)>=12?'pm':'am';let hh=(h%24)%12;if(hh===0)hh=12;return hh+':'+String(m).padStart(2,'0')+ap;}
+function hhmm(mins){return fmtClock(mins);}
+function fmtDur(min){min=Math.round(min);if(min<60)return min+' min';const h=Math.floor(min/60),m=min%60;return h+'h'+(m?' '+m+'m':'');}
 
 // ---- data access ----
 function jobsOn(d){return DATA.jobs.filter(j=>j.date===d);}
@@ -113,54 +128,43 @@ function activeJobs(d){return jobsOn(d).filter(j=>!(j.done&&DATA.today&&j.date>D
 function reschedJobs(d){return jobsOn(d).filter(j=>j.done&&DATA.today&&j.date>DATA.today);}
 function availOn(d){return (DATA.availability&&DATA.availability[d])||{};}
 function rosterOn(d){return (DATA.roster&&DATA.roster[d])||[];}
-function isSpec(e){return DATA.staff[e]&&DATA.staff[e].specialist;}
+function isSpec(e){return !!(DATA.staff[e]&&DATA.staff[e].specialist);}
+function isDriver(e){const s=DATA.staff[e];return !(s&&s.driver===false);}   // default: everyone can drive
 function crewCovers(areas,region){return (areas||[]).some(a=>(a==='Warringah'&&/Warringah/.test(region))||(a==='Manly'&&/Manly/.test(region))||(a==='North Shore'&&/North Shore/.test(region)));}
 function isWorking(d,e){const a=availOn(d)[e];return !!(a&&a.working);}
 function isCrossOU(d,e){const a=availOn(d)[e];return !!(a&&a.working&&!a.onMowing);}
 function jobKey(j){return j.id!=null?('#'+j.id):(j.date+'|'+j.area+'|'+j.address);}
+function rosterShift(d,e){const a=availOn(d)[e];return {start:a&&a.start?parseHM(a.start):null,end:a&&a.end?parseHM(a.end):null};}
 
-// ---- routing (driving times from the baked Mapbox matrix; index 0 = depot) ----
+// ---- appointments (structured {type,start,end}; tolerant of legacy strings) ----
+function normAppt(ap){
+  if(!ap)return null;
+  if(typeof ap==='object'){return (ap.type&&ap.type!=='none')?{type:ap.type,start:ap.start!=null?ap.start:null,end:ap.end!=null?ap.end:(ap.start!=null?ap.start:null)}:null;}
+  if(ap==='STRICT')return {type:'hard',start:null,end:null};
+  const m=/(\d{1,2})([:.](\d{2}))?\s*(am|pm)?/i.exec(ap);if(!m)return null;
+  let h=+m[1],mm=m[3]?+m[3]:0,apm=(m[4]||'').toLowerCase();
+  if(apm==='pm'&&h<12)h+=12;else if(apm==='am'&&h===12)h=0;else if(!apm&&h>=1&&h<=6)h+=12;
+  const s=h*60+mm;return {type:'hard',start:s,end:s};
+}
+function apptLabel(ap){if(!ap)return'';if(ap.start==null)return'set time';if(ap.type==='window')return fmtClock(ap.start)+'–'+(ap.end!=null?fmtClock(ap.end):'?');if(ap.type==='preferred')return '~'+fmtClock(ap.start);return fmtClock(ap.start);}
+function apptTag(ap){if(!ap)return'';const cls=ap.type==='preferred'?'drv':'appt';const ic=ap.type==='window'?'⏱':ap.type==='preferred'?'~':'⏰';return ' <span class="'+cls+'">'+ic+apptLabel(ap)+'</span>';}
+
+// ---- routing (baked Mapbox matrix; index 0 = depot) ----
 function matrixFor(d){return (DATA.matrix&&DATA.matrix[d])||null;}
 function jobIdx(d,id){const m=matrixFor(d);if(!m||!m.ids)return -1;const i=m.ids.indexOf(id);return i<0?-1:i+1;}
 function legSec(d,a,b){const m=matrixFor(d);if(!m||!m.dur||!m.dur[a])return null;const x=m.dur[a][b];return x==null?null:x;}
-function routeSeconds(d,order){const m=matrixFor(d);if(!m||!m.dur||!order.length)return null;let t=0,prev=0;for(const idx of order){const l=legSec(d,prev,idx);if(l==null)return null;t+=l;prev=idx;}const back=legSec(d,prev,0);if(back==null)return null;return t+((DATA.config&&DATA.config.returnToDepot===false)?0:back);}
-function apptMins(appt){if(!appt||appt==='STRICT')return null;const m=/(\d{1,2})([:.](\d{2}))?\s*(am|pm)?/i.exec(appt);if(!m)return null;let h=+m[1],mm=m[3]?+m[3]:0;const ap=(m[4]||'').toLowerCase();if(ap==='pm'&&h<12)h+=12;if(ap==='am'&&h===12)h=0;return h*60+mm;}
-function twoOpt(d,route){if(route.length<3)return route;let best=route.slice(),bestS=routeSeconds(d,best),guard=0,improved=true;while(improved&&guard++<40){improved=false;for(let i=0;i<best.length-1;i++)for(let j=i+1;j<best.length;j++){const cand=best.slice(0,i).concat(best.slice(i,j+1).reverse(),best.slice(j+1));const s=routeSeconds(d,cand);if(s!=null&&bestS!=null&&s<bestS-1){best=cand;bestS=s;improved=true;}}}return best;}
-// Optimise visit order: fixed-time jobs are anchored in time order; the rest are inserted cheapest-first.
-function planRoute(d,jobs){
-  const m=matrixFor(d);
-  const idxOf=j=>jobIdx(d,j.id);
-  const routable=jobs.filter(j=>idxOf(j)>0);
-  const unroutable=jobs.filter(j=>idxOf(j)<=0);
-  if(!m||!m.dur||!routable.length) return {order:jobs.slice(),driveSec:null,unroutable,hasAppt:false};
-  const timed=routable.filter(j=>apptMins(j.appt)!=null).sort((a,b)=>apptMins(a.appt)-apptMins(b.appt));
-  const free=routable.filter(j=>apptMins(j.appt)==null);
-  let route=timed.map(idxOf);
-  for(const j of free){const ji=idxOf(j);let bp=route.length,bc=Infinity;for(let p=0;p<=route.length;p++){const prev=p===0?0:route[p-1],next=p===route.length?0:route[p];const add=(legSec(d,prev,ji)||0)+(legSec(d,ji,next)||0)-(legSec(d,prev,next)||0);if(add<bc){bc=add;bp=p;}}route.splice(bp,0,ji);}
-  if(!timed.length)route=twoOpt(d,route);
-  const byIdx={};routable.forEach(j=>byIdx[idxOf(j)]=j);
-  const order=route.map(i=>byIdx[i]).concat(unroutable);
-  return {order,driveSec:routeSeconds(d,route),unroutable,hasAppt:timed.length>0};
-}
+function legMin(d,a,b){const s=legSec(d,a,b);return s==null?null:Math.round(s/60);}
 function medianLegSec(d){const m=matrixFor(d);if(!m||!m.dur)return null;const xs=[];for(let i=0;i<m.dur.length;i++)for(let j=0;j<m.dur.length;j++)if(i!==j&&m.dur[i][j]!=null)xs.push(m.dur[i][j]);if(!xs.length)return null;xs.sort((a,b)=>a-b);return xs[Math.floor(xs.length/2)];}
 
-// ---- crew working window (actual Deputy shifts, minus a break) ----
-function vehWindow(d,crew){
-  let starts=[],ends=[];
-  crew.forEach(e=>{const a=availOn(d)[e];const s=a&&a.start?parseHM(a.start):null,en=a&&a.end?parseHM(a.end):null;if(s!=null)starts.push(s);if(en!=null)ends.push(en);});
-  const cfgS=parseHM((DATA.config&&DATA.config.startTime)||'07:00')||420;
-  const cfgE=cfgS+MAXH()*60;
-  const startMin=starts.length?Math.min.apply(null,starts):cfgS;
-  const endMin=ends.length?Math.max.apply(null,ends):cfgE;
-  const grossH=(endMin-startMin)/60;
-  const netH=Math.max(1,grossH-BREAK());
-  const uneven=ends.length>1&&(Math.max.apply(null,ends)-Math.min.apply(null,ends))>60;
-  return {startMin,endMin,grossH,netH,uneven};
-}
+// ---- rotation (fixed anchor: week of Mon 10 Nov 2026 = Week 1; stays correct across New Year) ----
+const ROT_ANCHOR_MON=new Date('2026-11-10T12:00:00');
+function mondayOf(d){const t=new Date(d+'T12:00:00');const dow=t.getDay();const m=new Date(t);m.setDate(t.getDate()+(dow===0?-6:1-dow));m.setHours(12,0,0,0);return m;}
+function rotLabel(d){const w=Math.round((mondayOf(d)-ROT_ANCHOR_MON)/(7*86400000));return (((w%2)+2)%2===0)?'Week 1':'Week 2';}
 
 // ---- scenario (proposed allocation) ----
 function defaultScenario(d){
-  const sc={emp:{},region:{},job:{}};
+  const sc={emp:{},region:{},job:{},helpers:{},order:{},locks:{}};
+  VEH().forEach(v=>{sc.helpers[v]=[];sc.locks[v]={};});
   rosterOn(d).forEach(r=>{ sc.emp[r.emp]=VEH().includes(r.vehicle)?r.vehicle:VEH()[0]; });
   const byVeh=crewByVeh(sc);
   REGIONS.forEach(reg=>{
@@ -170,61 +174,205 @@ function defaultScenario(d){
   });
   return sc;
 }
-function crewByVeh(sc){const m={};VEH().forEach(v=>m[v]=[]);Object.keys(sc.emp).forEach(e=>{const v=sc.emp[e];if(v&&v!=='off'&&m[v])m[v].push(e);});return m;}
+function crewByVeh(sc){const m={};VEH().forEach(v=>m[v]=[]);
+  Object.keys(sc.emp||{}).forEach(e=>{const v=sc.emp[e];if(v&&v!=='off'&&m[v]&&m[v].indexOf(e)<0)m[v].push(e);});
+  VEH().forEach(v=>{((sc.helpers&&sc.helpers[v])||[]).forEach(h=>{if(h.emp&&m[v].indexOf(h.emp)<0)m[v].push(h.emp);});});
+  return m;}
 function vehOfJob(sc,j){ return (sc.job&&sc.job[jobKey(j)]) || sc.region[j.area] || VEH()[0]; }
-function isDefault(d){return JSON.stringify(defaultScenario(d))===JSON.stringify(scenario);}
+function isDefault(d){const a=defaultScenario(d);return JSON.stringify(a)===JSON.stringify(scenario);}
 
-// ---- rotation ----
-function isoWeek(d){const dt=new Date(d+'T12:00:00');const day=(dt.getDay()+6)%7;dt.setDate(dt.getDate()-day+3);const first=new Date(dt.getFullYear(),0,4);return 1+Math.round(((dt-first)/86400000-3+((first.getDay()+6)%7))/7);}
-function rotLabel(d){return (isoWeek(d)%2===0)?'Week 1':'Week 2';}
+// ---- time-phased crew: actual per-person intervals (full-day shift OR custom helper hours) ----
+function crewIntervals(d,v,sc){
+  const cfgS=CFGSTART(),cfgE=cfgS+MAXH()*60,out=[];
+  Object.keys(sc.emp||{}).forEach(e=>{ if(sc.emp[e]!==v)return;
+    const sh=rosterShift(d,e);
+    out.push({emp:e,start:sh.start!=null?sh.start:cfgS,end:sh.end!=null?sh.end:cfgE,spec:isSpec(e),driver:isDriver(e),cross:isCrossOU(d,e),custom:false,outside:!isWorking(d,e)}); });
+  ((sc.helpers&&sc.helpers[v])||[]).forEach(h=>{
+    if(!h.emp)return; const st=parseHM(h.start),en=parseHM(h.end); if(st==null||en==null||en<=st)return;
+    const sh=rosterShift(d,h.emp); let outside=false;
+    if(sh.start!=null&&sh.end!=null){ if(st<sh.start-1||en>sh.end+1) outside=true; } else { outside=!isWorking(d,h.emp)?true:false; if(!isWorking(d,h.emp))outside=true; }
+    if(!isWorking(d,h.emp)) outside=true;
+    const i=out.findIndex(x=>x.emp===h.emp); if(i>=0) out.splice(i,1);
+    out.push({emp:h.emp,start:st,end:en,spec:isSpec(h.emp),driver:isDriver(h.emp),cross:isCrossOU(d,h.emp),custom:true,outside}); });
+  return out.filter(x=>x.start!=null&&x.end!=null&&x.end>x.start).sort((a,b)=>a.start-b.start);
+}
 
-// ---- per-vehicle assessment (on-site work shared by crew + route driving added once) ----
+// ---- ordered job list for a vehicle (manual order if set, else optimised) ----
+function jobsForVeh(d,v,sc){return activeJobs(d).filter(j=>vehOfJob(sc,j)===v);}
+function effectiveOrder(d,v,sc){
+  const jobs=jobsForVeh(d,v,sc);
+  const man=sc.order&&sc.order[v];
+  if(man&&man.length){ const byKey={};jobs.forEach(j=>byKey[jobKey(j)]=j);
+    const ord=man.map(k=>byKey[k]).filter(Boolean); jobs.forEach(j=>{if(ord.indexOf(j)<0)ord.push(j);}); return ord; }
+  return optimiseOrder(d,v,sc,jobs).order;
+}
+
+// ---- THE ENGINE: forward-simulate a vehicle's day with time-phased crew ----
+function simulate(d,v,sc,ordered){
+  const crew=crewIntervals(d,v,sc);
+  const res={v,crew,crewNames:crew.map(c=>c.emp),stops:[],order:ordered.slice(),
+    flags:{apptViol:[],specShort:[],transport:[],driverGap:[],unroutable:[],outside:[],missingGeo:false,noDriver:false,noCrew:!crew.length},
+    status:'g',reasons:[]};
+  if(!ordered.length){res.status='n';res.startMin=null;res.finishMin=null;res.driveMin=0;res.driveH=0;res.onSiteH=0;res.onSiteClockH=0;res.win={startMin:CFGSTART(),endMin:CFGSTART()+MAXH()*60,grossH:MAXH(),netH:MAXH()-BREAK()};res.ot=0;res.buffer=0;res.k=0;return res;}
+  const routable=ordered.filter(j=>jobIdx(d,j.id)>0);
+  const unroutable=ordered.filter(j=>jobIdx(d,j.id)<=0||j.geo===false);
+  res.flags.unroutable=unroutable;
+  const crewStart=crew.length?Math.min.apply(null,crew.map(c=>c.start)):CFGSTART();
+  const crewEnd=crew.length?Math.max.apply(null,crew.map(c=>c.end)):crewStart+MAXH()*60;
+  res.startMin=crewStart; res.win={startMin:crewStart,endMin:crewEnd,grossH:(crewEnd-crewStart)/60,netH:Math.max(1,(crewEnd-crewStart)/60-BREAK())};
+  const presentAt=t=>crew.filter(c=>c.start<=t+0.001&&t<c.end-0.001);
+  const bk=BREAKM();
+  let clock=crewStart,prev=0,drive=0,onSiteClock=0,onSitePerson=0,breakDone=false;
+  const breakTarget=crewStart+(crewEnd-crewStart)/2;
+  let legMissing=false;
+  routable.forEach((j,i)=>{
+    const idx=jobIdx(d,j.id);
+    const lm=legMin(d,prev,idx);
+    if(lm==null){legMissing=true;} else {clock+=lm;drive+=lm;}
+    if(!breakDone&&bk&&clock>=breakTarget){res.breakBefore=i;res.breakAt=clock;clock+=bk;breakDone=true;}
+    let arrive=clock;
+    const ap=normAppt(j.appt); let waited=0,viol=null;
+    if(ap&&ap.start!=null){
+      if(ap.type==='hard'){ if(arrive<ap.start){waited=ap.start-arrive;clock=ap.start;} else if(arrive>ap.start+1){viol={job:j,kind:'late',by:arrive-ap.start,appt:ap};} }
+      else if(ap.type==='window'){ const we=ap.end!=null?ap.end:ap.start; if(arrive<ap.start){waited=ap.start-arrive;clock=ap.start;} else if(arrive>we+1){viol={job:j,kind:'late',by:arrive-we,appt:ap};} }
+      // preferred: soft, no wait/violation
+    }
+    const serviceStart=clock;
+    const present=presentAt(serviceStart);
+    const cap=Math.max(1,present.length);
+    const specPresent=present.some(c=>c.spec);
+    const needSpec=j.skill==='Specialist'||j.skill==='Mixed';
+    if(needSpec&&!specPresent)res.flags.specShort.push(j);
+    if(present.length&&!present.some(c=>c.driver))res.flags.driverGap.push(j);
+    const est=j.est!=null?j.est:0;
+    const onsiteMin=est/cap;
+    onSiteClock+=onsiteMin; onSitePerson+=est;
+    const depart=serviceStart+onsiteMin;
+    if(viol)res.flags.apptViol.push(viol);
+    res.stops.push({job:j,arrive,serviceStart,depart,onsiteMin,legMin:lm,waited,crewHere:present.map(c=>c.emp),cap,specPresent,appt:ap,viol});
+    clock=depart; prev=idx;
+  });
+  const back=legMin(d,prev,0);
+  if(back==null&&routable.length){legMissing=true;} else if(DATA.config&&DATA.config.returnToDepot!==false){clock+=back||0;drive+=back||0;}
+  // unroutable jobs: work exists but can't be scheduled/located
+  unroutable.forEach(j=>{res.stops.push({job:j,unroutable:true,onsiteMin:(j.est!=null?j.est:0),cap:1});onSitePerson+=(j.est||0);onSiteClock+=(j.est||0);});
+  res.finishMin=clock;
+  res.driveMin=drive;
+  res.driveComplete=!legMissing&&!unroutable.length;
+  res.driveH=res.driveComplete?drive/60:null;
+  res.onSiteClockH=onSiteClock/60;
+  res.onSiteH=onSitePerson/60;
+  res.k=crew.length;
+  res.ot=Math.max(0,Math.round(res.finishMin-crewEnd));
+  res.buffer=Math.max(0,Math.round(crewEnd-res.finishMin));
+  if(legMissing)res.flags.missingGeo=true;
+  if(unroutable.length)res.flags.missingGeo=true;
+  // transport feasibility for part-day helpers leaving/joining mid-day
+  crew.forEach(c=>{ if(!c.custom)return;
+    if(c.end<res.finishMin-1&&c.end>crewStart+1){ let where=null; for(const s of res.stops){if(s.serviceStart!=null&&s.serviceStart<=c.end)where=s.job.address;} res.flags.transport.push({emp:c.emp,kind:'leaves',at:c.end,where}); }
+    if(c.start>crewStart+1){ res.flags.transport.push({emp:c.emp,kind:'joins',at:c.start}); }
+  });
+  crew.forEach(c=>{if(c.outside)res.flags.outside.push(c.emp);if(c.cross&&res.flags.outside.indexOf(c.emp)<0)res.flags.outside.push(c.emp);});
+  // ---- status + reasons ----
+  const needSpecDay=routable.concat(unroutable).some(j=>j.skill==='Specialist'||j.skill==='Mixed');
+  const haveSpec=crew.some(c=>c.spec);
+  res.needSpec=needSpecDay; res.haveSpec=haveSpec;
+  res.missingEst=ordered.filter(j=>j.est==null).length;
+  res.regions=[...new Set(ordered.map(j=>j.area))];
+  // minimum full-day crew to fit on person-minutes (guidance only)
+  let minNeed=null; if(res.driveH!=null){for(let kk=1;kk<=6;kk++){if(res.driveH+res.onSiteH/kk<=res.win.netH){minNeed=kk;break;}}}
+  res.minNeed=minNeed;
+  let st='g',reasons=[];
+  if(!crew.length){st='r';reasons.push('No crew assigned — this truck can’t run its '+r1(res.onSiteH)+'h of on-site work');}
+  if(needSpecDay&&!haveSpec){st='r';reasons.push('Garden/hedge work but no specialist (Blake/Julen) on this crew');}
+  if(res.flags.specShort.length&&haveSpec){ if(st!=='r')st='r'; reasons.push(res.flags.specShort.length+' specialist job(s) fall in a window with no specialist present (e.g. the specialist has left)'); }
+  if(res.flags.apptViol.length){st='r';res.flags.apptViol.forEach(x=>reasons.push('Can’t reach '+esc(x.job.address)+' by its '+(x.appt.type==='window'?'window':'appointment')+' '+apptLabel(x.appt)+' (late ~'+fmtDur(x.by)+' once earlier jobs + travel are counted)'));}
+  if(res.flags.unroutable.length){ if(st==='g')st='a'; reasons.push(res.flags.unroutable.length+' job('+'s'.slice(res.flags.unroutable.length===1?1:0)+') couldn’t be located on the map — driving incomplete, so the day can’t be confirmed'); }
+  else if(!res.driveComplete){ if(st==='g')st='a'; reasons.push('Driving time unverified — a road leg is missing, so finish is an estimate only'); }
+  if(res.ot>0&&st!=='r'){ st='r'; reasons.push(r1(res.onSiteClockH)+'h on-site + '+(res.driveH!=null?r1(res.driveH)+'h':'?')+' driving runs to '+fmtClock(res.finishMin)+', past the crew’s '+fmtClock(crewEnd)+' finish by '+fmtDur(res.ot)+(minNeed&&res.k&&minNeed>res.k?' — needs '+minNeed+' crew (has '+res.k+')':'')); }
+  else if(res.ot>0){ reasons.push('Runs '+fmtDur(res.ot)+' past the crew finish'); }
+  else if(res.buffer<30&&res.driveComplete&&st==='g'){ st='a'; reasons.push('Tight — finishes '+fmtClock(res.finishMin)+', only '+fmtDur(res.buffer)+' before the crew’s shift ends'); }
+  if(res.missingEst>0&&st!=='r'){ if(st==='g')st='a'; reasons.push(res.missingEst+' job(s) missing an EST (on-site understated)'); }
+  if(res.flags.transport.length&&st==='g')st='a';
+  if(res.flags.outside.length&&st==='g')st='a';
+  if(res.flags.driverGap.length){ if(st!=='r')st='r'; reasons.push('A crew change leaves the truck with no authorised driver — keep a driver on board'); }
+  res.status=crew.length||ordered.length?st:'r';
+  if(!ordered.length)res.status='n';
+  res.reasons=reasons;
+  return res;
+}
+
+// ---- constraint-aware route optimiser (in-app, on the cached Mapbox matrix) ----
+function scoreOf(r){return r.flags.apptViol.length*1e7 + (r.finishMin||0)*100 + (r.driveMin||0);}
+function optimiseOrder(d,v,sc,jobs){
+  jobs=jobs||jobsForVeh(d,v,sc);
+  const m=matrixFor(d);
+  const routable=jobs.filter(j=>jobIdx(d,j.id)>0);
+  const unroutable=jobs.filter(j=>jobIdx(d,j.id)<=0||j.geo===false);
+  if(!m||!m.dur||routable.length<2){const order=routable.concat(unroutable);return {order,sim:simulate(d,v,sc,order)};}
+  const locks=(sc.locks&&sc.locks[v])||{};
+  const lockedKeys=Object.keys(locks).filter(k=>locks[k]);
+  // construction: timed jobs (hard+window) in time order, then insert the rest cheapest by travel
+  const timed=routable.filter(j=>{const a=normAppt(j.appt);return a&&a.start!=null&&(a.type==='hard'||a.type==='window');}).sort((a,b)=>normAppt(a.appt).start-normAppt(b.appt).start);
+  const rest=routable.filter(j=>timed.indexOf(j)<0);
+  let order=timed.slice();
+  const idxOf=j=>jobIdx(d,j.id);
+  rest.forEach(j=>{const ji=idxOf(j);let bp=order.length,bc=Infinity;
+    for(let p=0;p<=order.length;p++){const prev=p===0?0:idxOf(order[p-1]),next=p===order.length?0:idxOf(order[p]);
+      const add=(legSec(d,prev,ji)||0)+(legSec(d,ji,next)||0)-(legSec(d,prev,next)||0);if(add<bc){bc=add;bp=p;}}
+    order.splice(bp,0,j);});
+  // keep any pre-locked jobs at their current (manual) index if a manual order exists
+  const man=sc.order&&sc.order[v];
+  if(man&&lockedKeys.length){const byKey={};routable.forEach(j=>byKey[jobKey(j)]=j);
+    const desired=man.map(k=>byKey[k]).filter(Boolean);
+    lockedKeys.forEach(k=>{const pos=desired.findIndex(j=>jobKey(j)===k);const job=byKey[k];if(job&&pos>=0){const cur=order.indexOf(job);if(cur>=0)order.splice(cur,1);order.splice(Math.min(pos,order.length),0,job);}});}
+  const isLocked=j=>!!locks[jobKey(j)];
+  let best=order.slice(),bestR=simulate(d,v,sc,best.concat(unroutable)),bestS=scoreOf(bestR),guard=0,improved=true;
+  while(improved&&guard++<60){improved=false;
+    // 2-opt segment reversals (skip if it moves a locked job)
+    for(let i=0;i<best.length-1;i++)for(let j2=i+1;j2<best.length;j2++){
+      let anyLock=false;for(let z=i;z<=j2;z++)if(isLocked(best[z])){anyLock=true;break;}if(anyLock)continue;
+      const cand=best.slice(0,i).concat(best.slice(i,j2+1).reverse(),best.slice(j2+1));
+      const r=simulate(d,v,sc,cand.concat(unroutable)),s=scoreOf(r);
+      if(s<bestS-1){best=cand;bestR=r;bestS=s;improved=true;}
+    }
+    // or-opt: move a single job to a better position
+    for(let i=0;i<best.length;i++){ if(isLocked(best[i]))continue; const job=best[i];
+      for(let p=0;p<=best.length;p++){ if(p===i||p===i+1)continue;
+        const without=best.slice(0,i).concat(best.slice(i+1)); const at=p>i?p-1:p;
+        const cand=without.slice(0,at).concat([job],without.slice(at));
+        const r=simulate(d,v,sc,cand.concat(unroutable)),s=scoreOf(r);
+        if(s<bestS-1){best=cand;bestR=r;bestS=s;improved=true;break;}
+      }
+    }
+  }
+  const order2=best.concat(unroutable);
+  return {order:order2,sim:bestR};
+}
+
+// ---- per-vehicle assessment (wraps optimise + simulate; the one engine every view uses) ----
 function assessVeh(d,v,sc){
-  const crew=crewByVeh(sc)[v]||[];
-  const jobs=activeJobs(d).filter(j=>vehOfJob(sc,j)===v);
-  const onSiteH=jobs.reduce((s,j)=>s+(j.est||0),0)/60;
-  const k=crew.length;
-  const win=vehWindow(d,crew);
-  const rp=planRoute(d,jobs);
-  const driveH=rp.driveSec!=null?rp.driveSec/3600:null;
-  const onSitePer=k?onSiteH/k:onSiteH;
-  const elapsed=(driveH!=null)?driveH+onSitePer:null;              // working content, excl. break
-  const finishMin=(elapsed!=null)?win.startMin+(elapsed+BREAK())*60:null;
-  const util=(elapsed!=null&&win.netH>0)?Math.round(elapsed/win.netH*100):null;
-  const needSpec=jobs.some(j=>j.skill==='Specialist'||j.skill==='Mixed');
-  const haveSpec=crew.some(isSpec);
-  const missingEst=jobs.filter(j=>j.est==null).length;
-  const regions=[...new Set(jobs.map(j=>j.area))];
-  const xfer=crew.filter(e=>isCrossOU(d,e));
-  let minNeed=null; if(driveH!=null&&k){for(let kk=1;kk<=6;kk++){if(driveH+onSiteH/kk<=win.netH){minNeed=kk;break;}}}
-  const drivingFloorBlocks=(driveH!=null&&driveH>win.netH);
-  let status='g',reasons=[],ot=0;
-  if(!jobs.length){status='n';}
-  else if(!k){status='r';reasons.push('No crew assigned — this truck can’t run its '+r1(onSiteH)+'h of on-site work');}
-  else if(needSpec&&!haveSpec){status='r';reasons.push('Garden/hedge work but no specialist (Blake/Julen) on this crew');}
-  else if(driveH==null){status='a';reasons.push('⚠ Driving time unverified'+(rp.unroutable.length?' — '+rp.unroutable.length+' address(es) couldn’t be located':(ROUTING()?' — routing data not ready for this day':' — routing not configured'))+'. On-site work alone is '+r1(onSitePer)+'h across '+k+' crew; real finish will be later once driving is added.');}
-  else if(elapsed>win.netH){status='r';ot=r1(elapsed-win.netH);reasons.push(r1(onSiteH)+'h on-site ÷ '+k+' + '+r1(driveH)+'h driving = '+r1(elapsed)+'h, over the '+r1(win.netH)+'h window by ~'+ot+'h'+(drivingFloorBlocks?' — driving alone ('+r1(driveH)+'h) exceeds the window, so more crew won’t fix it; split jobs to the other truck':(minNeed&&minNeed>k?'; needs '+minNeed+' crew on this truck':'')));}
-  else if(util!=null&&util>90){status='a';reasons.push('Tight — '+r1(elapsed)+'h of the '+r1(win.netH)+'h window ('+util+'%)');}
-  if(missingEst>0&&status!=='r'){if(status==='g')status='a';reasons.push(missingEst+' job(s) missing an EST (on-site understated)');}
-  if(win.uneven&&status!=='r'){if(status==='g')status='a';reasons.push('Crew shifts end at different times — capacity drops later in the day');}
-  if(xfer.length&&status==='g')status='a';
-  return {v,crew,jobs,onSiteH,driveH,elapsed,finishMin,util,k,win,needSpec,haveSpec,missingEst,regions,status,reasons,ot,xfer,minNeed,route:rp};
+  const ordered=effectiveOrder(d,v,sc);
+  const r=simulate(d,v,sc,ordered);
+  r.jobs=jobsForVeh(d,v,sc);
+  r.xfer=r.flags.outside.slice();
+  return r;
 }
 const RANK={r:3,a:2,g:1,n:0};
 function assessDay(d,sc){
   sc=sc||defaultScenario(d);
-  const ros=rosterOn(d), avail=availOn(d);
+  const ros=rosterOn(d),avail=availOn(d);
   const vehs=VEH().map(v=>assessVeh(d,v,sc));
   const active=activeJobs(d);
   const onSiteH=active.reduce((s,j)=>s+(j.est||0),0)/60;
-  const driveVals=vehs.filter(a=>a.jobs.length).map(a=>a.driveH);
+  const driveVals=vehs.filter(a=>a.order.length).map(a=>a.driveH);
   const driveKnown=driveVals.length&&driveVals.every(x=>x!=null);
   const driveH=driveKnown?driveVals.reduce((s,x)=>s+x,0):null;
   let status=active.length?'g':'n';
-  vehs.forEach(a=>{ if(a.status!=='n'&&RANK[a.status]>RANK[status]) status=a.status; });
-  if(active.length&&!ros.length&&isDefault(d)) status='r';
+  vehs.forEach(a=>{if(a.status!=='n'&&RANK[a.status]>RANK[status])status=a.status;});
+  if(active.length&&!ros.length&&isDefault(d))status='r';
   const workingCount=Object.values(avail).filter(a=>a.working).length;
-  return {date:d, vehs, active, resched:reschedJobs(d), onSiteH, driveH, ros, avail, workingCount, status};
+  return {date:d,vehs,active,resched:reschedJobs(d),onSiteH,driveH,ros,avail,workingCount,status};
 }
 
 // ---- weekly ----
@@ -236,23 +384,23 @@ function shiftWeek(delta){ const nd=new Date(weekAnchor+'T12:00:00'); nd.setDate
 function renderWeek(){
   const first=DATA.dates[0], last=DATA.dates[DATA.dates.length-1];
   const canPrev=DATA.week[0]>first, canNext=DATA.week[4]<last;
-  const nav='<div style="display:flex;align-items:center;gap:12px;margin:10px 0;flex-wrap:wrap"><button class="btn ghost sm" id=wprev '+(canPrev?'':'disabled')+'>◀ Prev</button><b>Week of '+fmtDate(DATA.week[0])+'</b><span class=rotbadge title="Fortnightly rotation">↻ Rotation '+rotLabel(DATA.week[0])+'</span><button class="btn ghost sm" id=wnext '+(canNext?'':'disabled')+'>Next ▶</button></div>';
+  const nav='<div style="display:flex;align-items:center;gap:12px;margin:10px 0;flex-wrap:wrap"><button class="btn ghost sm" id=wprev '+(canPrev?'':'disabled')+'>◀ Prev</button><b>Week of '+fmtDate(DATA.week[0])+'</b><span class=rotbadge title="Fortnightly rotation">↻ '+rotLabel(DATA.week[0])+'</span><button class="btn ghost sm" id=wnext '+(canNext?'':'disabled')+'>Next ▶</button></div>';
   $('p-week').innerHTML=nav+'<div class=weekstrip>'+DATA.week.map(date=>{
     const a=assessDay(date,defaultScenario(date)); const dd=new Date(date+'T12:00:00');
     const col=a.status==='g'?'#2e8b57':a.status==='a'?'#d9a520':a.status==='r'?'#c4452b':'#cfd8d2';
     const done=a.active.filter(j=>j.done).length;
-    const maxUtil=a.vehs.reduce((m,x)=>Math.max(m,x.util||0),0);
+    const maxFill=a.vehs.reduce((m,x)=>{if(x.win&&x.win.netH&&x.onSiteClockH!=null&&x.driveH!=null){return Math.max(m,Math.round((x.onSiteClockH+x.driveH)/x.win.netH*100));}return m;},0);
     return '<div class=daycard data-d="'+date+'">'+
       '<div class=dn>'+DOW[dd.getDay()]+'</div><div class=dd>'+dd.getDate()+' '+dd.toLocaleDateString('en-AU',{month:'short'})+'</div>'+
       (a.active.length?('<div class=big>'+r1(a.onSiteH)+'<span style="font-size:12px;color:#8a988f"> h site</span></div>'+
       '<div class=u>'+(a.driveH!=null?'+ '+r1(a.driveH)+'h drive':'<span style="color:#b07d2a">drive n/a</span>')+' · '+a.active.length+' jobs · '+a.ros.length+' crew'+(done===a.active.length&&a.active.length?' · ✓ done':done?' · ✓'+done+'/'+a.active.length:'')+(a.resched.length?' · ↩ '+a.resched.length:'')+'</div>'+
       '<div class=u style="color:#8a988f">'+a.vehs.filter(x=>x.status!=='n').map(x=>x.v+' '+STLABEL[x.status][0]).join(' · ')+'</div>'+
-      '<div class=statusbar><span style="width:'+Math.min(100,maxUtil)+'%;background:'+col+'"></span></div>'+
+      '<div class=statusbar><span style="width:'+Math.min(100,maxFill)+'%;background:'+col+'"></span></div>'+
       '<span class="pill '+a.status+'">'+STLABEL[a.status]+'</span>')
       :'<div class=big style="color:#cfd8d2;font-size:15px;margin-top:12px">No jobs</div><div class=u>'+(a.ros.length?esc(a.ros.map(x=>x.emp).join(' + '))+' rostered':'no roster')+'</div><span class="pill n">—</span>')+
       '</div>';
   }).join('')+'</div>'+
-  '<div class=note>Tap a day for the per-vehicle plan + routes. Hours = on-site EST (one-person) plus real road driving for each vehicle. Status reflects whether each crew can finish on-site work + driving inside its shift.</div>';
+  '<div class=note>Tap a day for the per-vehicle plan + optimised routes. Hours = on-site EST (crew-adjusted) plus real road driving for each vehicle. Status reflects whether each crew can finish on-site work + driving inside its shift and meet every fixed appointment.</div>';
   [...document.querySelectorAll('.daycard')].forEach(c=>c.onclick=()=>openDay(c.dataset.d));
   if($('wprev'))$('wprev').onclick=()=>shiftWeek(-1);
   if($('wnext'))$('wnext').onclick=()=>shiftWeek(1);
@@ -260,75 +408,92 @@ function renderWeek(){
 
 // ---- daily ----
 function openDay(d){curDay=d;scenario=defaultScenario(d);document.querySelector('.tb[data-p=day]').click();renderDay();}
-function fmtDur(min){min=Math.round(min);if(min<60)return min+' min';const h=Math.floor(min/60),m=min%60;return h+'h'+(m?' '+m+'m':'');}
-// Stop-by-stop itinerary with travel + arrival/departure (on-site shared across the crew).
 function buildItinerary(a){
-  const d=curDay, k=Math.max(1,a.k||1), verified=a.driveH!=null;
-  let t=a.win.startMin, prev=0, rows='', breakDone=false;
-  const half=Math.floor(a.route.order.length/2), bk=BREAK()*60;
-  a.route.order.forEach((j,i)=>{
-    const idx=jobIdx(d,j.id);
-    let trav=null; if(idx>0){const s=legSec(d,prev,idx); trav=s!=null?Math.round(s/60):null;}
-    if(verified&&trav!=null) t+=trav;
-    const arrive=t;
-    const onsite=(j.est!=null?j.est:0)/k;
-    const depart=arrive+onsite;
-    rows+='<div class=legrow><div class=t>'+(verified?(trav!=null?'🚗 '+trav+'m':'🚗 —'):'🚗 ·')+'</div><div style="flex:1">'+
-      '<b>'+(i+1)+'. '+esc(j.address)+'</b>'+(j.appt?' <span class=appt>⏰'+(j.appt==='STRICT'?'STRICT':esc(j.appt))+'</span>':'')+(idx<=0?' <span class=tag>no location</span>':'')+
-      '<div class=note>'+(verified&&idx>0?'arrive '+fmtClock(arrive)+' → leave '+fmtClock(depart)+' · ':'')+(j.est!=null?j.est+'m on-site'+(k>1?' ÷'+k+'≈'+Math.round(onsite)+'m':''):'<span style="color:#b07d2a">no EST</span>')+'</div></div></div>';
-    if(idx>0){prev=idx; t=depart;}
-    if(verified&&!breakDone&&bk&&i===half){ t+=bk; breakDone=true; rows+='<div class=legrow><div class=t>☕ '+Math.round(bk)+'m</div><div style="flex:1"><b>Break</b><div class=note>until '+fmtClock(t)+'</div></div></div>'; }
+  if(!a.stops.length)return '<div class=note>No stops.</div>';
+  const d=curDay,verified=a.driveComplete; let rows='',n=0;
+  a.stops.forEach((s,i)=>{
+    if(s.breakInsertedBefore){}
+    if(a.breakBefore===i&&verified){ rows+='<div class=legrow><div class=t>☕ '+BREAKM()+'m</div><div style="flex:1"><b>Break</b><div class=note>until '+fmtClock(a.breakAt+BREAKM())+'</div></div></div>'; }
+    if(s.unroutable){ rows+='<div class=legrow><div class=t>⚠</div><div style="flex:1"><b>'+esc(s.job.address)+' <span class=tag>no location</span></b><div class=note>'+(s.job.est!=null?s.job.est+'m on-site':'no EST')+' · can’t be routed until the address is fixed</div></div></div>'; return; }
+    n++;
+    const trav=s.legMin;
+    rows+='<div class=legrow><div class=t>'+(verified?(trav!=null?'\u{1F697} '+trav+'m':'\u{1F697} —'):'\u{1F697} ·')+'</div><div style="flex:1">'+
+      '<b>'+n+'. '+esc(s.job.address)+'</b>'+apptTag(s.appt)+(s.viol?' <span class=viol>⚠ late</span>':'')+
+      '<div class=note>'+(verified?'arrive '+fmtClock(s.arrive)+(s.waited?' · wait '+fmtDur(s.waited):'')+' → start '+fmtClock(s.serviceStart)+' → leave '+fmtClock(s.depart)+' · ':'')+(s.job.est!=null?s.job.est+'m'+(s.cap>1?' ÷'+s.cap+'≈'+Math.round(s.onsiteMin)+'m':' on-site'):'<span style="color:#b07d2a">no EST</span>')+' · '+esc(s.crewHere.join(', ')||'no crew')+'</div></div></div>';
   });
-  if(verified){ const back=legSec(d,prev,0); if(back!=null){ t+=Math.round(back/60); rows+='<div class=legrow><div class=t>🚗 '+Math.round(back/60)+'m</div><div style="flex:1"><b>↩ Return to depot</b><div class=note>'+fmtClock(t)+'</div></div></div>'; } }
-  return rows||'<div class=note>No routable stops.</div>';
+  if(verified){ const back=legMin(d,jobIdx(d,a.stops.filter(s=>!s.unroutable).slice(-1)[0].job.id),0);
+    rows+='<div class=legrow><div class=t>\u{1F697} '+(back!=null?back+'m':'—')+'</div><div style="flex:1"><b>↩ Return to depot</b><div class=note>'+fmtClock(a.finishMin)+'</div></div></div>'; }
+  return rows;
+}
+function crewChips(a){
+  if(!a.crew.length)return '<span class=note>no crew</span>';
+  return a.crew.map(c=>'<span class="chip'+(c.cross||c.outside?' warn':'')+(c.spec?' spec':'')+'">'+esc(c.emp)+(c.spec?' ✦':'')+' <span class=h>'+fmtClock(c.start)+'–'+fmtClock(c.end)+(c.custom?' · '+fmtDur(c.end-c.start):'')+'</span></span>').join('');
 }
 function vehCard(a){
   const stLabel=a.status==='r'?'Over capacity':a.status==='a'?'Tight':a.status==='g'?'OK':'No work';
-  const verified=a.driveH!=null, bk=BREAK();
-  const onSitePer=a.k?a.onSiteH/a.k:a.onSiteH;
-  const driveH=verified?a.driveH:0;
-  const normalH=a.win.grossH||MAXH();                 // normal working window (roster shift length)
-  const totalH=onSitePer+driveH+bk;                    // full clock day incl. break
-  const scale=Math.max(totalH,normalH)*1.03;
+  const verified=a.driveComplete, bk=BREAK();
+  const onSitePer=a.onSiteClockH||0, driveH=verified?a.driveH:0;
+  const normalH=a.win.grossH||MAXH();
+  const totalH=verified?(a.finishMin-a.win.startMin)/60:onSitePer+bk;
+  const scale=Math.max(totalH,normalH)*1.04;
   const pc=x=>Math.max(0,Math.min(100,x/scale*100));
-  const markPc=normalH/scale*100;
-  const overMin=verified?Math.max(0,Math.round((a.elapsed-a.win.netH)*60)):null;
-  const bufMin =verified?Math.max(0,Math.round((a.win.netH-a.elapsed)*60)):null;
-  let h='<div class=card><div class=vhead><h3>🚚 '+esc(a.v)+' — '+(a.crew.length?esc(a.crew.join(' + ')):'<span class=note>no crew</span>')+(a.needSpec&&!a.haveSpec?' <span class=appt>no specialist</span>':'')+'</h3>'+
-    '<span class="pill '+a.status+'">'+(a.status==='r'?'🔴 ':a.status==='a'?'🟡 ':a.status==='g'?'🟢 ':'')+stLabel+'</span></div>';
-  // stacked day bar + normal-window marker
-  h+='<div class=barkey><span><i class=seg-site></i>On-site</span><span><i class=seg-drive></i>Driving</span>'+(bk?'<span><i class=seg-break></i>Break</span>':'')+'<span style="margin-left:auto;font-weight:700">⟂ '+r1(normalH)+'h normal window</span></div>'+
+  const markPc=Math.min(99,normalH/scale*100);
+  // optimisation comparison vs feed order
+  let cmp='';
+  if(verified&&a.jobs.length>1){ const naive=simulate(curDay,a.v,scenario,a.jobs.slice());
+    if(naive.driveComplete){ const dSave=Math.round(naive.driveMin-a.driveMin), fSave=Math.round(naive.finishMin-a.finishMin);
+      if(dSave>1||fSave>1) cmp='<div class=cmp>✨ Optimised order saves ~'+Math.max(0,dSave)+'m driving'+(fSave>1?' and finishes '+fmtDur(fSave)+' earlier':'')+' vs unordered.</div>';
+      else cmp='<div class="cmp neutral">Route already near-optimal for this crew.</div>'; } }
+  let h='<div class=card><div class=vhead><h3>\u{1F69A} '+esc(a.v)+(a.crew.length?'':' <span class=note>no crew</span>')+(a.needSpec&&!a.haveSpec?' <span class=appt>no specialist</span>':'')+'</h3>'+
+    '<span class="pill '+a.status+'">'+(a.status==='r'?'\u{1F534} ':a.status==='a'?'\u{1F7E1} ':a.status==='g'?'\u{1F7E2} ':'')+stLabel+'</span></div>';
+  h+='<div style="margin:4px 0 8px">'+crewChips(a)+'</div>';
+  h+='<div class=barkey><span><i class=seg-site></i>On-site</span><span><i class=seg-drive></i>Driving</span>'+(bk?'<span><i class=seg-break></i>Break</span>':'')+'<span style="margin-left:auto;font-weight:700">⟂ '+r1(normalH)+'h shift</span></div>'+
     '<div class=daybar>'+
       '<span class=seg-site style="width:'+pc(onSitePer)+'%" title="On-site '+r1(onSitePer)+'h"></span>'+
       (verified?'<span class=seg-drive style="width:'+pc(driveH)+'%" title="Driving '+r1(driveH)+'h"></span>':'<span class=seg-un style="width:'+pc(Math.max(0.5,onSitePer*0.12))+'%" title="Driving unverified"></span>')+
-      (bk?'<span class=seg-break style="width:'+pc(bk)+'%" title="Break '+Math.round(bk*60)+'m"></span>':'')+
+      (bk?'<span class=seg-break style="width:'+pc(bk)+'%" title="Break '+BREAKM()+'m"></span>':'')+
       '<span class=mark style="left:'+markPc+'%"></span><span class=marklbl style="left:'+markPc+'%">'+r1(normalH)+'h</span>'+
     '</div>';
-  // stats
   h+='<div class=vstat>'+
      '<div><div class=k>On-site · '+(a.k||0)+' crew</div><b style="color:#2e8b57">'+r1(onSitePer)+'h</b></div>'+
      '<div><div class=k>Driving</div><b style="color:#c47a16">'+(verified?r1(driveH)+'h':'n/a')+'</b></div>'+
      '<div><div class=k>Total day</div><b>'+(verified?r1(totalH)+'h':'—')+'</b></div>'+
-     '<div><div class=k>Start</div><b>'+fmtClock(a.win.startMin)+'</b></div>'+
+     '<div><div class=k>Start</div><b>'+(a.startMin!=null?fmtClock(a.startMin):'—')+'</b></div>'+
      '<div><div class=k>Finish</div><b>'+(a.finishMin!=null?fmtClock(a.finishMin)+(verified?'':' ?'):'—')+'</b></div>'+
-     (overMin>0?'<div><div class=k style="color:#b4452b">Overtime</div><b style="color:#b4452b">'+fmtDur(overMin)+'</b></div>'
-       :(bufMin>0?'<div><div class=k style="color:#1a7a43">Buffer</div><b style="color:#1a7a43">'+fmtDur(bufMin)+'</b></div>'
-       :'<div><div class=k>Finish vs window</div><b>on time</b></div>'))+
+     (a.ot>0?'<div><div class=k style="color:#b4452b">Overtime</div><b style="color:#b4452b">'+fmtDur(a.ot)+'</b></div>'
+       :(a.buffer>0?'<div><div class=k style="color:#1a7a43">Buffer</div><b style="color:#1a7a43">'+fmtDur(a.buffer)+'</b></div>'
+       :'<div><div class=k>Finish vs shift</div><b>on time</b></div>'))+
      '</div>'+
-     (a.minNeed&&a.k&&a.minNeed>a.k?'<div class=note style="color:#b4452b;font-weight:700;margin-top:2px">Needs '+a.minNeed+' crew to finish in the window (has '+a.k+')</div>':'');
-  if(!verified) h+='<div class="rec info" style="margin-top:6px">Driving time unverified — total day and finish are estimates only until routes are available.</div>';
-  if(a.xfer&&a.xfer.length) h+='<div class=rec style="margin-top:6px;background:#fff4d6;border-color:#f0e2c4;color:#7a5e12">⚠ '+esc(a.xfer.join(', '))+' '+(a.xfer.length>1?'are':'is')+' on another brand today — needs approval + a Deputy roster change.</div>';
-  if(a.reasons.length&&a.status!=='g') h+='<div class="rec '+(a.status==='r'?'bad':'')+'" style="margin-top:6px">'+esc(a.reasons.join('. '))+'.</div>';
-  if(a.jobs.length){
-    h+='<details style="margin-top:8px"><summary class=note style="cursor:pointer;font-weight:700">📍 Full itinerary — '+a.route.order.length+' stops'+(verified?' · ~'+r1(driveH)+'h driving, depot → stops → depot':' · driving unverified')+(a.route.hasAppt?' · fixed-time jobs pinned':'')+'</summary>'+
-      '<div style="margin-top:4px">'+buildItinerary(a)+'</div></details>'+
+     (a.minNeed&&a.k&&a.minNeed>a.k?'<div class=note style="color:#b4452b;font-weight:700;margin-top:2px">Needs ~'+a.minNeed+' full crew to fit the shift (has '+a.k+')</div>':'');
+  h+=cmp;
+  if(!verified) h+='<div class="rec info" style="margin-top:6px">Driving incomplete'+(a.flags.unroutable.length?' — '+a.flags.unroutable.length+' address(es) not located':'')+' — finish is an estimate and the day can’t be marked Green.</div>';
+  if(a.flags.transport.length) h+='<div class=rec style="margin-top:6px">\u{1F699} '+a.flags.transport.map(t=>esc(t.emp)+(t.kind==='leaves'?' leaves '+fmtClock(t.at)+' mid-route'+(t.where?' near '+esc(t.where):''):' joins '+fmtClock(t.at))).join('; ')+' — arrange a drop-off / pick-up or own transport.</div>';
+  if(a.xfer&&a.xfer.length) h+='<div class=rec style="margin-top:6px;background:#fff4d6;border-color:#f0e2c4;color:#7a5e12">⚠ '+esc(a.xfer.join(', '))+' '+(a.xfer.length>1?'are':'is')+' outside their Deputy roster / on another brand — needs approval + a roster change.</div>';
+  if(a.reasons.length&&a.status!=='g') h+='<div class="rec '+(a.status==='r'?'bad':'')+'" style="margin-top:6px">'+a.reasons.map(esc).join('. ')+'.</div>';
+  if(a.order.length){
+    h+='<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-opt="'+esc(a.v)+'">✨ Optimise route</button>'+((scenario.order&&scenario.order[a.v])?'<button class="btn ghost sm" data-optreset="'+esc(a.v)+'">Reset order</button>':'')+'</div>';
+    h+='<details style="margin-top:8px"'+((scenario.order&&scenario.order[a.v])?' open':'')+'><summary class=note style="cursor:pointer;font-weight:700">\u{1F4CD} Full itinerary — '+a.stops.filter(s=>!s.unroutable).length+' stops'+(verified?' · ~'+r1(driveH)+'h driving, depot → stops → depot':' · driving unverified')+'</summary>'+
+      '<div style="margin-top:4px">'+buildItinerary(a)+'</div>'+
+      '<div style="margin-top:8px">'+reorderUI(a)+'</div></details>'+
       '<details style="margin-top:4px"><summary class=note style="cursor:pointer">Job list ('+a.jobs.length+')</summary>'+a.jobs.map(jobRow).join('')+'</details>';
   } else h+='<div class=note style="margin-top:8px">No jobs allocated to this vehicle.</div>';
   return h+'</div>';
 }
+function reorderUI(a){
+  const stops=a.stops.filter(s=>!s.unroutable);
+  if(stops.length<2)return '';
+  let h='<div class=note style="font-weight:700;margin-bottom:3px">Manual order &amp; locks</div>';
+  stops.forEach((s,i)=>{const k=jobKey(s.job);const locked=!!(scenario.locks&&scenario.locks[a.v]&&scenario.locks[a.v][k]);
+    h+='<div class=helperrow data-ro="'+esc(a.v)+'"><button class=ordbtn data-mv="up" data-k="'+esc(k)+'"'+(i===0?' disabled':'')+'>▲</button><button class=ordbtn data-mv="down" data-k="'+esc(k)+'"'+(i===stops.length-1?' disabled':'')+'>▼</button>'+
+      '<span style="flex:1;min-width:120px;font-size:12.5px">'+(i+1)+'. '+esc(s.job.address)+apptTag(s.appt)+'</span>'+
+      '<button class="lockbtn'+(locked?' on':'')+'" data-lock="'+esc(k)+'">'+(locked?'\u{1F512} locked':'\u{1F513} lock')+'</button></div>';
+  });
+  return h;
+}
 function jobRow(j){
+  const ap=normAppt(j.appt);
   return '<div class=job'+(j.done?' style="opacity:.45"':'')+'><div class=jmins>'+(j.est!=null?j.est+'m':'—')+'</div><div style="flex:1">'+
-    '<div class=jaddr>'+(j.done?'✓ ':'')+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span>'+(j.appt?'<span class=appt>'+(j.appt==='STRICT'?'⏰STRICT':'⏰'+esc(j.appt))+'</span>':'')+(j.geo===false?'<span class=tag title="address not located">⚠ no location</span>':'')+'</div>'+
+    '<div class=jaddr>'+(j.done?'✓ ':'')+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span>'+apptTag(ap)+(j.geo===false?'<span class=tag title="address not located">⚠ no location</span>':'')+'</div>'+
     '<div class=jsvc>'+esc(j.service||'')+' · '+esc(j.area)+'</div>'+
     (j.subtasks&&j.subtasks.length?'<details style="margin-top:4px"><summary class=note style="cursor:pointer">'+j.subtasks.length+' tasks</summary><ul style="margin:4px 0;padding-left:18px;font-size:12.5px;color:#5b6b60">'+j.subtasks.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ul></details>':'')+
     '</div></div>';
@@ -336,29 +501,31 @@ function jobRow(j){
 function dayRecs(day){
   const out=[];
   if(!day.active.length){out.push(['','No jobs scheduled this day.']);return out;}
-  const parts=day.vehs.filter(a=>a.jobs.length).map(a=>{
-    if(a.driveH==null) return a.v+' '+r1(a.onSiteH)+'h on-site: driving unverified — staffing can’t be confirmed until routes are available';
-    if(!a.minNeed) return a.v+': driving alone ('+r1(a.driveH)+'h) won’t fit the window — split jobs to the other truck';
-    return a.v+' '+r1(a.onSiteH)+'h on-site + '+r1(a.driveH)+'h drive: needs '+a.minNeed+' '+(a.minNeed>1?'people':'person')+(a.k?' (has '+a.k+')':'');
+  const parts=day.vehs.filter(a=>a.order.length).map(a=>{
+    if(a.driveH==null) return a.v+' '+r1(a.onSiteH)+'h on-site: driving incomplete — confirm once addresses/routes resolve';
+    if(a.flags.apptViol.length) return a.v+': can’t meet '+a.flags.apptViol.length+' fixed appointment(s) — add crew earlier or move a job to the other truck';
+    if(a.minNeed==null) return a.v+': driving alone ('+r1(a.driveH)+'h) won’t fit the shift — split jobs to the other truck';
+    return a.v+' '+r1(a.onSiteH)+'h on-site + '+r1(a.driveH)+'h drive: '+(a.ot>0?'needs ~'+a.minNeed+' '+(a.minNeed>1?'people':'person')+(a.k?' (has '+a.k+')':''):'fits with '+a.k+' crew, finish '+fmtClock(a.finishMin));
   });
   const anyR=day.vehs.some(a=>a.status==='r'), anyA=day.vehs.some(a=>a.status==='a');
-  out.push([anyR?'bad':anyA?'':'ok','👥 Crew to finish within the shift — '+parts.join(' · ')]);
+  out.push([anyR?'bad':anyA?'':'ok','\u{1F465} Crew & timing — '+parts.join(' · ')]);
   if(!day.ros.length&&isDefault(day.date)){out.push(['bad','No one is rostered to myMowing in Deputy for this day. Roster crew (and set their vehicle in the shift comment).']);}
   day.vehs.forEach(a=>{
-    if(a.xfer&&a.xfer.length) out.push(['','⚠ '+a.v+': '+a.xfer.join(', ')+' '+(a.xfer.length>1?'are':'is')+' on another brand today — needs approval + a Deputy roster change.']);
+    if(a.xfer&&a.xfer.length) out.push(['','⚠ '+a.v+': '+a.xfer.join(', ')+' outside roster/another brand — needs approval + a Deputy roster change.']);
+    if(a.flags.transport.length) out.push(['info','\u{1F699} '+a.v+': '+a.flags.transport.map(t=>t.emp+(t.kind==='leaves'?' leaves mid-route '+fmtClock(t.at):' joins '+fmtClock(t.at))).join('; ')+' — plan transport.']);
     if(a.status==='r'){
       if(!a.k) out.push(['bad',a.v+': no crew assigned but '+r1(a.onSiteH)+'h of work. Allocate crew below, or move its jobs to the other truck.']);
       else if(a.needSpec&&!a.haveSpec) out.push(['bad',a.v+': garden/hedge jobs but no specialist. Put Blake or Julen on '+a.v+'.']);
-      else out.push(['bad',a.v+': '+a.reasons[0]+'.']);
+      else if(a.reasons.length) out.push(['bad',a.v+': '+a.reasons[0]+'.']);
     } else if(a.status==='a'&&a.reasons.length){ out.push([a.driveH==null?'info':'',a.v+': '+a.reasons.join('. ')+'.']); }
   });
-  if(day.vehs.every(a=>a.status==='g'||a.status==='n')&&!day.vehs.some(a=>a.xfer&&a.xfer.length)) out.push(['ok','Both vehicles can complete their work (on-site + driving) with the rostered crew. No extra staff or overtime needed.']);
+  if(day.vehs.every(a=>a.status==='g'||a.status==='n')&&!day.vehs.some(a=>(a.xfer&&a.xfer.length)||a.flags.transport.length)) out.push(['ok','Both vehicles can complete their work (on-site + driving) with the rostered crew and meet every fixed appointment. No extra staff or overtime needed.']);
   return out;
 }
 function renderDay(){
   const day=assessDay(curDay,scenario);
   let h='<div class=card><div class=vhead><h2 style="margin:0">'+fmtDate(curDay)+'</h2>'+
-    '<span class=rotbadge>↻ Rotation '+rotLabel(curDay)+'</span>'+
+    '<span class=rotbadge>↻ '+rotLabel(curDay)+'</span>'+
     '<span class="pill '+day.status+'" style="font-size:12px">'+STLABEL[day.status]+'</span></div>'+
     '<div class=kv>'+
     '<div><div class=k>Jobs</div><div class=v>'+day.active.length+'</div></div>'+
@@ -372,13 +539,32 @@ function renderDay(){
   h+=reschedPanel(day);
   h+='<h2>What-if planner</h2><div id=wiMount>'+renderWI()+'</div>';
   const nd=nextPlannableDay();
-  h+='<div style="margin:16px 0;display:flex;gap:8px;flex-wrap:wrap"><button class=btn id=wa>📲 '+fmtShort(nd)+' — summary</button> <button class=btn id=wadet>📋 '+fmtShort(nd)+' — run sheet</button> <button class="btn ghost" id=waday>Copy '+fmtShort(curDay)+'</button> <button class="btn ghost" id=wadayd>'+fmtShort(curDay)+' — detailed</button></div>';
+  h+='<div style="margin:16px 0;display:flex;gap:8px;flex-wrap:wrap"><button class=btn id=wa>\u{1F4F2} '+fmtShort(nd)+' — summary</button> <button class=btn id=wadet>\u{1F4CB} '+fmtShort(nd)+' — run sheet</button> <button class="btn ghost" id=waday>Copy '+fmtShort(curDay)+'</button> <button class="btn ghost" id=wadayd>'+fmtShort(curDay)+' — detailed</button></div>';
   $('p-day').innerHTML=daySelector()+h;
-  wireSel();wireWI();
+  wireSel();wireWI();wireCards();
   $('wa').onclick=()=>copyWA(nextPlannableDay());
   $('wadet').onclick=()=>copyWA(nextPlannableDay(),true);
   $('waday').onclick=()=>copyWA(curDay);
   $('wadayd').onclick=()=>copyWA(curDay,true);
+}
+function wireCards(){
+  [...document.querySelectorAll('[data-opt]')].forEach(b=>b.onclick=()=>{
+    const v=b.dataset.opt; const before=simulate(curDay,v,scenario,effectiveOrder(curDay,v,scenario));
+    const opt=optimiseOrder(curDay,v,scenario); scenario.order=scenario.order||{}; scenario.order[v]=opt.order.map(jobKey);
+    const dSave=Math.round((before.driveMin||0)-(opt.sim.driveMin||0)), fSave=Math.round((before.finishMin||0)-(opt.sim.finishMin||0));
+    toast(dSave>1||fSave>1?('Optimised '+v+' — saved ~'+Math.max(0,dSave)+'m driving'+(fSave>1?', '+fmtDur(fSave)+' earlier':'')):(v+' already optimal'));
+    renderDay();});
+  [...document.querySelectorAll('[data-optreset]')].forEach(b=>b.onclick=()=>{const v=b.dataset.optreset;if(scenario.order)delete scenario.order[v];renderDay();});
+  [...document.querySelectorAll('[data-mv]')].forEach(b=>b.onclick=()=>{
+    const v=b.closest('[data-ro]').dataset.ro,k=b.dataset.k,dir=b.dataset.mv;
+    let ord=(scenario.order&&scenario.order[v])?scenario.order[v].slice():effectiveOrder(curDay,v,scenario).map(jobKey);
+    const i=ord.indexOf(k); if(i<0)return; const j=dir==='up'?i-1:i+1; if(j<0||j>=ord.length)return;
+    const t=ord[i];ord[i]=ord[j];ord[j]=t; scenario.order=scenario.order||{};scenario.order[v]=ord; renderDay();});
+  [...document.querySelectorAll('[data-lock]')].forEach(b=>b.onclick=()=>{
+    const v=b.closest('[data-ro]').dataset.ro,k=b.dataset.lock;
+    scenario.locks=scenario.locks||{};scenario.locks[v]=scenario.locks[v]||{};
+    if(scenario.locks[v][k])delete scenario.locks[v][k];else{scenario.locks[v][k]=true; if(!(scenario.order&&scenario.order[v]))scenario.order=Object.assign(scenario.order||{},{[v]:effectiveOrder(curDay,v,scenario).map(jobKey)});}
+    renderDay();});
 }
 function reschedPanel(day){
   if(!day.resched.length)return '';
@@ -386,12 +572,13 @@ function reschedPanel(day){
   return '<details class=card style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;color:#8a6d1a;list-style:none">↩ Rescheduled / postponed / cancelled — '+day.resched.length+' job'+(day.resched.length>1?'s':'')+' <span class=note style="font-weight:400">(ticked done ahead of the day · not in the hours above · ~'+r1(mins/60)+'h)</span></summary>'+
     '<div style="margin-top:8px">'+day.resched.map(j=>'<div class=job style="opacity:.7"><div class=jmins>'+(j.est!=null?j.est+'m':'—')+'</div><div style="flex:1"><div class=jaddr>'+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span></div><div class=jsvc>'+esc(j.service||'')+' · '+esc(j.area)+'</div></div></div>').join('')+'</div></details>';
 }
+
 // ---- what-if ----
 function renderWI(){
   const avail=availOn(curDay);
   const def=isDefault(curDay);
   let h='<div class=wi><div class=vhead><h3 style="margin:0">Allocate staff &amp; jobs</h3><button class="btn ghost sm" id=wiReset>Reset to Deputy roster</button></div>'+
-    '<div class=note>Only people actually working in Deputy today can be picked. myBins staff can be proposed but need approval + a roster change. Moving a job recomputes both vehicles’ routes instantly. Jobs never move off their date.</div>';
+    '<div class=note>Only people actually working in Deputy today can be picked full-day. Add a part-day helper with custom hours below. myBins/other-brand staff can be proposed but need approval + a roster change. Jobs never move off their date; moving a job re-optimises both trucks.</div>';
   h+='<div style="margin-top:8px">';
   Object.keys(DATA.staff).forEach(e=>{
     const a=avail[e]; const working=a&&a.working; const cross=working&&!a.onMowing;
@@ -403,6 +590,27 @@ function renderWI(){
       '<button data-v="off" class="'+(cur==='off'||!working?'on':'')+'"'+(working?'':' disabled')+'>Off</button></div></div>';
   });
   h+='</div>';
+  // ---- custom-hour helpers per vehicle ----
+  h+='<div style="margin-top:12px"><div class=note style="font-weight:700;color:#5b6b60">Part-day helpers (custom hours)</div>';
+  VEH().forEach(v=>{
+    const hs=(scenario.helpers&&scenario.helpers[v])||[];
+    h+='<div class=helperbox><b style="font-size:13px">\u{1F69A} '+v+'</b>';
+    hs.forEach((hp,i)=>{ const sh=rosterShift(curDay,hp.emp); const st=parseHM(hp.start),en=parseHM(hp.end);
+      const outside=sh.start!=null&&sh.end!=null?(st<sh.start-1||en>sh.end+1):!isWorking(curDay,hp.emp);
+      h+='<div class=helperrow data-helper="'+esc(v)+'" data-i="'+i+'"><b style="min-width:70px">'+esc(hp.emp)+'</b>'+
+        '<input type=time data-f=start value="'+esc(hp.start)+'" style="width:110px"> – <input type=time data-f=end value="'+esc(hp.end)+'" style="width:110px">'+
+        '<span class=note>'+fmtDur((en||0)-(st||0))+(isSpec(hp.emp)?' · specialist':'')+(outside?' · <span style="color:#b4452b;font-weight:700">outside roster — needs approval</span>':'')+'</span>'+
+        '<button class="lockbtn" data-helperdel="'+esc(v)+'" data-i="'+i+'">remove</button></div>';
+    });
+    // add control
+    const addable=Object.keys(DATA.staff);
+    h+='<div class=helperrow><select data-addhelper="'+esc(v)+'"><option value="">+ Add helper…</option>'+
+      addable.map(e=>'<option value="'+esc(e)+'">'+esc(e)+(isSpec(e)?' (spec)':'')+(isWorking(curDay,e)?'':' — not rostered')+'</option>').join('')+'</select>'+
+      '<span class=note>defaults to their roster hours (or 07:00–11:00)</span></div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  // ---- region bulk + per-job move ----
   const regionsWithJobs=REGIONS.filter(reg=>activeJobs(curDay).some(j=>j.area===reg));
   if(regionsWithJobs.length){
     h+='<div style="margin-top:12px"><div class=note style="font-weight:700;color:#5b6b60">Which vehicle runs each area <span style="font-weight:400">(bulk — sets every job in the area)</span></div>';
@@ -420,30 +628,53 @@ function renderWI(){
     h+='<details style="margin-top:12px"'+(hasOv?' open':'')+'><summary class=note style="cursor:pointer;font-weight:700;color:#5b6b60">Move individual jobs between trucks ('+aj.length+' jobs'+(hasOv?' · '+Object.keys(scenario.job).length+' moved':'')+')</summary>';
     aj.forEach(j=>{
       const cur=vehOfJob(scenario,j);
-      h+='<div class=staffrow><div style="flex:1;min-width:150px"><b>'+esc(j.address)+'</b> <span class="sk '+j.skill+'">'+j.skill+'</span><div class=note>'+(j.est!=null?j.est+'m':'—')+' · '+esc(j.area)+(j.geo===false?' · ⚠ no location':'')+'</div></div>'+
+      h+='<div class=staffrow><div style="flex:1;min-width:150px"><b>'+esc(j.address)+'</b> <span class="sk '+j.skill+'">'+j.skill+'</span>'+apptTag(normAppt(j.appt))+'<div class=note>'+(j.est!=null?j.est+'m':'—')+' · '+esc(j.area)+(j.geo===false?' · ⚠ no location':'')+'</div></div>'+
         '<div class=seg data-job="'+esc(jobKey(j))+'">'+VEH().map(v=>'<button data-v="'+v+'" class="'+(cur===v?'on':'')+'">'+v+'</button>').join('')+'</div></div>';
     });
     h+='</details>';
   }
   const base=assessDay(curDay,defaultScenario(curDay)), prop=assessDay(curDay,scenario);
-  const line=a=>a.vehs.filter(x=>x.status!=='n'||x.crew.length).map(x=>x.v+' '+STLABEL[x.status]+(x.driveH!=null?' '+r1(x.elapsed)+'h':'')+(x.finishMin!=null?'/'+fmtClock(x.finishMin):'')).join(' · ');
+  const line=a=>a.vehs.filter(x=>x.status!=='n'||x.crew.length).map(x=>x.v+' '+STLABEL[x.status]+(x.driveComplete?' '+fmtClock(x.finishMin):'')).join(' · ');
   h+='<div class="rec '+(prop.status==='g'?'ok':prop.status==='r'?'bad':'')+'" style="margin-top:12px">'+
      '<b>As rostered:</b> '+(base.vehs.every(x=>x.status==='n')?'no work':line(base))+
      '<br><b>Proposed'+(def?' (= roster)':'')+':</b> '+line(prop)+'</div>';
   h+='</div>';
   return h;
 }
+function defaultHelperHours(emp){const sh=rosterShift(curDay,emp);
+  const s=sh.start!=null?sh.start:CFGSTART(); const e=sh.end!=null?sh.end:s+4*60;
+  const p=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  return {start:p(s),end:p(Math.min(e,s+4*60))};}  // default a 4h morning block within their shift
 function wireWI(){
   const full=()=>renderDay();
   if($('wiReset'))$('wiReset').onclick=()=>{scenario=defaultScenario(curDay);full();};
   [...document.querySelectorAll('[data-emp] button')].forEach(b=>b.onclick=()=>{
-    if(b.disabled)return; const emp=b.closest('[data-emp]').dataset.emp; scenario.emp[emp]=b.dataset.v; full();});
+    if(b.disabled)return; const emp=b.closest('[data-emp]').dataset.emp; scenario.emp[emp]=b.dataset.v;
+    // if assigned full-day, drop any helper entry for the same person
+    VEH().forEach(v=>{if(scenario.helpers&&scenario.helpers[v])scenario.helpers[v]=scenario.helpers[v].filter(x=>x.emp!==emp);});
+    full();});
   [...document.querySelectorAll('[data-region] button')].forEach(b=>b.onclick=()=>{
     const reg=b.closest('[data-region]').dataset.region; scenario.region[reg]=b.dataset.v;
     if(scenario.job){ activeJobs(curDay).filter(j=>j.area===reg).forEach(j=>{delete scenario.job[jobKey(j)];}); }
+    if(scenario.order){VEH().forEach(v=>delete scenario.order[v]);}
     full();});
   [...document.querySelectorAll('[data-job] button')].forEach(b=>b.onclick=()=>{
-    const key=b.closest('[data-job]').dataset.job; scenario.job=scenario.job||{}; scenario.job[key]=b.dataset.v; full();});
+    const key=b.closest('[data-job]').dataset.job; scenario.job=scenario.job||{}; scenario.job[key]=b.dataset.v;
+    if(scenario.order){VEH().forEach(v=>delete scenario.order[v]);}
+    full();});
+  [...document.querySelectorAll('[data-addhelper]')].forEach(sel=>sel.onchange=()=>{
+    const v=sel.dataset.addhelper,emp=sel.value;if(!emp)return;
+    scenario.helpers=scenario.helpers||{};scenario.helpers[v]=scenario.helpers[v]||[];
+    if(scenario.helpers[v].some(x=>x.emp===emp)){full();return;}
+    const dh=defaultHelperHours(emp); scenario.helpers[v].push({emp,start:dh.start,end:dh.end});
+    // remove full-day assignment of this person (helper hours take over)
+    if(scenario.emp[emp]===v)scenario.emp[emp]='off';
+    full();});
+  [...document.querySelectorAll('[data-helperdel]')].forEach(b=>b.onclick=()=>{
+    const v=b.dataset.helperdel,i=+b.dataset.i;if(scenario.helpers&&scenario.helpers[v])scenario.helpers[v].splice(i,1);full();});
+  [...document.querySelectorAll('[data-helper] input')].forEach(inp=>inp.onchange=()=>{
+    const row=inp.closest('[data-helper]'),v=row.dataset.helper,i=+row.dataset.i,f=inp.dataset.f;
+    if(scenario.helpers&&scenario.helpers[v]&&scenario.helpers[v][i]){scenario.helpers[v][i][f]=inp.value;full();}});
 }
 function daySelector(){
   return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'+DATA.week.map(d=>{
@@ -454,33 +685,38 @@ function daySelector(){
 function wireSel(){[...document.querySelectorAll('[data-sel]')].forEach(b=>b.onclick=()=>{curDay=b.dataset.sel;scenario=defaultScenario(curDay);renderDay();});}
 function nextPlannableDay(){const t=new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Sydney'}).format(new Date());
   const fut=DATA.dates.filter(d=>d>t&&activeJobs(d).length);return fut[0]||DATA.week.find(d=>activeJobs(d).length)||curDay;}
+function toast(msg){const t=$('toast');t.textContent=msg;t.className='toast show';setTimeout(()=>t.className='toast',2000);}
 
-// ---- Find capacity (fit a NEW urgent job; never moves scheduled work) ----
+// ---- Find capacity (fit a NEW urgent job using real insertion travel; never moves scheduled work) ----
+function insertionCost(d,v,sc,mins,skillReq,area,apptStart){
+  const a=assessVeh(d,v,sc); if(!a.k)return null;
+  const needSpec=skillReq==='Specialist'||skillReq==='Mixed'; if(needSpec&&!a.haveSpec)return null;
+  if(a.driveH==null)return null;
+  const stops=a.stops.filter(s=>!s.unroutable);
+  // cheapest insertion of one more stop using the median leg as a proxy for the new address
+  let extra=medianLegSec(d); if(extra==null)extra=0;
+  // if same area as an existing stop, travel is smaller; approximate with min leg among existing stops
+  const sameArea=a.regions.includes(area)||area==='Any';
+  let addDriveMin=Math.round((sameArea?extra*0.6:extra)/60);
+  const onsitePer=mins/Math.max(1,a.k);
+  const newFinish=a.finishMin+addDriveMin+onsitePer;
+  const over=Math.max(0,newFinish-a.win.endMin);
+  return {a,addDriveMin,onsitePer,newFinish,over,sameArea};
+}
 function findCapacity(mins,skillReq,area){
-  const e=mins/60, today=DATA.today;
-  const needSpec=skillReq==='Specialist'||skillReq==='Mixed';
-  const out=[];
-  DATA.dates.filter(d=>d>=today).forEach(d=>{
-    const sc=defaultScenario(d);
-    VEH().forEach(v=>{
-      const a=assessVeh(d,v,sc);
-      if(!a.k) return;
-      if(needSpec&&!a.haveSpec) return;
-      if(a.driveH==null) return;                       // can't judge fit without driving
-      const extraDrive=(medianLegSec(d)||0)/3600;      // est. travel to slot in one more stop
-      const spareOnSite=a.k*(a.win.netH-a.driveH-extraDrive)-a.onSiteH;   // one-person hours free
-      if(spareOnSite < e-0.01) return;
-      const geo=area==='Any'||a.regions.includes(area)||a.crew.some(emp=>{const r=rosterOn(d).find(x=>x.emp===emp);return r&&crewCovers(r.areas,area);});
-      const newElapsed=a.driveH+extraDrive+(a.onSiteH+e)/a.k;
-      out.push({d,v,crew:a.crew.slice(),spare:spareOnSite,geo,drive:a.driveH,extraDrive,onSiteH:a.onSiteH,win:a.win.netH,newElapsed,k:a.k,finish:a.win.startMin+(newElapsed+BREAK())*60});
+  const today=DATA.today, out=[];
+  DATA.dates.filter(d=>d>=today).forEach(d=>{ const sc=defaultScenario(d);
+    VEH().forEach(v=>{ const c=insertionCost(d,v,sc,mins,skillReq,area);
+      if(!c)return; if(c.over>1)return;   // doesn't fit the shift
+      out.push({d,v,crew:c.a.crew.map(x=>x.emp),finish:c.newFinish,addDrive:c.addDriveMin,onsitePer:c.onsitePer,sameArea:c.sameArea,buffer:c.a.win.endMin-c.newFinish,win:c.a.win.netH,k:c.a.k,onSiteH:c.a.onSiteClockH,drive:c.a.driveH});
     });
   });
-  out.sort((x,y)=>{ if(x.geo!==y.geo)return x.geo?-1:1; if(x.d!==y.d)return x.d<y.d?-1:1; return y.spare-x.spare; });
+  out.sort((x,y)=>{ if(x.sameArea!==y.sameArea)return x.sameArea?-1:1; if(x.d!==y.d)return x.d<y.d?-1:1; return y.buffer-x.buffer; });
   return out;
 }
 function renderFind(){
   const h='<div class=card><h2 style="margin:0 0 4px">Find capacity for a new job</h2>'+
-    '<div class=note>Enter a new/urgent job and I’ll find the best day, truck and crew it fits into using the room already in the schedule — including the extra driving to slot in one more stop. It never moves a scheduled job to another day.</div>'+
+    '<div class=note>Enter a new/urgent job and I’ll find the best day, truck and crew it fits into — computing the actual extra road travel to slot in one more stop, its on-site time, the skills needed and any customer time restriction. It never moves a scheduled job to another day.</div>'+
     (ROUTING()?'':'<div class=rec info style="margin-top:8px">Routing isn’t configured yet, so driving‑aware capacity can’t be shown here. Add the Mapbox token and this fills in automatically.</div>')+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:12px">'+
     '<div><label class=fl>On-site minutes</label><input id=fMin class=fin type=number min=5 step=5 value=90></div>'+
@@ -489,8 +725,7 @@ function renderFind(){
     '<div style="display:flex;align-items:flex-end"><button class=btn id=fGo style="width:100%">Find</button></div>'+
     '</div><div id=fRes></div></div>';
   $('p-find').innerHTML=h;
-  $('fGo').onclick=runFind;
-  runFind();
+  $('fGo').onclick=runFind; runFind();
 }
 function runFind(){
   const mins=Math.max(5,parseInt($('fMin').value,10)||90);
@@ -503,12 +738,12 @@ function runFind(){
     h='<div class="rec bad" style="margin-top:12px">No truck has room for a '+mins+'m '+skillReq+' job on a currently-rostered day'+(area==='Any'?'':' in '+esc(area))+'.<br>'+
       (noRoute?'Driving times aren’t available yet, so I can only confirm fit once routes compute. ':'')+
       ((skillReq!=='Basic'&&!anySpec)?'No specialist (Blake/Julen) is rostered in this window. ':'')+
-      'Options: add a person to a truck that day, or approve overtime. Scheduled jobs are never moved to make room.</div>';
+      'Options: add a part-day helper that day, or approve overtime. Scheduled jobs are never moved to make room.</div>';
   } else {
     h='<div class=note style="margin-top:12px;font-weight:700">Best fits ('+res.length+' option'+(res.length>1?'s':'')+') — a '+mins+'m '+skillReq+' job'+(area==='Any'?'':' in '+esc(area))+':</div>';
-    h+=res.slice(0,6).map((o,i)=>'<div class="rec '+(i===0?'ok':'')+'" style="margin-top:8px"><b>'+fmtDate(o.d)+' · '+rotLabel(o.d)+'</b> — 🚚 '+o.v+' ('+esc(o.crew.join(' + '))+')'+
-      (o.geo?' · <b>same area</b>':' · different area')+'<br>~'+r1(o.spare)+'h on-site room free (currently '+r1(o.onSiteH)+'h on-site + '+r1(o.drive)+'h driving over '+o.k+' crew). Adding this job ≈ +'+Math.round(o.extraDrive*60)+'m driving → day ~'+r1(o.newElapsed)+'h of the '+r1(o.win)+'h window, finish ~'+fmtClock(o.finish)+'.</div>').join('');
-    h+='<div class=note style="margin-top:8px">Extra travel is estimated from that day’s typical leg; confirm the exact detour once the stop is added. Ranked by same-area, then soonest, then most room.</div>';
+    h+=res.slice(0,6).map((o,i)=>'<div class="rec '+(i===0?'ok':'')+'" style="margin-top:8px"><b>'+fmtDate(o.d)+' · '+rotLabel(o.d)+'</b> — \u{1F69A} '+o.v+' ('+esc(o.crew.join(' + '))+')'+
+      (o.sameArea?' · <b>same area</b>':' · different area')+'<br>Currently '+r1(o.onSiteH)+'h on-site + '+r1(o.drive)+'h driving over '+o.k+' crew, finishing earlier. Adding this job ≈ +'+o.addDrive+'m driving + '+Math.round(o.onsitePer)+'m on-site → finish ~'+fmtClock(o.finish)+', '+fmtDur(Math.max(0,o.buffer))+' inside the shift.</div>').join('');
+    h+='<div class=note style="margin-top:8px">Extra travel is estimated from that day’s typical leg (closer if it’s in an area the truck already visits); confirm the exact detour once the stop is added. Ranked by same-area, then soonest, then most room.</div>';
   }
   $('fRes').innerHTML=h;
 }
@@ -517,21 +752,28 @@ function runFind(){
 function copyWA(date,detailed){
   const useSc=date===curDay?scenario:defaultScenario(date);
   const day=assessDay(date,useSc); const proposed=date===curDay&&!isDefault(date);
-  const emo=day.status==='g'?'🟢':day.status==='a'?'🟡':day.status==='r'?'🔴':'⚪';
-  let m='📅 *MYMOWING — '+fmtDate(date).toUpperCase()+'*'+(detailed?' (RUN SHEET)':'')+'\n'+(proposed?'⚠️ *PROPOSED PLAN — not yet in Deputy*\n':'(as rostered in Deputy)\n')+'↻ Rotation '+rotLabel(date)+'\n\n'+emo+' *STATUS: '+STLABEL[day.status].toUpperCase()+'*\n\n';
-  const crewList=[...new Set([].concat.apply([],day.vehs.map(a=>a.crew)))];
+  const emo=day.status==='g'?'\u{1F7E2}':day.status==='a'?'\u{1F7E1}':day.status==='r'?'\u{1F534}':'⚪';
+  let m='\u{1F4C5} *MYMOWING — '+fmtDate(date).toUpperCase()+'*'+(detailed?' (RUN SHEET)':'')+'\n'+(proposed?'⚠️ *PROPOSED PLAN — not yet in Deputy*\n':'(as rostered in Deputy)\n')+'↻ '+rotLabel(date)+'\n\n'+emo+' *STATUS: '+STLABEL[day.status].toUpperCase()+'*\n\n';
+  const crewList=[...new Set([].concat.apply([],day.vehs.map(a=>a.crewNames)))];
   m+='*Overview*\n• Jobs: '+day.active.length+'\n• On-site work: ~'+r1(day.onSiteH)+'h · Driving: '+(day.driveH!=null?'~'+r1(day.driveH)+'h':'n/a')+'\n• Crew on the plan: '+(crewList.join(', ')||'none')+'\n• Available in Deputy: '+day.workingCount+'\n\n';
   day.vehs.forEach(a=>{ if(a.status==='n'&&!a.crew.length)return;
-    m+='🚚 *'+a.v+'* — '+(a.crew.join(' + ')||'NO CREW')+'\n'+(a.regions.join(', ')||'—')+' · '+a.jobs.length+' jobs\n'+
-       '~'+r1(a.onSiteH)+'h on-site'+(a.k?' ÷ '+a.k:'')+(a.driveH!=null?' + '+r1(a.driveH)+'h drive = '+r1(a.elapsed)+'h':' + drive n/a')+(a.finishMin!=null?' · finish ~'+fmtClock(a.finishMin):'')+' · '+STLABEL[a.status]+'\n';
+    const crewStr=a.crew.map(c=>c.emp+' '+fmtClock(c.start)+'–'+fmtClock(c.end)+(c.custom?'('+fmtDur(c.end-c.start)+')':'')).join(' + ')||'NO CREW';
+    m+='\u{1F69A} *'+a.v+'* — '+crewStr+'\n'+(a.regions.join(', ')||'—')+' · '+a.order.length+' jobs\n'+
+       '~'+r1(a.onSiteClockH)+'h on-site'+(a.driveH!=null?' + '+r1(a.driveH)+'h drive':' + drive n/a')+(a.finishMin!=null?' · finish ~'+fmtClock(a.finishMin):'')+' · '+STLABEL[a.status]+(a.ot>0?' · OT '+fmtDur(a.ot):'')+'\n';
+    if(a.flags.apptViol.length) a.flags.apptViol.forEach(x=>m+='   ⚠ '+x.job.address+' appt '+apptLabel(x.appt)+' at risk (late ~'+fmtDur(x.by)+')\n');
+    else { const appts=a.stops.filter(s=>s.appt&&s.appt.start!=null); if(appts.length)m+='   ⏰ '+appts.map(s=>s.job.address.split(',')[0]+' '+apptLabel(s.appt)).join('; ')+'\n'; }
+    if(a.flags.transport.length) m+='   \u{1F699} '+a.flags.transport.map(t=>t.emp+(t.kind==='leaves'?' leaves '+fmtClock(t.at):' joins '+fmtClock(t.at))).join('; ')+' — plan transport\n';
     if(a.xfer&&a.xfer.length) m+='   ⚠ '+a.xfer.join(', ')+' — needs approval + Deputy roster change\n';
-    if(detailed){ a.route.order.forEach((j,i)=>{ m+=(i+1)+'. '+(j.est!=null?j.est+'m':'—')+'  '+j.address+(j.skill&&j.skill!=='Basic'&&j.skill!=='Unknown'?' ['+j.skill+']':'')+(j.appt?(j.appt==='STRICT'?' ⏰STRICT':' ⏰'+j.appt):'')+'\n'; }); }
+    if(detailed){ a.stops.filter(s=>!s.unroutable).forEach((s,i)=>{ m+=(i+1)+'. '+(s.job.est!=null?s.job.est+'m':'—')+(a.driveComplete?' '+fmtClock(s.serviceStart):'')+'  '+s.job.address+(s.job.skill&&s.job.skill!=='Basic'&&s.job.skill!=='Unknown'?' ['+s.job.skill+']':'')+apptPlain(s.appt)+'\n'; });
+      a.stops.filter(s=>s.unroutable).forEach(s=>{m+='⚠ '+s.job.address+' — no location\n';}); }
     m+='\n';
   });
   if(detailed&&day.resched.length){ m+='↩ *Rescheduled/cancelled* ('+day.resched.length+')\n'+day.resched.map(j=>'• '+j.address).join('\n')+'\n\n'; }
-  const rr=dayRecs(day); m+='💡 *Recommendation*\n'+rr.map(r=>'• '+r[1]).join('\n')+'\n\n✅ Review and 👍 if this works'+(proposed?' — then roster it in Deputy.':'.');
-  navigator.clipboard.writeText(m).then(()=>{const t=$('toast');t.textContent='Copied — paste into WhatsApp';t.className='toast show';setTimeout(()=>t.className='toast',1800);});
+  const rr=dayRecs(day); m+='\u{1F4A1} *Recommendation*\n'+rr.map(r=>'• '+r[1]).join('\n')+'\n\n✅ Review and \u{1F44D} if this works'+(proposed?' — then roster it in Deputy.':'.');
+  navigator.clipboard.writeText(m).then(()=>toast('Copied — paste into WhatsApp'));
 }
+function apptPlain(ap){if(!ap||ap.start==null)return'';const ic=ap.type==='window'?' ⏱':ap.type==='preferred'?' ~':' ⏰';return ic+apptLabel(ap);}
+
 // ---- tabs ----
 function wireTabs(){[...document.querySelectorAll('.tb')].forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tb').forEach(x=>x.classList.toggle('on',x===b));
@@ -540,6 +782,7 @@ function wireTabs(){[...document.querySelectorAll('.tb')].forEach(b=>b.onclick=(
   if(b.dataset.p==='find')renderFind();
 });}
 function weekOf(today){var t=new Date(today+'T12:00:00');var dow=t.getDay();var mon=new Date(t);mon.setDate(t.getDate()+(dow===0?-6:1-dow));var wk=[];for(var i=0;i<5;i++){var d=new Date(mon);d.setDate(mon.getDate()+i);wk.push(d.toISOString().slice(0,10));}return wk;}
+
 // ---- load + decrypt ----
 async function decryptFeed(meta,pass){
   const raw=Uint8Array.from(atob(meta.data),c=>c.charCodeAt(0));
@@ -550,7 +793,7 @@ async function decryptFeed(meta,pass){
   return JSON.parse(new TextDecoder().decode(pt));
 }
 function showGate(meta){
-  $('gate').innerHTML='<div class=gate><div style="font-size:15px;font-weight:700;margin-bottom:4px">🔒 myMowing planner</div><div class=note>Enter the team passphrase to unlock the schedule.</div><input id=gpass type=password placeholder=Passphrase autofocus><button class=btn id=gbtn style="width:100%">Unlock</button><div class=note id=gerr style="color:#b4452b;margin-top:8px"></div></div>';
+  $('gate').innerHTML='<div class=gate><div style="font-size:15px;font-weight:700;margin-bottom:4px">\u{1F512} myMowing planner</div><div class=note>Enter the team passphrase to unlock the schedule.</div><input id=gpass type=password placeholder=Passphrase autofocus><button class=btn id=gbtn style="width:100%">Unlock</button><div class=note id=gerr style="color:#b4452b;margin-top:8px"></div></div>';
   const go=async()=>{ const p=$('gpass').value; if(!p)return; $('gbtn').textContent='Unlocking…';
     try{ DATA=await decryptFeed(meta,p); sessionStorage.setItem('mowpass',p); start(); }
     catch(e){ $('gerr').textContent='Wrong passphrase — try again.'; $('gbtn').textContent='Unlock'; } };
@@ -573,12 +816,11 @@ function start(){
   weekAnchor=DATA.today; DATA.week=weekOf(DATA.today);
   $('asof').textContent='Updated '+DATA.generatedAt;
   $('sub').innerHTML='Zenkit jobs + Deputy availability + '+(ROUTING()?'Mapbox driving times':'driving times (pending)')+' · <b>read-only</b> · feed covers '+fmtDate(DATA.dates[0])+' → '+fmtDate(DATA.dates[DATA.dates.length-1]);
-  $('footnote').innerHTML='Zenkit <b>EST minutes are on-site work only</b>. Each vehicle’s day = on-site work ÷ crew (shared) <b>plus the real road driving time</b> for its route (depot → stops → depot), added once and not divided by crew — so adding people shrinks on-site time but never the driving. Driving comes from '+(ROUTING()?'the Mapbox road network':'Mapbox once the token is set')+', cached and refreshed monthly. Working window = each person’s actual Deputy shift minus a '+Math.round(BREAK()*60)+'-min break. Status is Red if a vehicle can’t finish on-site + driving inside its window, Amber if tight or unverified. The What-if planner re-routes both trucks when you move a job, never changes a job’s date, and only allocates people genuinely rostered in Deputy.';
-  // unresolved / routing banner
+  $('footnote').innerHTML='One scheduling engine drives every view. Zenkit <b>EST minutes are on-site work only</b>; each stop’s on-site time = EST ÷ the crew actually present at that time (so a helper who leaves at 11 stops counting after 11). Driving is the real road time from the <b>Mapbox</b> matrix (cached, refreshed monthly). The route is optimised to the <b>shortest feasible day</b> — hard appointments and windows are met first, then driving is minimised. Finish = on-site (crew-adjusted) + driving (depot → stops → depot) + a '+BREAKM()+'-min break, from the earliest crew start. Green needs complete driving and every fixed appointment met; incomplete driving or a missed appointment is never Green.';
   const unresolved=DATA.jobs.filter(j=>j.geo===false).length;
   let bn='';
   if(!ROUTING()) bn='<div class=banner>⚠ Driving times are not yet available (Mapbox token not set). Hours shown are on-site work only — add the <code>MAPBOX_TOKEN</code> secret and real driving fills in on the next run.</div>';
-  else if(unresolved) bn='<div class=banner>⚠ '+unresolved+' job address(es) couldn’t be located on the map, so their driving time is excluded. They’re tagged “no location” — fix the address in Zenkit to include them.</div>';
+  else if(unresolved) bn='<div class=banner>⚠ '+unresolved+' job address(es) couldn’t be located on the map, so their driving time is excluded and those vehicles can’t be marked Green. They’re tagged “no location” — fix the address in Zenkit.</div>';
   $('banner').innerHTML=bn;
   curDay=DATA.week[0]; scenario=defaultScenario(curDay);
   wireTabs(); renderWeek();
