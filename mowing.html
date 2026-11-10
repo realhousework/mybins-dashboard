@@ -58,7 +58,23 @@ label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;l
 .banner{background:#fff4d6;border:1px solid #f0e2c4;color:#7a5e12;border-radius:10px;padding:10px 14px;font-size:13px;margin:10px 0}
 .rt{list-style:none;margin:6px 0 0;padding:0;font-size:12.5px;color:#5b6b60}
 .rt li{padding:2px 0}.rt .n{display:inline-block;width:20px;color:#8a988f;font-weight:800}
-@media(max-width:720px){.weekstrip{grid-template-columns:1fr 1fr}}
+.vehgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+.vstat{display:grid;grid-template-columns:repeat(3,1fr);gap:7px 12px;margin:9px 0 2px}
+.vstat .k{color:#8a988f;font-weight:700;text-transform:uppercase;font-size:9.5px;letter-spacing:.03em}
+.vstat b{font-size:14px;font-weight:800}
+.barkey{font-size:10.5px;color:#64726a;display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 3px;align-items:center}
+.barkey i{width:9px;height:9px;border-radius:2px;display:inline-block;vertical-align:middle;margin-right:3px}
+.daybar{position:relative;height:26px;border-radius:6px;background:#eef2ef;overflow:visible;display:flex}
+.daybar>span{display:block;height:100%}
+.daybar>span:first-child{border-radius:6px 0 0 6px}
+.seg-site{background:#2e8b57}.seg-drive{background:#e8912e}.seg-break{background:#c3ccc6}
+.seg-un{background:repeating-linear-gradient(45deg,#d9b38a 0,#d9b38a 6px,#efd8bf 6px,#efd8bf 12px)}
+.mark{position:absolute;top:-4px;bottom:-4px;width:2px;background:#17201a;z-index:2}
+.marklbl{position:absolute;top:-15px;font-size:9px;font-weight:800;color:#17201a;transform:translateX(-50%);white-space:nowrap}
+.legrow{display:flex;gap:8px;font-size:12px;padding:5px 0;border-top:1px dashed #eef2ef}
+.legrow:first-child{border-top:0}
+.legrow .t{color:#8a7a5a;min-width:70px;font-variant-numeric:tabular-nums;font-weight:700}
+@media(max-width:720px){.weekstrip{grid-template-columns:1fr 1fr}.vehgrid{grid-template-columns:1fr}.vstat{grid-template-columns:repeat(2,1fr)}}
 </style></head><body><div class=wrap>
 <header><div><div class=logo>my<b>Mowing</b> <span style="font-weight:600;color:#5b6b60;font-size:15px">Operations Planner</span></div></div>
 <div class=asof id=asof></div></header>
@@ -244,22 +260,70 @@ function renderWeek(){
 
 // ---- daily ----
 function openDay(d){curDay=d;scenario=defaultScenario(d);document.querySelector('.tb[data-p=day]').click();renderDay();}
+function fmtDur(min){min=Math.round(min);if(min<60)return min+' min';const h=Math.floor(min/60),m=min%60;return h+'h'+(m?' '+m+'m':'');}
+// Stop-by-stop itinerary with travel + arrival/departure (on-site shared across the crew).
+function buildItinerary(a){
+  const d=curDay, k=Math.max(1,a.k||1), verified=a.driveH!=null;
+  let t=a.win.startMin, prev=0, rows='', breakDone=false;
+  const half=Math.floor(a.route.order.length/2), bk=BREAK()*60;
+  a.route.order.forEach((j,i)=>{
+    const idx=jobIdx(d,j.id);
+    let trav=null; if(idx>0){const s=legSec(d,prev,idx); trav=s!=null?Math.round(s/60):null;}
+    if(verified&&trav!=null) t+=trav;
+    const arrive=t;
+    const onsite=(j.est!=null?j.est:0)/k;
+    const depart=arrive+onsite;
+    rows+='<div class=legrow><div class=t>'+(verified?(trav!=null?'🚗 '+trav+'m':'🚗 —'):'🚗 ·')+'</div><div style="flex:1">'+
+      '<b>'+(i+1)+'. '+esc(j.address)+'</b>'+(j.appt?' <span class=appt>⏰'+(j.appt==='STRICT'?'STRICT':esc(j.appt))+'</span>':'')+(idx<=0?' <span class=tag>no location</span>':'')+
+      '<div class=note>'+(verified&&idx>0?'arrive '+fmtClock(arrive)+' → leave '+fmtClock(depart)+' · ':'')+(j.est!=null?j.est+'m on-site'+(k>1?' ÷'+k+'≈'+Math.round(onsite)+'m':''):'<span style="color:#b07d2a">no EST</span>')+'</div></div></div>';
+    if(idx>0){prev=idx; t=depart;}
+    if(verified&&!breakDone&&bk&&i===half){ t+=bk; breakDone=true; rows+='<div class=legrow><div class=t>☕ '+Math.round(bk)+'m</div><div style="flex:1"><b>Break</b><div class=note>until '+fmtClock(t)+'</div></div></div>'; }
+  });
+  if(verified){ const back=legSec(d,prev,0); if(back!=null){ t+=Math.round(back/60); rows+='<div class=legrow><div class=t>🚗 '+Math.round(back/60)+'m</div><div style="flex:1"><b>↩ Return to depot</b><div class=note>'+fmtClock(t)+'</div></div></div>'; } }
+  return rows||'<div class=note>No routable stops.</div>';
+}
 function vehCard(a){
-  const col=a.status==='g'?'#2e8b57':a.status==='a'?'#d9a520':a.status==='r'?'#c4452b':'#cfd8d2';
-  const pct=a.util==null?0:Math.min(100,a.util);
+  const stLabel=a.status==='r'?'Over capacity':a.status==='a'?'Tight':a.status==='g'?'OK':'No work';
+  const verified=a.driveH!=null, bk=BREAK();
+  const onSitePer=a.k?a.onSiteH/a.k:a.onSiteH;
+  const driveH=verified?a.driveH:0;
+  const normalH=a.win.grossH||MAXH();                 // normal working window (roster shift length)
+  const totalH=onSitePer+driveH+bk;                    // full clock day incl. break
+  const scale=Math.max(totalH,normalH)*1.03;
+  const pc=x=>Math.max(0,Math.min(100,x/scale*100));
+  const markPc=normalH/scale*100;
+  const overMin=verified?Math.max(0,Math.round((a.elapsed-a.win.netH)*60)):null;
+  const bufMin =verified?Math.max(0,Math.round((a.win.netH-a.elapsed)*60)):null;
   let h='<div class=card><div class=vhead><h3>🚚 '+esc(a.v)+' — '+(a.crew.length?esc(a.crew.join(' + ')):'<span class=note>no crew</span>')+(a.needSpec&&!a.haveSpec?' <span class=appt>no specialist</span>':'')+'</h3>'+
-    '<span class="pill '+a.status+'">'+STLABEL[a.status]+(a.util!=null?' · '+a.util+'%':'')+'</span></div>'+
-    '<span class=veh-badge>'+r1(a.onSiteH)+'h on-site'+(a.k?' ÷ '+a.k:'')+(a.driveH!=null?' + '+r1(a.driveH)+'h driving = '+r1(a.elapsed)+'h':'')+(a.finishMin!=null?' · finish ~'+fmtClock(a.finishMin):'')+' · '+r1(a.win.netH)+'h window</span>'+
-    (a.minNeed&&a.k&&a.minNeed>a.k?' <span class=appt>needs '+a.minNeed+'</span>':'')+
-    '<div class=statusbar><span style="width:'+pct+'%;background:'+col+'"></span></div>';
-  if(a.xfer&&a.xfer.length) h+='<div class=rec style="margin-top:8px;background:#fff4d6;border-color:#f0e2c4;color:#7a5e12">⚠ '+esc(a.xfer.join(', '))+' '+(a.xfer.length>1?'are':'is')+' rostered to another brand today — using '+(a.xfer.length>1?'them':'them')+' needs approval + a Deputy roster change.</div>';
-  if(a.reasons.length) h+='<div class="rec '+(a.status==='r'?'bad':a.status==='a'?'':'ok')+'" style="margin-top:8px">'+esc(a.reasons.join('. '))+'.</div>';
-  // route order
+    '<span class="pill '+a.status+'">'+(a.status==='r'?'🔴 ':a.status==='a'?'🟡 ':a.status==='g'?'🟢 ':'')+stLabel+'</span></div>';
+  // stacked day bar + normal-window marker
+  h+='<div class=barkey><span><i class=seg-site></i>On-site</span><span><i class=seg-drive></i>Driving</span>'+(bk?'<span><i class=seg-break></i>Break</span>':'')+'<span style="margin-left:auto;font-weight:700">⟂ '+r1(normalH)+'h normal window</span></div>'+
+    '<div class=daybar>'+
+      '<span class=seg-site style="width:'+pc(onSitePer)+'%" title="On-site '+r1(onSitePer)+'h"></span>'+
+      (verified?'<span class=seg-drive style="width:'+pc(driveH)+'%" title="Driving '+r1(driveH)+'h"></span>':'<span class=seg-un style="width:'+pc(Math.max(0.5,onSitePer*0.12))+'%" title="Driving unverified"></span>')+
+      (bk?'<span class=seg-break style="width:'+pc(bk)+'%" title="Break '+Math.round(bk*60)+'m"></span>':'')+
+      '<span class=mark style="left:'+markPc+'%"></span><span class=marklbl style="left:'+markPc+'%">'+r1(normalH)+'h</span>'+
+    '</div>';
+  // stats
+  h+='<div class=vstat>'+
+     '<div><div class=k>On-site · '+(a.k||0)+' crew</div><b style="color:#2e8b57">'+r1(onSitePer)+'h</b></div>'+
+     '<div><div class=k>Driving</div><b style="color:#c47a16">'+(verified?r1(driveH)+'h':'n/a')+'</b></div>'+
+     '<div><div class=k>Total day</div><b>'+(verified?r1(totalH)+'h':'—')+'</b></div>'+
+     '<div><div class=k>Start</div><b>'+fmtClock(a.win.startMin)+'</b></div>'+
+     '<div><div class=k>Finish</div><b>'+(a.finishMin!=null?fmtClock(a.finishMin)+(verified?'':' ?'):'—')+'</b></div>'+
+     (overMin>0?'<div><div class=k style="color:#b4452b">Overtime</div><b style="color:#b4452b">'+fmtDur(overMin)+'</b></div>'
+       :(bufMin>0?'<div><div class=k style="color:#1a7a43">Buffer</div><b style="color:#1a7a43">'+fmtDur(bufMin)+'</b></div>'
+       :'<div><div class=k>Finish vs window</div><b>on time</b></div>'))+
+     '</div>'+
+     (a.minNeed&&a.k&&a.minNeed>a.k?'<div class=note style="color:#b4452b;font-weight:700;margin-top:2px">Needs '+a.minNeed+' crew to finish in the window (has '+a.k+')</div>':'');
+  if(!verified) h+='<div class="rec info" style="margin-top:6px">Driving time unverified — total day and finish are estimates only until routes are available.</div>';
+  if(a.xfer&&a.xfer.length) h+='<div class=rec style="margin-top:6px;background:#fff4d6;border-color:#f0e2c4;color:#7a5e12">⚠ '+esc(a.xfer.join(', '))+' '+(a.xfer.length>1?'are':'is')+' on another brand today — needs approval + a Deputy roster change.</div>';
+  if(a.reasons.length&&a.status!=='g') h+='<div class="rec '+(a.status==='r'?'bad':'')+'" style="margin-top:6px">'+esc(a.reasons.join('. '))+'.</div>';
   if(a.jobs.length){
-    h+='<details style="margin-top:6px"><summary class=note style="cursor:pointer;font-weight:700">Suggested run order'+(a.driveH!=null?' (~'+r1(a.driveH)+'h driving, depot → stops → depot)':' (driving unverified)')+(a.route.hasAppt?' · fixed-time jobs kept in time order':'')+'</summary>'+
-      '<ol class=rt>'+a.route.order.map((j,i)=>'<li><span class=n>'+(i+1)+'.</span>'+esc(j.address)+(j.appt?' <span class=appt>'+(j.appt==='STRICT'?'⏰STRICT':'⏰'+esc(j.appt))+'</span>':'')+(jobIdx(a.v&&curDay?curDay:curDay,j.id)<=0?' <span class=tag>no location</span>':'')+'</li>').join('')+'</ol></details>';
-  }
-  h+=(a.jobs.length?a.jobs.map(jobRow).join(''):'<div class=note style="margin-top:8px">No jobs allocated to this vehicle.</div>');
+    h+='<details style="margin-top:8px"><summary class=note style="cursor:pointer;font-weight:700">📍 Full itinerary — '+a.route.order.length+' stops'+(verified?' · ~'+r1(driveH)+'h driving, depot → stops → depot':' · driving unverified')+(a.route.hasAppt?' · fixed-time jobs pinned':'')+'</summary>'+
+      '<div style="margin-top:4px">'+buildItinerary(a)+'</div></details>'+
+      '<details style="margin-top:4px"><summary class=note style="cursor:pointer">Job list ('+a.jobs.length+')</summary>'+a.jobs.map(jobRow).join('')+'</details>';
+  } else h+='<div class=note style="margin-top:8px">No jobs allocated to this vehicle.</div>';
   return h+'</div>';
 }
 function jobRow(j){
@@ -304,7 +368,7 @@ function renderDay(){
     '<div><div class=k>Available</div><div class=v>'+day.workingCount+'</div></div>'+
     '</div>'+(isDefault(curDay)?'':'<div class=note style="color:#8a6d1a;font-weight:700">● Showing a PROPOSED arrangement — not yet in Deputy</div>')+'</div>';
   h+='<h2>Recommendation</h2>'+dayRecs(day).map(r=>'<div class="rec '+(r[0]||'')+'">'+r[1]+'</div>').join('');
-  h+='<h2>Vehicles</h2>'+day.vehs.filter(a=>a.status!=='n'||a.crew.length).map(vehCard).join('');
+  h+='<h2>Vehicles</h2><div class=vehgrid>'+day.vehs.filter(a=>a.status!=='n'||a.crew.length).map(vehCard).join('')+'</div>';
   h+=reschedPanel(day);
   h+='<h2>What-if planner</h2><div id=wiMount>'+renderWI()+'</div>';
   const nd=nextPlannableDay();
