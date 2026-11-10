@@ -165,7 +165,9 @@ function rotLabel(d){const w=Math.round((mondayOf(d)-ROT_ANCHOR_MON)/(7*86400000
 function defaultScenario(d){
   const sc={emp:{},region:{},job:{},helpers:{},order:{},locks:{}};
   VEH().forEach(v=>{sc.helpers[v]=[];sc.locks[v]={};});
-  rosterOn(d).forEach(r=>{ sc.emp[r.emp]=VEH().includes(r.vehicle)?r.vehicle:VEH()[0]; });
+  // Each rostered person starts on their roster truck for their full Deputy shift. Trim the hours in
+  // the What-if planner to use someone just for the morning; it's one unified crew list.
+  rosterOn(d).forEach(r=>{ const v=VEH().includes(r.vehicle)?r.vehicle:VEH()[0]; sc.helpers[v].push({emp:r.emp,start:r.start||'07:00',end:r.end||'17:00'}); });
   const byVeh=crewByVeh(sc);
   REGIONS.forEach(reg=>{
     let v=VEH().find(veh=>(byVeh[veh]||[]).some(e=>{const r=rosterOn(d).find(x=>x.emp===e);return r&&crewCovers(r.areas,reg);}));
@@ -180,6 +182,19 @@ function crewByVeh(sc){const m={};VEH().forEach(v=>m[v]=[]);
   return m;}
 function vehOfJob(sc,j){ return (sc.job&&sc.job[jobKey(j)]) || sc.region[j.area] || VEH()[0]; }
 function isDefault(d){const a=defaultScenario(d);return JSON.stringify(a)===JSON.stringify(scenario);}
+// one unified crew list — a person is on whichever truck's helper list holds them (else 'off')
+function crewVehOf(sc,emp){for(const v of VEH()){if(((sc.helpers&&sc.helpers[v])||[]).some(h=>h.emp===emp))return v;}return 'off';}
+function crewEntry(sc,emp){for(const v of VEH()){const e=((sc.helpers&&sc.helpers[v])||[]).find(h=>h.emp===emp);if(e)return e;}return null;}
+function pad2(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+function setCrewVeh(emp,v){
+  const ent=crewEntry(scenario,emp);
+  VEH().forEach(x=>{if(scenario.helpers[x])scenario.helpers[x]=scenario.helpers[x].filter(h=>h.emp!==emp);});
+  if(v==='off')return;
+  let start,end;
+  if(ent){start=ent.start;end=ent.end;}
+  else{const sh=rosterShift(curDay,emp); if(sh.start!=null&&sh.end!=null){start=pad2(sh.start);end=pad2(sh.end);} else {start='07:00';end='11:00';}}
+  scenario.helpers[v]=scenario.helpers[v]||[]; scenario.helpers[v].push({emp,start,end});
+}
 
 // ---- time-phased crew: actual per-person intervals (full-day shift OR custom helper hours) ----
 function crewIntervals(d,v,sc){
@@ -190,10 +205,14 @@ function crewIntervals(d,v,sc){
   ((sc.helpers&&sc.helpers[v])||[]).forEach(h=>{
     if(!h.emp)return; const st=parseHM(h.start),en=parseHM(h.end); if(st==null||en==null||en<=st)return;
     const sh=rosterShift(d,h.emp); let outside=false;
-    if(sh.start!=null&&sh.end!=null){ if(st<sh.start-1||en>sh.end+1) outside=true; } else { outside=!isWorking(d,h.emp)?true:false; if(!isWorking(d,h.emp))outside=true; }
+    if(sh.start!=null&&sh.end!=null){ if(st<sh.start-1||en>sh.end+1) outside=true; }
     if(!isWorking(d,h.emp)) outside=true;
+    // "custom" = genuinely part-day (shorter than their full roster shift) or not rostered — only these
+    // get the part-day duration label and mid-route transport check. A full-shift person is normal crew.
+    const fullShift=sh.start!=null&&sh.end!=null&&st<=sh.start+1&&en>=sh.end-1;
+    const custom=!fullShift;
     const i=out.findIndex(x=>x.emp===h.emp); if(i>=0) out.splice(i,1);
-    out.push({emp:h.emp,start:st,end:en,spec:isSpec(h.emp),driver:isDriver(h.emp),cross:isCrossOU(d,h.emp),custom:true,outside}); });
+    out.push({emp:h.emp,start:st,end:en,spec:isSpec(h.emp),driver:isDriver(h.emp),cross:isCrossOU(d,h.emp),custom,outside}); });
   return out.filter(x=>x.start!=null&&x.end!=null&&x.end>x.start).sort((a,b)=>a.start-b.start);
 }
 
@@ -577,37 +596,21 @@ function reschedPanel(day){
 function renderWI(){
   const avail=availOn(curDay);
   const def=isDefault(curDay);
-  let h='<div class=wi><div class=vhead><h3 style="margin:0">Allocate staff &amp; jobs</h3><button class="btn ghost sm" id=wiReset>Reset to Deputy roster</button></div>'+
-    '<div class=note>Only people actually working in Deputy today can be picked full-day. Add a part-day helper with custom hours below. myBins/other-brand staff can be proposed but need approval + a roster change. Jobs never move off their date; moving a job re-optimises both trucks.</div>';
+  let h='<div class=wi><div class=vhead><h3 style="margin:0">Crew &amp; hours</h3><button class="btn ghost sm" id=wiReset>Reset to Deputy roster</button></div>'+
+    '<div class=note>Everyone rostered in Deputy starts on their truck for their full shift. Change the truck, trim the hours to use someone just for a busy morning, or put someone who isn’t rostered on a truck (needs approval + a roster change). Jobs never move off their date; changes re-optimise both trucks.</div>';
   h+='<div style="margin-top:8px">';
-  Object.keys(DATA.staff).forEach(e=>{
+  Object.keys(DATA.staff).sort((a,b)=>(isWorking(curDay,b)?1:0)-(isWorking(curDay,a)?1:0)).forEach(e=>{
     const a=avail[e]; const working=a&&a.working; const cross=working&&!a.onMowing;
-    const where=working?((a.onMowing?('myMowing'+(a.vehicle?' ('+esc(a.vehicle)+')':'')):('⚠ '+esc(a.ouName||'another brand')+' — needs approval'))+' · '+(a.start&&a.end?esc(a.start)+'–'+esc(a.end):(a.hours||MAXH())+'h')):'not working today';
-    const cur=scenario.emp[e]||'off';
+    const veh=crewVehOf(scenario,e), ent=crewEntry(scenario,e), sh=rosterShift(curDay,e);
+    const st=ent?parseHM(ent.start):null, en=ent?parseHM(ent.end):null;
+    const outside=veh!=='off'&&(sh.start!=null&&sh.end!=null?(st<sh.start-1||en>sh.end+1):true);
+    const where=working?((a.onMowing?('myMowing'+(a.vehicle?' ('+esc(a.vehicle)+')':'')):('⚠ '+esc(a.ouName||'another brand')))+' · roster '+(a.start&&a.end?esc(a.start)+'–'+esc(a.end):(a.hours||MAXH())+'h')):'not rostered today';
     h+='<div class=staffrow><div class="ava'+(working&&!cross?'':' off')+'"'+(cross?' style="background:#d9a520"':'')+'>'+ini(e)+'</div>'+
-      '<div style="flex:1;min-width:150px"><b>'+esc(e)+'</b> '+(isSpec(e)?'<span class=tag>specialist</span>':'<span class=tag>mowing</span>')+(cross?' <span class=tag style="background:#fff4d6;color:#8a6d1a">myBins</span>':'')+'<div class=note>'+where+'</div></div>'+
-      '<div class=seg data-emp="'+esc(e)+'">'+VEH().map(v=>'<button data-v="'+v+'" class="'+(cur===v?'on':'')+'"'+(working?'':' disabled')+'>'+v+'</button>').join('')+
-      '<button data-v="off" class="'+(cur==='off'||!working?'on':'')+'"'+(working?'':' disabled')+'>Off</button></div></div>';
-  });
-  h+='</div>';
-  // ---- custom-hour helpers per vehicle ----
-  h+='<div style="margin-top:12px"><div class=note style="font-weight:700;color:#5b6b60">Part-day helpers (custom hours)</div>';
-  VEH().forEach(v=>{
-    const hs=(scenario.helpers&&scenario.helpers[v])||[];
-    h+='<div class=helperbox><b style="font-size:13px">\u{1F69A} '+v+'</b>';
-    hs.forEach((hp,i)=>{ const sh=rosterShift(curDay,hp.emp); const st=parseHM(hp.start),en=parseHM(hp.end);
-      const outside=sh.start!=null&&sh.end!=null?(st<sh.start-1||en>sh.end+1):!isWorking(curDay,hp.emp);
-      h+='<div class=helperrow data-helper="'+esc(v)+'" data-i="'+i+'"><b style="min-width:70px">'+esc(hp.emp)+'</b>'+
-        '<input type=time data-f=start value="'+esc(hp.start)+'" style="width:110px"> – <input type=time data-f=end value="'+esc(hp.end)+'" style="width:110px">'+
-        '<span class=note>'+fmtDur((en||0)-(st||0))+(isSpec(hp.emp)?' · specialist':'')+(outside?' · <span style="color:#b4452b;font-weight:700">outside roster — needs approval</span>':'')+'</span>'+
-        '<button class="lockbtn" data-helperdel="'+esc(v)+'" data-i="'+i+'">remove</button></div>';
-    });
-    // add control
-    const addable=Object.keys(DATA.staff);
-    h+='<div class=helperrow><select data-addhelper="'+esc(v)+'"><option value="">+ Add helper…</option>'+
-      addable.map(e=>'<option value="'+esc(e)+'">'+esc(e)+(isSpec(e)?' (spec)':'')+(isWorking(curDay,e)?'':' — not rostered')+'</option>').join('')+'</select>'+
-      '<span class=note>defaults to their roster hours (or 07:00–11:00)</span></div>';
-    h+='</div>';
+      '<div style="flex:1;min-width:160px"><b>'+esc(e)+'</b> '+(isSpec(e)?'<span class=tag>specialist</span>':'<span class=tag>mowing</span>')+(cross?' <span class=tag style="background:#fff4d6;color:#8a6d1a">myBins</span>':'')+'<div class=note>'+where+'</div>'+
+        (veh!=='off'?'<div class=helperrow data-cent="'+esc(e)+'" style="margin-top:4px"><span class=note>hours</span><input type=time data-f=start value="'+(ent?esc(ent.start):'')+'" style="width:108px"> – <input type=time data-f=end value="'+(ent?esc(ent.end):'')+'" style="width:108px"><span class=note>'+fmtDur((en||0)-(st||0))+(outside?' · <span style="color:#b4452b;font-weight:700">outside roster — approval</span>':'')+'</span></div>':'')+
+      '</div>'+
+      '<div class=seg data-crew="'+esc(e)+'">'+VEH().map(v=>'<button data-v="'+v+'" class="'+(veh===v?'on':'')+'">'+v+'</button>').join('')+
+      '<button data-v="off" class="'+(veh==='off'?'on':'')+'">Off</button></div></div>';
   });
   h+='</div>';
   // ---- region bulk + per-job move ----
@@ -641,18 +644,14 @@ function renderWI(){
   h+='</div>';
   return h;
 }
-function defaultHelperHours(emp){const sh=rosterShift(curDay,emp);
-  const s=sh.start!=null?sh.start:CFGSTART(); const e=sh.end!=null?sh.end:s+4*60;
-  const p=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
-  return {start:p(s),end:p(Math.min(e,s+4*60))};}  // default a 4h morning block within their shift
 function wireWI(){
   const full=()=>renderDay();
   if($('wiReset'))$('wiReset').onclick=()=>{scenario=defaultScenario(curDay);full();};
-  [...document.querySelectorAll('[data-emp] button')].forEach(b=>b.onclick=()=>{
-    if(b.disabled)return; const emp=b.closest('[data-emp]').dataset.emp; scenario.emp[emp]=b.dataset.v;
-    // if assigned full-day, drop any helper entry for the same person
-    VEH().forEach(v=>{if(scenario.helpers&&scenario.helpers[v])scenario.helpers[v]=scenario.helpers[v].filter(x=>x.emp!==emp);});
-    full();});
+  [...document.querySelectorAll('[data-crew] button')].forEach(b=>b.onclick=()=>{
+    const emp=b.closest('[data-crew]').dataset.crew; setCrewVeh(emp,b.dataset.v); full();});
+  [...document.querySelectorAll('[data-cent] input')].forEach(inp=>inp.onchange=()=>{
+    const emp=inp.closest('[data-cent]').dataset.cent,f=inp.dataset.f; const ent=crewEntry(scenario,emp);
+    if(ent){ent[f]=inp.value;full();}});
   [...document.querySelectorAll('[data-region] button')].forEach(b=>b.onclick=()=>{
     const reg=b.closest('[data-region]').dataset.region; scenario.region[reg]=b.dataset.v;
     if(scenario.job){ activeJobs(curDay).filter(j=>j.area===reg).forEach(j=>{delete scenario.job[jobKey(j)];}); }
@@ -662,19 +661,6 @@ function wireWI(){
     const key=b.closest('[data-job]').dataset.job; scenario.job=scenario.job||{}; scenario.job[key]=b.dataset.v;
     if(scenario.order){VEH().forEach(v=>delete scenario.order[v]);}
     full();});
-  [...document.querySelectorAll('[data-addhelper]')].forEach(sel=>sel.onchange=()=>{
-    const v=sel.dataset.addhelper,emp=sel.value;if(!emp)return;
-    scenario.helpers=scenario.helpers||{};scenario.helpers[v]=scenario.helpers[v]||[];
-    if(scenario.helpers[v].some(x=>x.emp===emp)){full();return;}
-    const dh=defaultHelperHours(emp); scenario.helpers[v].push({emp,start:dh.start,end:dh.end});
-    // remove full-day assignment of this person (helper hours take over)
-    if(scenario.emp[emp]===v)scenario.emp[emp]='off';
-    full();});
-  [...document.querySelectorAll('[data-helperdel]')].forEach(b=>b.onclick=()=>{
-    const v=b.dataset.helperdel,i=+b.dataset.i;if(scenario.helpers&&scenario.helpers[v])scenario.helpers[v].splice(i,1);full();});
-  [...document.querySelectorAll('[data-helper] input')].forEach(inp=>inp.onchange=()=>{
-    const row=inp.closest('[data-helper]'),v=row.dataset.helper,i=+row.dataset.i,f=inp.dataset.f;
-    if(scenario.helpers&&scenario.helpers[v]&&scenario.helpers[v][i]){scenario.helpers[v][i][f]=inp.value;full();}});
 }
 function daySelector(){
   return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'+DATA.week.map(d=>{
