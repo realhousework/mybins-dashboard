@@ -64,7 +64,7 @@ label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;l
 <div id=p-week></div>
 <div id=p-day hidden></div>
 <div id=p-find hidden></div>
-<div class=note style="margin-top:22px">Each job's <b>EST minutes</b> from Zenkit is roughly <b>one person's</b> workload and already includes that job's driving allowance (travel is <b>not</b> added again). A truck's day = the non-shared driving (~<span id=dfnote>10</span>% of EST, a planning estimate) done once, plus the hands-on work shared across the crew: <b>elapsed â work Ã (driveFrac + (1âdriveFrac)/crew)</b>. So two people clear roughly twice the one-person hours in a day, but driving doesn't halve. Status is Red if a vehicle can't finish its load in the shift, Amber if tight. The What-if planner only allocates people genuinely working in Deputy (myBins staff can be proposed but need approval + a roster change) and never moves a job off its date.</div>
+<div class=note style="margin-top:22px">Each job's <b>EST minutes</b> from Zenkit is roughly <b>one person's</b> workload and already includes that job's driving allowance (travel is <b>not</b> added again). A truck's day = the non-shared driving (~<span id=dfnote>10</span>% of EST, a planning estimate) done once, plus the hands-on work shared across the crew: <b>elapsed ≈ work × (driveFrac + (1−driveFrac)/crew)</b>. So two people clear roughly twice the one-person hours in a day, but driving doesn't halve. Status is Red if a vehicle can't finish its load in the shift, Amber if tight. The What-if planner only allocates people genuinely working in Deputy (myBins staff can be proposed but need approval + a roster change) and never moves a job off its date.</div>
 </div>
 <div class=toast id=toast></div>
 <script>
@@ -83,7 +83,7 @@ const MAXH=()=>(DATA.config&&DATA.config.maxHours)||10;
 const DRIVE=()=>{const f=DATA.config&&DATA.config.driveFrac;return (f>0&&f<1)?f:0.10;};
 
 // ---- capacity model ----
-// EST â one person's workload (incl. that job's driving). With k crew, the truck still drives
+// EST ≈ one person's workload (incl. that job's driving). With k crew, the truck still drives
 // each leg once (driveFrac of the work), and the hands-on remainder is shared k ways.
 function elapsedFor(W,k,f){ if(!k)return Infinity; f=(f==null)?DRIVE():f; return W*(f+(1-f)/k); }
 function minCrewFor(W,win,f){ for(let k=1;k<=6;k++){ if(elapsedFor(W,k,f)<=win) return k; } return null; }
@@ -107,7 +107,7 @@ function isoWeek(d){const dt=new Date(d+'T12:00:00');const day=(dt.getDay()+6)%7
 function rotLabel(d){return (isoWeek(d)%2===0)?'Week 1':'Week 2';}
 
 // ---- scenario (proposed allocation) ----
-// scenario = { emp:{name:'HOPPER'|'MOE'|'off'}, region:{region:veh}, job:{jobKey:veh} }  â never defers a job.
+// scenario = { emp:{name:'HOPPER'|'MOE'|'off'}, region:{region:veh}, job:{jobKey:veh} }  — never defers a job.
 function defaultScenario(d){
   const sc={emp:{},region:{},job:{}};
   rosterOn(d).forEach(r=>{ sc.emp[r.emp]=VEH().includes(r.vehicle)?r.vehicle:VEH()[0]; });
@@ -140,12 +140,12 @@ function assessVeh(d,v,sc){
   const minNeed=minCrewFor(workH,windowH,f);
   let status='g',reasons=[],ot=0;
   if(!jobs.length){status='n';}
-  else if(!k){status='r';reasons.push('No crew assigned â this truck canât run its '+r1(workH)+'h of work');}
+  else if(!k){status='r';reasons.push('No crew assigned — this truck can’t run its '+r1(workH)+'h of work');}
   else if(needSpec&&!haveSpec){status='r';reasons.push('Garden/hedge work but no specialist (Blake/Julen) on this crew');}
-  else if(elapsed>windowH){status='r';ot=r1(elapsed-windowH);reasons.push(r1(workH)+'h of work Ã· '+k+' â '+r1(elapsed)+'h on the road â over the '+windowH+'h shift by ~'+ot+'h'+(minNeed&&minNeed>k?'; needs '+minNeed+' on this truck':', or split jobs to the other truck'));}
-  else if(util!=null&&util>90){status='a';reasons.push('Tight â '+r1(elapsed)+'h of the '+windowH+'h shift used ('+util+'%)');}
+  else if(elapsed>windowH){status='r';ot=r1(elapsed-windowH);reasons.push(r1(workH)+'h of work ÷ '+k+' ≈ '+r1(elapsed)+'h on the road — over the '+windowH+'h shift by ~'+ot+'h'+(minNeed&&minNeed>k?'; needs '+minNeed+' on this truck':', or split jobs to the other truck'));}
+  else if(util!=null&&util>90){status='a';reasons.push('Tight — '+r1(elapsed)+'h of the '+windowH+'h shift used ('+util+'%)');}
   if(missing>0&&status!=='r'){if(status==='g')status='a';reasons.push(missing+' job(s) missing an EST (workload understated)');}
-  if(regions.length>=3&&status==='g'){status='a';reasons.push('Spans all 3 regions â confirm the run order');}
+  if(regions.length>=3&&status==='g'){status='a';reasons.push('Spans all 3 regions — confirm the run order');}
   if(xfer.length&&status==='g')status='a';
   return {v,crew,jobs,workH,k,windowH,capacity:windowH,elapsed,util,needSpec,haveSpec,missing,regions,status,reasons,ot,xfer,minNeed};
 }
@@ -172,7 +172,7 @@ function shiftWeek(delta){ const nd=new Date(weekAnchor+'T12:00:00'); nd.setDate
 function renderWeek(){
   const first=DATA.dates[0], last=DATA.dates[DATA.dates.length-1];
   const canPrev=DATA.week[0]>first, canNext=DATA.week[4]<last;
-  const nav='<div style="display:flex;align-items:center;gap:12px;margin:10px 0;flex-wrap:wrap"><button class="btn ghost sm" id=wprev '+(canPrev?'':'disabled')+'>â Prev</button><b>Week of '+fmtDate(DATA.week[0])+'</b><span class=rotbadge title="Fortnightly rotation (ISO-week parity)">â» Rotation '+rotLabel(DATA.week[0])+'</span><button class="btn ghost sm" id=wnext '+(canNext?'':'disabled')+'>Next â¶</button></div>';
+  const nav='<div style="display:flex;align-items:center;gap:12px;margin:10px 0;flex-wrap:wrap"><button class="btn ghost sm" id=wprev '+(canPrev?'':'disabled')+'>◀ Prev</button><b>Week of '+fmtDate(DATA.week[0])+'</b><span class=rotbadge title="Fortnightly rotation (ISO-week parity)">↻ Rotation '+rotLabel(DATA.week[0])+'</span><button class="btn ghost sm" id=wnext '+(canNext?'':'disabled')+'>Next ▶</button></div>';
   $('p-week').innerHTML=nav+'<div class=weekstrip>'+DATA.week.map(date=>{
     const a=assessDay(date,defaultScenario(date)); const dd=new Date(date+'T12:00:00');
     const col=a.status==='g'?'#2e8b57':a.status==='a'?'#d9a520':a.status==='r'?'#c4452b':'#cfd8d2';
@@ -180,14 +180,14 @@ function renderWeek(){
     return '<div class=daycard data-d="'+date+'">'+
       '<div class=dn>'+DOW[dd.getDay()]+'</div><div class=dd>'+dd.getDate()+' '+dd.toLocaleDateString('en-AU',{month:'short'})+'</div>'+
       (a.active.length?('<div class=big>'+r1(a.workH)+'<span style="font-size:12px;color:#8a988f"> h</span></div>'+
-      '<div class=u>'+a.active.length+' jobs Â· '+a.ros.length+' crew'+(done===a.active.length&&a.active.length?' Â· â done':done?' Â· â'+done+'/'+a.active.length:'')+(a.resched.length?' Â· â© '+a.resched.length:'')+'</div>'+
-      '<div class=u style="color:#8a988f">'+a.vehs.filter(x=>x.status!=='n').map(x=>x.v+' '+STLABEL[x.status][0]).join(' Â· ')+'</div>'+
+      '<div class=u>'+a.active.length+' jobs · '+a.ros.length+' crew'+(done===a.active.length&&a.active.length?' · ✓ done':done?' · ✓'+done+'/'+a.active.length:'')+(a.resched.length?' · ↩ '+a.resched.length:'')+'</div>'+
+      '<div class=u style="color:#8a988f">'+a.vehs.filter(x=>x.status!=='n').map(x=>x.v+' '+STLABEL[x.status][0]).join(' · ')+'</div>'+
       '<div class=statusbar><span style="width:'+Math.min(100,a.vehs.reduce((m,x)=>Math.max(m,x.util||0),0))+'%;background:'+col+'"></span></div>'+
       '<span class="pill '+a.status+'">'+STLABEL[a.status]+'</span>')
-      :'<div class=big style="color:#cfd8d2;font-size:15px;margin-top:12px">No jobs</div><div class=u>'+(a.ros.length?esc(a.ros.map(x=>x.emp).join(' + '))+' rostered':'no roster')+'</div><span class="pill n">â</span>')+
+      :'<div class=big style="color:#cfd8d2;font-size:15px;margin-top:12px">No jobs</div><div class=u>'+(a.ros.length?esc(a.ros.map(x=>x.emp).join(' + '))+' rostered':'no roster')+'</div><span class="pill n">—</span>')+
       '</div>';
   }).join('')+'</div>'+
-  '<div class=note>Tap a day for the per-vehicle plan. Hours shown are one-person-equivalent (EST); each vehicleâs status reflects whether its crew can finish that load in the shift. Rotation shows the fortnightly Week 1 / Week 2 cycle for the displayed week.</div>';
+  '<div class=note>Tap a day for the per-vehicle plan. Hours shown are one-person-equivalent (EST); each vehicle’s status reflects whether its crew can finish that load in the shift. Rotation shows the fortnightly Week 1 / Week 2 cycle for the displayed week.</div>';
   [...document.querySelectorAll('.daycard')].forEach(c=>c.onclick=()=>openDay(c.dataset.d));
   if($('wprev'))$('wprev').onclick=()=>shiftWeek(-1);
   if($('wnext'))$('wnext').onclick=()=>shiftWeek(1);
@@ -198,20 +198,20 @@ function openDay(d){curDay=d;scenario=defaultScenario(d);document.querySelector(
 function vehCard(a){
   const col=a.status==='g'?'#2e8b57':a.status==='a'?'#d9a520':a.status==='r'?'#c4452b':'#cfd8d2';
   const pct=a.util==null?0:Math.min(100,a.util);
-  let h='<div class=card><div class=vhead><h3>ð '+esc(a.v)+' â '+(a.crew.length?esc(a.crew.join(' + ')):'<span class=note>no crew</span>')+(a.needSpec&&!a.haveSpec?' <span class=appt>no specialist</span>':'')+'</h3>'+
-    '<span class="pill '+a.status+'">'+STLABEL[a.status]+(a.util!=null?' Â· '+a.util+'%':'')+'</span></div>'+
-    '<span class=veh-badge>'+r1(a.workH)+'h work'+(a.k?' Ã· '+a.k+' â '+r1(a.elapsed)+'h on the road / '+a.windowH+'h shift':' Â· no crew')+'</span>'+
+  let h='<div class=card><div class=vhead><h3>🚚 '+esc(a.v)+' — '+(a.crew.length?esc(a.crew.join(' + ')):'<span class=note>no crew</span>')+(a.needSpec&&!a.haveSpec?' <span class=appt>no specialist</span>':'')+'</h3>'+
+    '<span class="pill '+a.status+'">'+STLABEL[a.status]+(a.util!=null?' · '+a.util+'%':'')+'</span></div>'+
+    '<span class=veh-badge>'+r1(a.workH)+'h work'+(a.k?' ÷ '+a.k+' ≈ '+r1(a.elapsed)+'h on the road / '+a.windowH+'h shift':' · no crew')+'</span>'+
     (a.minNeed&&a.k&&a.minNeed>a.k?' <span class=appt>needs '+a.minNeed+'</span>':'')+
     '<div class=statusbar><span style="width:'+pct+'%;background:'+col+'"></span></div>';
-  if(a.xfer&&a.xfer.length) h+='<div class=rec style="margin-top:8px;background:#fff4d6;border-color:#f0e2c4;color:#7a5e12">â  '+esc(a.xfer.join(', '))+' '+(a.xfer.length>1?'are':'is')+' rostered to another brand today â using '+(a.xfer.length>1?'them':'them')+' needs approval + a Deputy roster change.</div>';
+  if(a.xfer&&a.xfer.length) h+='<div class=rec style="margin-top:8px;background:#fff4d6;border-color:#f0e2c4;color:#7a5e12">⚠ '+esc(a.xfer.join(', '))+' '+(a.xfer.length>1?'are':'is')+' rostered to another brand today — using '+(a.xfer.length>1?'them':'them')+' needs approval + a Deputy roster change.</div>';
   if(a.reasons.length) h+='<div class="rec '+(a.status==='r'?'bad':a.status==='a'?'':'ok')+'" style="margin-top:8px">'+esc(a.reasons.join('. '))+'.</div>';
   h+=(a.jobs.length?a.jobs.map(jobRow).join(''):'<div class=note style="margin-top:8px">No jobs allocated to this vehicle.</div>');
   return h+'</div>';
 }
 function jobRow(j){
-  return '<div class=job'+(j.done?' style="opacity:.45"':'')+'><div class=jmins>'+(j.est!=null?j.est+'m':'â')+'</div><div style="flex:1">'+
-    '<div class=jaddr>'+(j.done?'â ':'')+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span>'+(j.appt?'<span class=appt>'+(j.appt==='STRICT'?'â°STRICT':'â°'+esc(j.appt))+'</span>':'')+'</div>'+
-    '<div class=jsvc>'+esc(j.service||'')+' Â· '+esc(j.area)+'</div>'+
+  return '<div class=job'+(j.done?' style="opacity:.45"':'')+'><div class=jmins>'+(j.est!=null?j.est+'m':'—')+'</div><div style="flex:1">'+
+    '<div class=jaddr>'+(j.done?'✓ ':'')+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span>'+(j.appt?'<span class=appt>'+(j.appt==='STRICT'?'⏰STRICT':'⏰'+esc(j.appt))+'</span>':'')+'</div>'+
+    '<div class=jsvc>'+esc(j.service||'')+' · '+esc(j.area)+'</div>'+
     (j.subtasks&&j.subtasks.length?'<details style="margin-top:4px"><summary class=note style="cursor:pointer">'+j.subtasks.length+' tasks</summary><ul style="margin:4px 0;padding-left:18px;font-size:12.5px;color:#5b6b60">'+j.subtasks.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ul></details>':'')+
     '</div></div>';
 }
@@ -220,14 +220,14 @@ function dayRecs(day){
   if(!day.active.length){out.push(['','No jobs scheduled this day.']);return out;}
   // The headline answer: how many people does each truck need to finish its load in the shift?
   const parts=day.vehs.filter(a=>a.jobs.length).map(a=>{
-    if(!a.minNeed) return a.v+' '+r1(a.workH)+'h: too big for one truck-day â split jobs to the other truck or approve overtime';
+    if(!a.minNeed) return a.v+' '+r1(a.workH)+'h: too big for one truck-day — split jobs to the other truck or approve overtime';
     return a.v+' '+r1(a.workH)+'h: needs '+a.minNeed+' '+(a.minNeed>1?'people':'person')+(a.k?' (has '+a.k+')':'');
   });
   const anyR=day.vehs.some(a=>a.status==='r'), anyA=day.vehs.some(a=>a.status==='a');
-  out.push([anyR?'bad':anyA?'':'ok','ð¥ Crew to finish within the shift â '+parts.join(' Â· ')]);
+  out.push([anyR?'bad':anyA?'':'ok','👥 Crew to finish within the shift — '+parts.join(' · ')]);
   if(!day.ros.length&&isDefault(day.date)){out.push(['bad','No one is rostered to myMowing in Deputy for this day. Roster crew (and set their vehicle in the shift comment).']);}
   day.vehs.forEach(a=>{
-    if(a.xfer&&a.xfer.length) out.push(['','â  '+a.v+': '+a.xfer.join(', ')+' '+(a.xfer.length>1?'are':'is')+' on another brand today â needs approval + a Deputy roster change before you can rely on this plan.']);
+    if(a.xfer&&a.xfer.length) out.push(['','⚠ '+a.v+': '+a.xfer.join(', ')+' '+(a.xfer.length>1?'are':'is')+' on another brand today — needs approval + a Deputy roster change before you can rely on this plan.']);
     if(a.status==='r'){
       if(!a.k) out.push(['bad',a.v+': no crew assigned but '+r1(a.workH)+'h of work. Allocate crew below, or move its jobs to the other truck.']);
       else if(a.needSpec&&!a.haveSpec) out.push(['bad',a.v+': garden/hedge jobs but no specialist. Put Blake or Julen on '+a.v+'.']);
@@ -240,20 +240,20 @@ function dayRecs(day){
 function renderDay(){
   const day=assessDay(curDay,scenario);
   let h='<div class=card><div class=vhead><h2 style="margin:0">'+fmtDate(curDay)+'</h2>'+
-    '<span class=rotbadge>â» Rotation '+rotLabel(curDay)+'</span>'+
+    '<span class=rotbadge>↻ Rotation '+rotLabel(curDay)+'</span>'+
     '<span class="pill '+day.status+'" style="font-size:12px">'+STLABEL[day.status]+'</span></div>'+
     '<div class=kv>'+
     '<div><div class=k>Jobs</div><div class=v>'+day.active.length+'</div></div>'+
     '<div><div class=k>Total work</div><div class=v>'+r1(day.workH)+'h</div></div>'+
     '<div><div class=k>Rostered</div><div class=v>'+day.ros.length+'</div></div>'+
     '<div><div class=k>Available</div><div class=v>'+day.workingCount+'</div></div>'+
-    '</div>'+(isDefault(curDay)?'':'<div class=note style="color:#8a6d1a;font-weight:700">â Showing a PROPOSED arrangement â not yet in Deputy</div>')+'</div>';
+    '</div>'+(isDefault(curDay)?'':'<div class=note style="color:#8a6d1a;font-weight:700">● Showing a PROPOSED arrangement — not yet in Deputy</div>')+'</div>';
   h+='<h2>Recommendation</h2>'+dayRecs(day).map(r=>'<div class="rec '+(r[0]||'')+'">'+r[1]+'</div>').join('');
   h+='<h2>Vehicles</h2>'+day.vehs.filter(a=>a.status!=='n'||a.crew.length).map(vehCard).join('');
   h+=reschedPanel(day);
   h+='<h2>What-if planner</h2><div id=wiMount>'+renderWI()+'</div>';
   const nd=nextPlannableDay();
-  h+='<div style="margin:16px 0;display:flex;gap:8px;flex-wrap:wrap"><button class=btn id=wa>ð² '+fmtShort(nd)+' â summary</button> <button class=btn id=wadet>ð '+fmtShort(nd)+' â run sheet</button> <button class="btn ghost" id=waday>Copy '+fmtShort(curDay)+'</button> <button class="btn ghost" id=wadayd>'+fmtShort(curDay)+' â detailed</button></div>';
+  h+='<div style="margin:16px 0;display:flex;gap:8px;flex-wrap:wrap"><button class=btn id=wa>📲 '+fmtShort(nd)+' — summary</button> <button class=btn id=wadet>📋 '+fmtShort(nd)+' — run sheet</button> <button class="btn ghost" id=waday>Copy '+fmtShort(curDay)+'</button> <button class="btn ghost" id=wadayd>'+fmtShort(curDay)+' — detailed</button></div>';
   $('p-day').innerHTML=daySelector()+h;
   wireSel();wireWI();
   $('wa').onclick=()=>copyWA(nextPlannableDay());
@@ -264,8 +264,8 @@ function renderDay(){
 function reschedPanel(day){
   if(!day.resched.length)return '';
   const mins=day.resched.reduce((s,j)=>s+(j.est||0),0);
-  return '<details class=card style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;color:#8a6d1a;list-style:none">â© Rescheduled / postponed / cancelled â '+day.resched.length+' job'+(day.resched.length>1?'s':'')+' <span class=note style="font-weight:400">(ticked done ahead of the day Â· not in the hours above Â· ~'+r1(mins/60)+'h)</span></summary>'+
-    '<div style="margin-top:8px">'+day.resched.map(j=>'<div class=job style="opacity:.7"><div class=jmins>'+(j.est!=null?j.est+'m':'â')+'</div><div style="flex:1"><div class=jaddr>'+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span></div><div class=jsvc>'+esc(j.service||'')+' Â· '+esc(j.area)+'</div></div></div>').join('')+'</div></details>';
+  return '<details class=card style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;color:#8a6d1a;list-style:none">↩ Rescheduled / postponed / cancelled — '+day.resched.length+' job'+(day.resched.length>1?'s':'')+' <span class=note style="font-weight:400">(ticked done ahead of the day · not in the hours above · ~'+r1(mins/60)+'h)</span></summary>'+
+    '<div style="margin-top:8px">'+day.resched.map(j=>'<div class=job style="opacity:.7"><div class=jmins>'+(j.est!=null?j.est+'m':'—')+'</div><div style="flex:1"><div class=jaddr>'+esc(j.address)+'<span class="sk '+j.skill+'">'+j.skill+'</span></div><div class=jsvc>'+esc(j.service||'')+' · '+esc(j.area)+'</div></div></div>').join('')+'</div></details>';
 }
 // ---- what-if planner ----
 function renderWI(){
@@ -277,7 +277,7 @@ function renderWI(){
   h+='<div style="margin-top:8px">';
   Object.keys(DATA.staff).forEach(e=>{
     const a=avail[e]; const working=a&&a.working; const cross=working&&!a.onMowing;
-    const where=working?((a.onMowing?('myMowing'+(a.vehicle?' ('+esc(a.vehicle)+')':'')):('â  '+esc(a.ouName||'another brand')+' â needs approval'))+' Â· '+(a.hours||MAXH())+'h'):'not working today';
+    const where=working?((a.onMowing?('myMowing'+(a.vehicle?' ('+esc(a.vehicle)+')':'')):('⚠ '+esc(a.ouName||'another brand')+' — needs approval'))+' · '+(a.hours||MAXH())+'h'):'not working today';
     const cur=scenario.emp[e]||'off';
     h+='<div class=staffrow><div class="ava'+(working&&!cross?'':' off')+'"'+(cross?' style="background:#d9a520"':'')+'>'+ini(e)+'</div>'+
       '<div style="flex:1;min-width:150px"><b>'+esc(e)+'</b> '+(isSpec(e)?'<span class=tag>specialist</span>':'<span class=tag>mowing</span>')+(cross?' <span class=tag style="background:#fff4d6;color:#8a6d1a">myBins</span>':'')+'<div class=note>'+where+'</div></div>'+
@@ -288,11 +288,11 @@ function renderWI(){
   // region quick-allocation
   const regionsWithJobs=REGIONS.filter(reg=>activeJobs(curDay).some(j=>j.area===reg));
   if(regionsWithJobs.length){
-    h+='<div style="margin-top:12px"><div class=note style="font-weight:700;color:#5b6b60">Which vehicle runs each area <span style="font-weight:400">(bulk â sets every job in the area)</span></div>';
+    h+='<div style="margin-top:12px"><div class=note style="font-weight:700;color:#5b6b60">Which vehicle runs each area <span style="font-weight:400">(bulk — sets every job in the area)</span></div>';
     regionsWithJobs.forEach(reg=>{
       const n=activeJobs(curDay).filter(j=>j.area===reg).length;
       const mins=activeJobs(curDay).filter(j=>j.area===reg).reduce((s,j)=>s+(j.est||0),0);
-      h+='<div class=staffrow><div style="flex:1"><b>'+esc(reg)+'</b> <span class=note>'+n+' jobs Â· '+r1(mins/60)+'h</span></div>'+
+      h+='<div class=staffrow><div style="flex:1"><b>'+esc(reg)+'</b> <span class=note>'+n+' jobs · '+r1(mins/60)+'h</span></div>'+
         '<div class=seg data-region="'+esc(reg)+'">'+VEH().map(v=>'<button data-v="'+v+'" class="'+(scenario.region[reg]===v?'on':'')+'">'+v+'</button>').join('')+'</div></div>';
     });
     h+='</div>';
@@ -301,10 +301,10 @@ function renderWI(){
   const aj=activeJobs(curDay);
   if(aj.length){
     const hasOv=scenario.job&&Object.keys(scenario.job).length;
-    h+='<details style="margin-top:12px"'+(hasOv?' open':'')+'><summary class=note style="cursor:pointer;font-weight:700;color:#5b6b60">Move individual jobs between trucks ('+aj.length+' jobs'+(hasOv?' Â· '+Object.keys(scenario.job).length+' moved':'')+')</summary>';
+    h+='<details style="margin-top:12px"'+(hasOv?' open':'')+'><summary class=note style="cursor:pointer;font-weight:700;color:#5b6b60">Move individual jobs between trucks ('+aj.length+' jobs'+(hasOv?' · '+Object.keys(scenario.job).length+' moved':'')+')</summary>';
     aj.forEach(j=>{
       const cur=vehOfJob(scenario,j);
-      h+='<div class=staffrow><div style="flex:1;min-width:150px"><b>'+esc(j.address)+'</b> <span class="sk '+j.skill+'">'+j.skill+'</span><div class=note>'+(j.est!=null?j.est+'m':'â')+' Â· '+esc(j.area)+'</div></div>'+
+      h+='<div class=staffrow><div style="flex:1;min-width:150px"><b>'+esc(j.address)+'</b> <span class="sk '+j.skill+'">'+j.skill+'</span><div class=note>'+(j.est!=null?j.est+'m':'—')+' · '+esc(j.area)+'</div></div>'+
         '<div class=seg data-job="'+esc(jobKey(j))+'">'+VEH().map(v=>'<button data-v="'+v+'" class="'+(cur===v?'on':'')+'">'+v+'</button>').join('')+'</div></div>';
     });
     h+='</details>';
@@ -312,8 +312,8 @@ function renderWI(){
   // compare line
   const base=assessDay(curDay,defaultScenario(curDay)), prop=assessDay(curDay,scenario);
   h+='<div class="rec '+(prop.status==='g'?'ok':prop.status==='r'?'bad':'')+'" style="margin-top:12px">'+
-     '<b>As rostered:</b> '+base.vehs.filter(x=>x.status!=='n').map(x=>x.v+' '+STLABEL[x.status]).join(' Â· ')+(base.vehs.every(x=>x.status==='n')?'no work':'')+
-     '<br><b>Proposed'+(def?' (= roster)':'')+':</b> '+prop.vehs.filter(x=>x.status!=='n'||x.crew.length).map(x=>x.v+' '+STLABEL[x.status]+(x.util!=null?' '+x.util+'%':'')).join(' Â· ')+'</div>';
+     '<b>As rostered:</b> '+base.vehs.filter(x=>x.status!=='n').map(x=>x.v+' '+STLABEL[x.status]).join(' · ')+(base.vehs.every(x=>x.status==='n')?'no work':'')+
+     '<br><b>Proposed'+(def?' (= roster)':'')+':</b> '+prop.vehs.filter(x=>x.status!=='n'||x.crew.length).map(x=>x.v+' '+STLABEL[x.status]+(x.util!=null?' '+x.util+'%':'')).join(' · ')+'</div>';
   h+='</div>';
   return h;
 }
@@ -361,7 +361,7 @@ function findCapacity(mins,skillReq,area){
 }
 function renderFind(){
   const h='<div class=card><h2 style="margin:0 0 4px">Find capacity for a new job</h2>'+
-    '<div class=note>Enter a new/urgent job and Iâll find the best day, truck and crew it fits into using the room already in the schedule. It never moves a scheduled job to another day.</div>'+
+    '<div class=note>Enter a new/urgent job and I’ll find the best day, truck and crew it fits into using the room already in the schedule. It never moves a scheduled job to another day.</div>'+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:12px">'+
     '<div><label class=fl>Est. minutes</label><input id=fMin class=fin type=number min=5 step=5 value=90></div>'+
     '<div><label class=fl>Work type</label><select id=fSkill class=fin><option value=Basic>Basic (mow/edge/blow)</option><option value=Specialist>Specialist (hedge/garden)</option><option value=Mixed>Mixed</option></select></div>'+
@@ -380,12 +380,12 @@ function runFind(){
   if(!res.length){
     const anySpec=DATA.dates.some(d=>{const sc=defaultScenario(d);return VEH().some(v=>assessVeh(d,v,sc).haveSpec);});
     h='<div class="rec bad" style="margin-top:12px">No truck has room for a '+mins+'m '+skillReq+' job on a currently-rostered day'+(area==='Any'?'':' in '+esc(area))+'.<br>'+
-      ((skillReq!=='Basic'&&!anySpec)?'No specialist (Blake/Julen) is rostered in this window â a specialist would need to be rostered first. ':'')+
+      ((skillReq!=='Basic'&&!anySpec)?'No specialist (Blake/Julen) is rostered in this window — a specialist would need to be rostered first. ':'')+
       'Options: add a person to a truck that day (raising its shared capacity), or approve overtime. Scheduled jobs are never moved to make room.</div>';
   } else {
-    h='<div class=note style="margin-top:12px;font-weight:700">Best fits ('+res.length+' option'+(res.length>1?'s':'')+') â a '+mins+'m '+skillReq+' job'+(area==='Any'?'':' in '+esc(area))+':</div>';
-    h+=res.slice(0,6).map((o,i)=>'<div class="rec '+(i===0?'ok':'')+'" style="margin-top:8px"><b>'+fmtDate(o.d)+' Â· '+rotLabel(o.d)+'</b> â ð '+o.v+' ('+esc(o.crew.join(' + '))+')'+
-      (o.geo?' Â· <b>same area</b>':' Â· different area')+'<br>~'+r1(o.spare)+'h of one-person room free (currently '+r1(o.workH)+'h over '+o.k+' crew; after this job the truck runs ~'+r1(o.newElapsed)+'h of the '+o.win+'h shift).</div>').join('');
+    h='<div class=note style="margin-top:12px;font-weight:700">Best fits ('+res.length+' option'+(res.length>1?'s':'')+') — a '+mins+'m '+skillReq+' job'+(area==='Any'?'':' in '+esc(area))+':</div>';
+    h+=res.slice(0,6).map((o,i)=>'<div class="rec '+(i===0?'ok':'')+'" style="margin-top:8px"><b>'+fmtDate(o.d)+' · '+rotLabel(o.d)+'</b> — 🚚 '+o.v+' ('+esc(o.crew.join(' + '))+')'+
+      (o.geo?' · <b>same area</b>':' · different area')+'<br>~'+r1(o.spare)+'h of one-person room free (currently '+r1(o.workH)+'h over '+o.k+' crew; after this job the truck runs ~'+r1(o.newElapsed)+'h of the '+o.win+'h shift).</div>').join('');
     h+='<div class=note style="margin-top:8px">Ranked by same-area match, then soonest, then most headroom. Figures use the same crew-productivity model as the daily plan.</div>';
   }
   $('fRes').innerHTML=h;
@@ -395,19 +395,19 @@ function runFind(){
 function copyWA(date,detailed){
   const useSc=date===curDay?scenario:defaultScenario(date);
   const day=assessDay(date,useSc); const proposed=date===curDay&&!isDefault(date);
-  const emo=day.status==='g'?'ð¢':day.status==='a'?'ð¡':day.status==='r'?'ð´':'âª';
-  let m='ð *MYMOWING â '+fmtDate(date).toUpperCase()+'*'+(detailed?' (RUN SHEET)':'')+'\n'+(proposed?'â ï¸ *PROPOSED PLAN â not yet in Deputy*\n':'(as rostered in Deputy)\n')+'â» Rotation '+rotLabel(date)+'\n\n'+emo+' *STATUS: '+STLABEL[day.status].toUpperCase()+'*\n\n';
+  const emo=day.status==='g'?'🟢':day.status==='a'?'🟡':day.status==='r'?'🔴':'⚪';
+  let m='📅 *MYMOWING — '+fmtDate(date).toUpperCase()+'*'+(detailed?' (RUN SHEET)':'')+'\n'+(proposed?'⚠️ *PROPOSED PLAN — not yet in Deputy*\n':'(as rostered in Deputy)\n')+'↻ Rotation '+rotLabel(date)+'\n\n'+emo+' *STATUS: '+STLABEL[day.status].toUpperCase()+'*\n\n';
   const crewList=[...new Set([].concat.apply([],day.vehs.map(a=>a.crew)))];
-  m+='*Overview*\nâ¢ Jobs: '+day.active.length+'\nâ¢ Total work: ~'+r1(day.workH)+'h (one-person-equiv)\nâ¢ Crew on the plan: '+(crewList.join(', ')||'none')+'\nâ¢ Available in Deputy: '+day.workingCount+'\n\n';
+  m+='*Overview*\n• Jobs: '+day.active.length+'\n• Total work: ~'+r1(day.workH)+'h (one-person-equiv)\n• Crew on the plan: '+(crewList.join(', ')||'none')+'\n• Available in Deputy: '+day.workingCount+'\n\n';
   day.vehs.forEach(a=>{ if(a.status==='n'&&!a.crew.length)return;
-    m+='ð *'+a.v+'* â '+(a.crew.join(' + ')||'NO CREW')+'\n'+(a.regions.join(', ')||'â')+' Â· '+a.jobs.length+' jobs Â· ~'+r1(a.workH)+'h'+(a.k?' Ã· '+a.k+' â '+r1(a.elapsed)+'h / '+a.windowH+'h':'')+' Â· '+STLABEL[a.status]+'\n';
-    if(a.xfer&&a.xfer.length) m+='   â  '+a.xfer.join(', ')+' â needs approval + Deputy roster change\n';
-    if(detailed){ a.jobs.forEach((j,i)=>{ m+=(i+1)+'. '+(j.est!=null?j.est+'m':'â')+'  '+j.address+(j.skill&&j.skill!=='Basic'&&j.skill!=='Unknown'?' ['+j.skill+']':'')+(j.appt?(j.appt==='STRICT'?' â°STRICT':' â°'+j.appt):'')+'\n'; }); }
+    m+='🚚 *'+a.v+'* — '+(a.crew.join(' + ')||'NO CREW')+'\n'+(a.regions.join(', ')||'—')+' · '+a.jobs.length+' jobs · ~'+r1(a.workH)+'h'+(a.k?' ÷ '+a.k+' ≈ '+r1(a.elapsed)+'h / '+a.windowH+'h':'')+' · '+STLABEL[a.status]+'\n';
+    if(a.xfer&&a.xfer.length) m+='   ⚠ '+a.xfer.join(', ')+' — needs approval + Deputy roster change\n';
+    if(detailed){ a.jobs.forEach((j,i)=>{ m+=(i+1)+'. '+(j.est!=null?j.est+'m':'—')+'  '+j.address+(j.skill&&j.skill!=='Basic'&&j.skill!=='Unknown'?' ['+j.skill+']':'')+(j.appt?(j.appt==='STRICT'?' ⏰STRICT':' ⏰'+j.appt):'')+'\n'; }); }
     m+='\n';
   });
-  if(detailed&&day.resched.length){ m+='â© *Rescheduled/cancelled* ('+day.resched.length+')\n'+day.resched.map(j=>'â¢ '+j.address).join('\n')+'\n\n'; }
-  const rr=dayRecs(day); m+='ð¡ *Recommendation*\n'+rr.map(r=>'â¢ '+r[1]).join('\n')+'\n\nâ Review and ð if this works'+(proposed?' â then roster it in Deputy.':'.');
-  navigator.clipboard.writeText(m).then(()=>{const t=$('toast');t.textContent='Copied â paste into WhatsApp';t.className='toast show';setTimeout(()=>t.className='toast',1800);});
+  if(detailed&&day.resched.length){ m+='↩ *Rescheduled/cancelled* ('+day.resched.length+')\n'+day.resched.map(j=>'• '+j.address).join('\n')+'\n\n'; }
+  const rr=dayRecs(day); m+='💡 *Recommendation*\n'+rr.map(r=>'• '+r[1]).join('\n')+'\n\n✅ Review and 👍 if this works'+(proposed?' — then roster it in Deputy.':'.');
+  navigator.clipboard.writeText(m).then(()=>{const t=$('toast');t.textContent='Copied — paste into WhatsApp';t.className='toast show';setTimeout(()=>t.className='toast',1800);});
 }
 // ---- tabs ----
 function wireTabs(){[...document.querySelectorAll('.tb')].forEach(b=>b.onclick=()=>{
@@ -427,10 +427,10 @@ async function decryptFeed(meta,pass){
   return JSON.parse(new TextDecoder().decode(pt));
 }
 function showGate(meta){
-  $('gate').innerHTML='<div class=gate><div style="font-size:15px;font-weight:700;margin-bottom:4px">ð myMowing planner</div><div class=note>Enter the team passphrase to unlock the schedule.</div><input id=gpass type=password placeholder=Passphrase autofocus><button class=btn id=gbtn style="width:100%">Unlock</button><div class=note id=gerr style="color:#b4452b;margin-top:8px"></div></div>';
-  const go=async()=>{ const p=$('gpass').value; if(!p)return; $('gbtn').textContent='Unlockingâ¦';
+  $('gate').innerHTML='<div class=gate><div style="font-size:15px;font-weight:700;margin-bottom:4px">🔒 myMowing planner</div><div class=note>Enter the team passphrase to unlock the schedule.</div><input id=gpass type=password placeholder=Passphrase autofocus><button class=btn id=gbtn style="width:100%">Unlock</button><div class=note id=gerr style="color:#b4452b;margin-top:8px"></div></div>';
+  const go=async()=>{ const p=$('gpass').value; if(!p)return; $('gbtn').textContent='Unlocking…';
     try{ DATA=await decryptFeed(meta,p); sessionStorage.setItem('mowpass',p); start(); }
-    catch(e){ $('gerr').textContent='Wrong passphrase â try again.'; $('gbtn').textContent='Unlock'; } };
+    catch(e){ $('gerr').textContent='Wrong passphrase — try again.'; $('gbtn').textContent='Unlock'; } };
   $('gbtn').onclick=go; $('gpass').onkeydown=e=>{if(e.key==='Enter')go();};
 }
 async function load(){
@@ -443,7 +443,7 @@ async function load(){
   }
   // plaintext fallback (before encryption is switched on)
   try{const r=await fetch('mowing.json?cb='+Date.now());if(!r.ok)throw 0;DATA=await r.json();}
-  catch(e){ $('gate').innerHTML='<div class=card>Live feed not published yet â it appears after the next scheduled run.</div>'; $('asof').textContent='no data'; return; }
+  catch(e){ $('gate').innerHTML='<div class=card>Live feed not published yet — it appears after the next scheduled run.</div>'; $('asof').textContent='no data'; return; }
   start();
 }
 function start(){
@@ -451,7 +451,7 @@ function start(){
   weekAnchor=DATA.today; DATA.week=weekOf(DATA.today);
   $('asof').textContent='Updated '+DATA.generatedAt;
   if($('dfnote'))$('dfnote').textContent=Math.round(DRIVE()*100);
-  $('sub').innerHTML='Zenkit jobs + Deputy availability Â· <b>read-only</b> Â· feed covers '+fmtDate(DATA.dates[0])+' â '+fmtDate(DATA.dates[DATA.dates.length-1]);
+  $('sub').innerHTML='Zenkit jobs + Deputy availability · <b>read-only</b> · feed covers '+fmtDate(DATA.dates[0])+' → '+fmtDate(DATA.dates[DATA.dates.length-1]);
   curDay=DATA.week[0]; scenario=defaultScenario(curDay);
   wireTabs(); renderWeek();
   setTimeout(function(){try{location.replace(location.pathname+'?t='+Date.now());}catch(e){location.reload();}},300000);
