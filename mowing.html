@@ -116,6 +116,8 @@ const MAXH=()=>(DATA.config&&DATA.config.maxHours)||10;
 const BREAKM=()=>((DATA.config&&DATA.config.breakMins)||30);        // minutes
 const BREAK=()=>BREAKM()/60;                                        // hours
 const ROUTING=()=>!!(DATA.config&&DATA.config.routingAvailable);
+const SEATS=v=>{const s=DATA.config&&DATA.config.seats;return (s&&s[v])||(DATA.config&&DATA.config.maxCrew)||3;};   // cab capacity per vehicle
+const MTOKEN=()=>(DATA.config&&DATA.config.mapboxToken)||null;   // public pk. token for on-demand geocoding (Find capacity)
 const parseHM=s=>{const m=/(\d{1,2}):(\d{2})/.exec(s||'');return m?(+m[1])*60+(+m[2]):null;};
 const CFGSTART=()=>parseHM((DATA.config&&DATA.config.startTime)||'07:00')||420;
 function fmtClock(mins){let h=Math.floor(mins/60),m=Math.round(mins%60);if(m===60){h++;m=0;}const ap=(h%24)>=12?'pm':'am';let hh=(h%24)%12;if(hh===0)hh=12;return hh+':'+String(m).padStart(2,'0')+ap;}
@@ -157,7 +159,7 @@ function legMin(d,a,b){const s=legSec(d,a,b);return s==null?null:Math.round(s/60
 function medianLegSec(d){const m=matrixFor(d);if(!m||!m.dur)return null;const xs=[];for(let i=0;i<m.dur.length;i++)for(let j=0;j<m.dur.length;j++)if(i!==j&&m.dur[i][j]!=null)xs.push(m.dur[i][j]);if(!xs.length)return null;xs.sort((a,b)=>a-b);return xs[Math.floor(xs.length/2)];}
 
 // ---- rotation (fixed anchor: week of Mon 10 Nov 2026 = Week 1; stays correct across New Year) ----
-const ROT_ANCHOR_MON=new Date('2026-11-10T12:00:00');
+const ROT_ANCHOR_MON=new Date('2026-11-09T12:00:00');   // Monday of a Week-1 week (confirmed)
 function mondayOf(d){const t=new Date(d+'T12:00:00');const dow=t.getDay();const m=new Date(t);m.setDate(t.getDate()+(dow===0?-6:1-dow));m.setHours(12,0,0,0);return m;}
 function rotLabel(d){const w=Math.round((mondayOf(d)-ROT_ANCHOR_MON)/(7*86400000));return (((w%2)+2)%2===0)?'Week 1':'Week 2';}
 
@@ -226,11 +228,35 @@ function effectiveOrder(d,v,sc){
   return optimiseOrder(d,v,sc,jobs).order;
 }
 
+// Progress one job from startClock. Work advances at the rate of whoever is actually present, re-evaluated
+// at every crew start/end boundary — so a helper who leaves mid-job stops contributing at that moment.
+// 0 crew present → wait for the next crew to arrive; if no crew ever returns, the job is impossible (never
+// progresses with nobody there). Specialist + driver coverage are tracked across the whole working time.
+function serviceJob(crew,startClock,est){
+  const capAt=t=>crew.filter(c=>c.start<=t+1e-6&&t<c.end-1e-6);
+  const startPresent=capAt(startClock);
+  let remaining=est||0, clock=startClock, waited=0, hadStaff=false, specGap=false, driverGap=false, guard=0;
+  while(remaining>1e-6&&guard++<2000){
+    const present=capAt(clock), k=present.length;
+    if(k===0){
+      const nexts=crew.map(c=>c.start).filter(s=>s>clock+1e-6).sort((a,b)=>a-b);
+      if(!nexts.length) return {end:clock,waited,impossible:true,hadStaff,specCovered:false,driverCovered:false,crewStart:startPresent.map(c=>c.emp),capStart:startPresent.length};
+      waited+=nexts[0]-clock; clock=nexts[0]; continue;
+    }
+    hadStaff=true;
+    if(!present.some(c=>c.spec)) specGap=true;        // a moment worked with no specialist present
+    if(!present.some(c=>c.driver)) driverGap=true;    // a moment worked with no authorised driver present
+    let nb=Infinity; crew.forEach(c=>{ if(c.end>clock+1e-6)nb=Math.min(nb,c.end); if(c.start>clock+1e-6)nb=Math.min(nb,c.start); });
+    const dt=Math.min(nb-clock, remaining/k);
+    remaining-=dt*k; clock+=dt;
+  }
+  return {end:clock,waited,impossible:remaining>1e-6,hadStaff,specCovered:!specGap,driverCovered:!driverGap,crewStart:startPresent.map(c=>c.emp),capStart:startPresent.length};
+}
 // ---- THE ENGINE: forward-simulate a vehicle's day with time-phased crew ----
 function simulate(d,v,sc,ordered){
   const crew=crewIntervals(d,v,sc);
   const res={v,crew,crewNames:crew.map(c=>c.emp),stops:[],order:ordered.slice(),
-    flags:{apptViol:[],specShort:[],transport:[],driverGap:[],unroutable:[],outside:[],missingGeo:false,noDriver:false,noCrew:!crew.length},
+    flags:{apptViol:[],specShort:[],transport:[],driverGap:[],unroutable:[],outside:[],impossible:[],conflict:[],overSeat:false,missingGeo:false,noDriver:false,noCrew:!crew.length},
     status:'g',reasons:[]};
   if(!ordered.length){res.status='n';res.startMin=null;res.finishMin=null;res.driveMin=0;res.driveH=0;res.onSiteH=0;res.onSiteClockH=0;res.win={startMin:CFGSTART(),endMin:CFGSTART()+MAXH()*60,grossH:MAXH(),netH:MAXH()-BREAK()};res.ot=0;res.buffer=0;res.k=0;return res;}
   const routable=ordered.filter(j=>jobIdx(d,j.id)>0);
@@ -257,18 +283,18 @@ function simulate(d,v,sc,ordered){
       // preferred: soft, no wait/violation
     }
     const serviceStart=clock;
-    const present=presentAt(serviceStart);
-    const cap=Math.max(1,present.length);
-    const specPresent=present.some(c=>c.spec);
     const needSpec=j.skill==='Specialist'||j.skill==='Mixed';
-    if(needSpec&&!specPresent)res.flags.specShort.push(j);
-    if(present.length&&!present.some(c=>c.driver))res.flags.driverGap.push(j);
     const est=j.est!=null?j.est:0;
-    const onsiteMin=est/cap;
-    onSiteClock+=onsiteMin; onSitePerson+=est;
-    const depart=serviceStart+onsiteMin;
+    const svc=serviceJob(crew,serviceStart,est);     // time-stepped: splits at crew start/end boundaries
+    const depart=svc.end;
+    const workMin=(depart-serviceStart)-svc.waited;  // actual on-site working minutes (excl. waiting for staff)
+    onSiteClock+=Math.max(0,workMin); onSitePerson+=est;
+    const cap=svc.capStart, crewHere=svc.crewStart;
+    if(needSpec&&!svc.specCovered)res.flags.specShort.push(j);   // a specialist job worked while none present
+    if(svc.hadStaff&&!svc.driverCovered)res.flags.driverGap.push(j);
+    if(svc.impossible)res.flags.impossible.push(j);
     if(viol)res.flags.apptViol.push(viol);
-    res.stops.push({job:j,arrive,serviceStart,depart,onsiteMin,legMin:lm,waited,crewHere:present.map(c=>c.emp),cap,specPresent,appt:ap,viol});
+    res.stops.push({job:j,arrive,serviceStart,depart,onsiteMin:depart-serviceStart,legMin:lm,waited,svcWait:svc.waited,crewHere,cap,specPresent:svc.specCovered,impossible:svc.impossible,appt:ap,viol});
     clock=depart; prev=idx;
   });
   const back=legMin(d,prev,0);
@@ -298,17 +324,20 @@ function simulate(d,v,sc,ordered){
   res.needSpec=needSpecDay; res.haveSpec=haveSpec;
   res.missingEst=ordered.filter(j=>j.est==null).length;
   res.regions=[...new Set(ordered.map(j=>j.area))];
-  // minimum full-day crew to fit on person-minutes (guidance only)
-  let minNeed=null; if(res.driveH!=null){for(let kk=1;kk<=6;kk++){if(res.driveH+res.onSiteH/kk<=res.win.netH){minNeed=kk;break;}}}
-  res.minNeed=minNeed;
+  // minimum full-day crew to fit on person-minutes, capped at the vehicle's real seating (no imaginary 6-person crews)
+  const seats=SEATS(v);
+  let minNeed=null; if(res.driveH!=null){for(let kk=1;kk<=seats;kk++){if(res.driveH+res.onSiteH/kk<=res.win.netH){minNeed=kk;break;}}}
+  res.minNeed=minNeed; res.seats=seats;
+  res.fitsInSeats=minNeed!=null;   // false = even a full cab can't finish inside the shift → must split to the other truck
   let st='g',reasons=[];
   if(!crew.length){st='r';reasons.push('No crew assigned — this truck can’t run its '+r1(res.onSiteH)+'h of on-site work');}
+  if(res.flags.impossible.length){st='r';reasons.push(res.flags.impossible.length+' job(s) have no crew present at any point they could run (e.g. everyone has left) — they can’t progress');}
   if(needSpecDay&&!haveSpec){st='r';reasons.push('Garden/hedge work but no specialist (Blake/Julen) on this crew');}
-  if(res.flags.specShort.length&&haveSpec){ if(st!=='r')st='r'; reasons.push(res.flags.specShort.length+' specialist job(s) fall in a window with no specialist present (e.g. the specialist has left)'); }
+  if(res.flags.specShort.length&&haveSpec){ if(st!=='r')st='r'; reasons.push(res.flags.specShort.length+' specialist job(s) are worked while no specialist is present (e.g. the specialist has left mid-job)'); }
   if(res.flags.apptViol.length){st='r';res.flags.apptViol.forEach(x=>reasons.push('Can’t reach '+esc(x.job.address)+' by its '+(x.appt.type==='window'?'window':'appointment')+' '+apptLabel(x.appt)+' (late ~'+fmtDur(x.by)+' once earlier jobs + travel are counted)'));}
   if(res.flags.unroutable.length){ if(st==='g')st='a'; reasons.push(res.flags.unroutable.length+' job('+'s'.slice(res.flags.unroutable.length===1?1:0)+') couldn’t be located on the map — driving incomplete, so the day can’t be confirmed'); }
   else if(!res.driveComplete){ if(st==='g')st='a'; reasons.push('Driving time unverified — a road leg is missing, so finish is an estimate only'); }
-  if(res.ot>0&&st!=='r'){ st='r'; reasons.push(r1(res.onSiteClockH)+'h on-site + '+(res.driveH!=null?r1(res.driveH)+'h':'?')+' driving runs to '+fmtClock(res.finishMin)+', past the crew’s '+fmtClock(crewEnd)+' finish by '+fmtDur(res.ot)+(minNeed&&res.k&&minNeed>res.k?' — needs '+minNeed+' crew (has '+res.k+')':'')); }
+  if(res.ot>0&&st!=='r'){ st='r'; reasons.push(r1(res.onSiteClockH)+'h on-site + '+(res.driveH!=null?r1(res.driveH)+'h':'?')+' driving runs to '+fmtClock(res.finishMin)+', past the crew’s '+fmtClock(crewEnd)+' finish by '+fmtDur(res.ot)+(res.fitsInSeats===false?' — even a full '+seats+'-seat cab can’t finish in the shift; split jobs to the other truck':(minNeed&&res.k&&minNeed>res.k?' — needs '+minNeed+' crew (has '+res.k+', '+seats+' seats)':''))); }
   else if(res.ot>0){ reasons.push('Runs '+fmtDur(res.ot)+' past the crew finish'); }
   else if(res.buffer<30&&res.driveComplete&&st==='g'){ st='a'; reasons.push('Tight — finishes '+fmtClock(res.finishMin)+', only '+fmtDur(res.buffer)+' before the crew’s shift ends'); }
   if(res.missingEst>0&&st!=='r'){ if(st==='g')st='a'; reasons.push(res.missingEst+' job(s) missing an EST (on-site understated)'); }
@@ -322,7 +351,9 @@ function simulate(d,v,sc,ordered){
 }
 
 // ---- constraint-aware route optimiser (in-app, on the cached Mapbox matrix) ----
-function scoreOf(r){return r.flags.apptViol.length*1e7 + (r.finishMin||0)*100 + (r.driveMin||0);}
+// Feasibility first (never trade a feasible order for a shorter one with staffing conflicts), then the
+// shortest working day: impossible > missed appointment/window > specialist-absent > no-driver > earlier finish > less driving.
+function scoreOf(r){return r.flags.impossible.length*1e9 + r.flags.apptViol.length*1e7 + r.flags.specShort.length*1e6 + r.flags.driverGap.length*1e5 + (r.finishMin||0)*100 + (r.driveMin||0);}
 function optimiseOrder(d,v,sc,jobs){
   jobs=jobs||jobsForVeh(d,v,sc);
   const m=matrixFor(d);
@@ -387,11 +418,42 @@ function assessDay(d,sc){
   const driveVals=vehs.filter(a=>a.order.length).map(a=>a.driveH);
   const driveKnown=driveVals.length&&driveVals.every(x=>x!=null);
   const driveH=driveKnown?driveVals.reduce((s,x)=>s+x,0):null;
+  // double-booking: an employee assigned to BOTH vehicles with overlapping hours is impossible → flag Red
+  const conflicts=crewConflicts(d,sc);
+  if(conflicts.length){ conflicts.forEach(cf=>{ vehs.forEach(a=>{ if(cf.vehs.indexOf(a.v)>=0){ a.status='r'; if(a.flags.conflict.indexOf(cf.emp)<0)a.flags.conflict.push(cf.emp); if(a.reasons.indexOf('double-booked')<0)a.reasons.unshift(esc(cf.emp)+' is double-booked across '+cf.vehs.join(' & ')+' at overlapping times'); } }); }); }
   let status=active.length?'g':'n';
   vehs.forEach(a=>{if(a.status!=='n'&&RANK[a.status]>RANK[status])status=a.status;});
   if(active.length&&!ros.length&&isDefault(d))status='r';
   const workingCount=Object.values(avail).filter(a=>a.working).length;
-  return {date:d,vehs,active,resched:reschedJobs(d),onSiteH,driveH,ros,avail,workingCount,status};
+  return {date:d,vehs,active,resched:reschedJobs(d),onSiteH,driveH,ros,avail,workingCount,status,conflicts,_sc:sc};
+}
+// employees assigned to more than one vehicle with overlapping time intervals
+function crewConflicts(d,sc){
+  const byEmp={};
+  VEH().forEach(v=>{ crewIntervals(d,v,sc).forEach(c=>{ (byEmp[c.emp]=byEmp[c.emp]||[]).push({v,start:c.start,end:c.end}); }); });
+  const out=[];
+  Object.keys(byEmp).forEach(e=>{ const iv=byEmp[e]; const vehs=[];
+    for(let i=0;i<iv.length;i++)for(let j=i+1;j<iv.length;j++){ if(iv[i].v!==iv[j].v && iv[i].start<iv[j].end && iv[j].start<iv[i].end){ if(vehs.indexOf(iv[i].v)<0)vehs.push(iv[i].v); if(vehs.indexOf(iv[j].v)<0)vehs.push(iv[j].v); } }
+    if(vehs.length)out.push({emp:e,vehs}); });
+  return out;
+}
+// cross-vehicle rebalance: would moving one job to the other truck reduce the worse vehicle's overtime?
+function rebalanceSuggestion(d,sc){
+  if(VEH().length<2)return null;
+  const base=VEH().map(v=>assessVeh(d,v,sc));
+  const baseOt=Math.max.apply(null,base.map(a=>a.ot||0));
+  if(baseOt<=5)return null;                 // nothing meaningfully over the shift
+  let best=null;
+  VEH().forEach(v=>{ const other=VEH().find(x=>x!==v); const jobs=jobsForVeh(d,v,sc);
+    jobs.forEach(j=>{ if(j.geo===false)return;
+      const sc2=JSON.parse(JSON.stringify(sc)); sc2.job=sc2.job||{}; sc2.job[jobKey(j)]=other; if(sc2.order){VEH().forEach(x=>delete sc2.order[x]);}
+      const r=VEH().map(x=>assessVeh(d,x,sc2));
+      if(r.some(a=>a.flags.apptViol.length||a.flags.impossible.length||a.flags.specShort.length))return;   // never create a conflict
+      const ot=Math.max.apply(null,r.map(a=>a.ot||0));
+      if(ot<baseOt-5&&(!best||ot<best.ot)) best={job:j,from:v,to:other,ot,saved:baseOt-ot};
+    });
+  });
+  return best;
 }
 
 // ---- weekly ----
@@ -437,8 +499,8 @@ function buildItinerary(a){
     n++;
     const trav=s.legMin;
     rows+='<div class=legrow><div class=t>'+(verified?(trav!=null?'\u{1F697} '+trav+'m':'\u{1F697} —'):'\u{1F697} ·')+'</div><div style="flex:1">'+
-      '<b>'+n+'. '+esc(s.job.address)+'</b>'+apptTag(s.appt)+(s.viol?' <span class=viol>⚠ late</span>':'')+
-      '<div class=note>'+(verified?'arrive '+fmtClock(s.arrive)+(s.waited?' · wait '+fmtDur(s.waited):'')+' → start '+fmtClock(s.serviceStart)+' → leave '+fmtClock(s.depart)+' · ':'')+(s.job.est!=null?s.job.est+'m'+(s.cap>1?' ÷'+s.cap+'≈'+Math.round(s.onsiteMin)+'m':' on-site'):'<span style="color:#b07d2a">no EST</span>')+' · '+esc(s.crewHere.join(', ')||'no crew')+'</div></div></div>';
+      '<b>'+n+'. '+esc(s.job.address)+'</b>'+apptTag(s.appt)+(s.viol?' <span class=viol>⚠ late</span>':'')+(s.impossible?' <span class=viol>⛔ no crew</span>':'')+
+      '<div class=note>'+(verified?'arrive '+fmtClock(s.arrive)+(s.waited?' · wait '+fmtDur(s.waited):'')+' → start '+fmtClock(s.serviceStart)+(s.svcWait>0?' · ⏳ wait '+fmtDur(s.svcWait)+' for crew':'')+' → leave '+fmtClock(s.depart)+' · ':'')+(s.job.est!=null?s.job.est+'m'+(s.cap>1?' ÷'+s.cap+' crew':' on-site'):'<span style="color:#b07d2a">no EST</span>')+' · '+esc(s.crewHere.join(', ')||'no crew')+'</div></div></div>';
   });
   if(verified){ const back=legMin(d,jobIdx(d,a.stops.filter(s=>!s.unroutable).slice(-1)[0].job.id),0);
     rows+='<div class=legrow><div class=t>\u{1F697} '+(back!=null?back+'m':'—')+'</div><div style="flex:1"><b>↩ Return to depot</b><div class=note>'+fmtClock(a.finishMin)+'</div></div></div>'; }
@@ -529,6 +591,9 @@ function dayRecs(day){
   const anyR=day.vehs.some(a=>a.status==='r'), anyA=day.vehs.some(a=>a.status==='a');
   out.push([anyR?'bad':anyA?'':'ok','\u{1F465} Crew & timing — '+parts.join(' · ')]);
   if(!day.ros.length&&isDefault(day.date)){out.push(['bad','No one is rostered to myMowing in Deputy for this day. Roster crew (and set their vehicle in the shift comment).']);}
+  (day.conflicts||[]).forEach(cf=>out.push(['bad','⛔ '+cf.emp+' is double-booked across '+cf.vehs.join(' & ')+' at overlapping times — one person can’t be on two trucks. Fix the allocation below.']));
+  const reb=rebalanceSuggestion(day.date,day._sc||scenario);
+  if(reb) out.push(['info','↔ Better balance: move '+esc(reb.job.address)+' from '+reb.from+' to '+reb.to+' — saves ~'+fmtDur(reb.saved)+' of overtime. (Same date; it stays on '+fmtShort(day.date)+'.)']);
   day.vehs.forEach(a=>{
     if(a.xfer&&a.xfer.length) out.push(['','⚠ '+a.v+': '+a.xfer.join(', ')+' outside roster/another brand — needs approval + a Deputy roster change.']);
     if(a.flags.transport.length) out.push(['info','\u{1F699} '+a.v+': '+a.flags.transport.map(t=>t.emp+(t.kind==='leaves'?' leaves mid-route '+fmtClock(t.at):' joins '+fmtClock(t.at))).join('; ')+' — plan transport.']);
@@ -674,62 +739,106 @@ function nextPlannableDay(){const t=new Intl.DateTimeFormat('en-CA',{timeZone:'A
 function toast(msg){const t=$('toast');t.textContent=msg;t.className='toast show';setTimeout(()=>t.className='toast',2000);}
 
 // ---- Find capacity (fit a NEW urgent job using real insertion travel; never moves scheduled work) ----
-function insertionCost(d,v,sc,mins,skillReq,area,apptStart){
-  const a=assessVeh(d,v,sc); if(!a.k)return null;
-  const needSpec=skillReq==='Specialist'||skillReq==='Mixed'; if(needSpec&&!a.haveSpec)return null;
-  if(a.driveH==null)return null;
-  const stops=a.stops.filter(s=>!s.unroutable);
-  // cheapest insertion of one more stop using the median leg as a proxy for the new address
-  let extra=medianLegSec(d); if(extra==null)extra=0;
-  // if same area as an existing stop, travel is smaller; approximate with min leg among existing stops
-  const sameArea=a.regions.includes(area)||area==='Any';
-  let addDriveMin=Math.round((sameArea?extra*0.6:extra)/60);
+// On-demand Mapbox geocode + point-to-route matrix for a NEW address (public token from the feed).
+const _geoCache={}, _ptMxCache={};
+async function geocodeAddr(addr){ const tok=MTOKEN(); if(!tok||!addr)return null; const k=addr.trim().toLowerCase();
+  if(_geoCache[k]!==undefined)return _geoCache[k];
+  const q=encodeURIComponent(/nsw|australia/i.test(addr)?addr:addr+', NSW, Australia');
+  const url='https://api.mapbox.com/search/geocode/v6/forward?q='+q+'&country=au&limit=1&proximity=151.28,-33.79&access_token='+tok;
+  try{const r=await fetch(url);if(!r.ok){_geoCache[k]=null;return null;}const j=await r.json();const c=j.features&&j.features[0]&&j.features[0].geometry&&j.features[0].geometry.coordinates;const v=(c&&c.length===2)?c:null;_geoCache[k]=v;return v;}catch(e){_geoCache[k]=null;return null;}
+}
+async function ptToCoords(pt,coords){ const tok=MTOKEN(); if(!tok)return null;   // seconds from pt to each coord (sources=0)
+  const all=[pt].concat(coords); if(all.length>25)all.length=25;
+  const key=all.map(c=>c[0].toFixed(5)+','+c[1].toFixed(5)).join(';'); if(_ptMxCache[key])return _ptMxCache[key];
+  const url='https://api.mapbox.com/directions-matrix/v1/mapbox/driving/'+all.map(c=>c[0]+','+c[1]).join(';')+'?sources=0&annotations=duration&access_token='+tok;
+  try{const r=await fetch(url);if(!r.ok)return null;const j=await r.json();const row=j&&j.durations&&j.durations[0];if(row)_ptMxCache[key]=row;return row||null;}catch(e){return null;}
+}
+// real cheapest-insertion of a new point into a vehicle's route (uses the new Mapbox legs + the cached matrix)
+async function realInsertion(d,v,sc,pt,mins){
+  const a=assessVeh(d,v,sc); if(!a.k||a.driveH==null)return null;
+  const depot=DATA.config&&DATA.config.depotCoord; if(!depot)return null;
+  const stops=a.stops.filter(s=>!s.unroutable&&s.job.lng!=null); if(!stops.length)return null;
+  const coords=[depot].concat(stops.map(s=>[s.job.lng,s.job.lat]));
+  const ptTo=await ptToCoords(pt,coords); if(!ptTo)return null;   // ptTo[0]=pt→depot, ptTo[1..]=pt→stop
+  const secAt=i=>ptTo[i]; // pt↔node (symmetric approx)
+  const idxList=[0].concat(stops.map(s=>jobIdx(d,s.job.id)));   // matrix indices for depot+stops, aligned to coords
+  let best=Infinity;
+  for(let p=0;p<=stops.length;p++){
+    const prevI=idxList[p], nextI=p<stops.length?idxList[p+1]:0;   // insert between stop p-1 and p (depot ends)
+    const existing=legSec(d,prevI,nextI); if(existing==null)continue;
+    const add=secAt(p)+secAt(p+1<=stops.length?p+1:0)-existing;   // pt uses coords-position p (prev) and p+1 (next)
+    if(add<best)best=add;
+  }
+  if(!isFinite(best))best=Math.min.apply(null,ptTo.slice(1))*2;   // fallback: nearest stop round-trip
+  const addDriveMin=Math.max(0,Math.round(best/60));
   const onsitePer=mins/Math.max(1,a.k);
   const newFinish=a.finishMin+addDriveMin+onsitePer;
-  const over=Math.max(0,newFinish-a.win.endMin);
-  return {a,addDriveMin,onsitePer,newFinish,over,sameArea};
+  return {a,addDriveMin,onsitePer,newFinish,over:Math.max(0,newFinish-a.win.endMin),real:true};
 }
-function findCapacity(mins,skillReq,area){
-  const today=DATA.today, out=[];
-  DATA.dates.filter(d=>d>=today).forEach(d=>{ const sc=defaultScenario(d);
-    VEH().forEach(v=>{ const c=insertionCost(d,v,sc,mins,skillReq,area);
-      if(!c)return; if(c.over>1)return;   // doesn't fit the shift
-      out.push({d,v,crew:c.a.crew.map(x=>x.emp),finish:c.newFinish,addDrive:c.addDriveMin,onsitePer:c.onsitePer,sameArea:c.sameArea,buffer:c.a.win.endMin-c.newFinish,win:c.a.win.netH,k:c.a.k,onSiteH:c.a.onSiteClockH,drive:c.a.driveH});
-    });
-  });
-  out.sort((x,y)=>{ if(x.sameArea!==y.sameArea)return x.sameArea?-1:1; if(x.d!==y.d)return x.d<y.d?-1:1; return y.buffer-x.buffer; });
+// estimate-only insertion (no address / no token): median leg of the day
+function estInsertion(d,v,sc,mins,skillReq,area){
+  const a=assessVeh(d,v,sc); if(!a.k||a.driveH==null)return null;
+  const needSpec=skillReq==='Specialist'||skillReq==='Mixed'; if(needSpec&&!a.haveSpec)return null;
+  let extra=medianLegSec(d); if(extra==null)extra=0;
+  const sameArea=a.regions.includes(area)||area==='Any';
+  const addDriveMin=Math.round((sameArea?extra*0.6:extra)/60), onsitePer=mins/Math.max(1,a.k);
+  const newFinish=a.finishMin+addDriveMin+onsitePer;
+  return {a,addDriveMin,onsitePer,newFinish,over:Math.max(0,newFinish-a.win.endMin),sameArea,real:false};
+}
+async function findCapacity(mins,skillReq,area,pt,apptMin){
+  const today=DATA.today, out=[]; const needSpec=skillReq==='Specialist'||skillReq==='Mixed';
+  for(const d of DATA.dates.filter(d=>d>=today)){ const sc=defaultScenario(d);
+    for(const v of VEH()){ const a=assessVeh(d,v,sc); if(!a.k||a.driveH==null)continue; if(needSpec&&!a.haveSpec)continue;
+      // appointment: the crew must actually be on this truck at that time
+      if(apptMin!=null&&!a.crew.some(c=>c.start<=apptMin&&apptMin<c.end))continue;
+      const c=pt?await realInsertion(d,v,sc,pt,mins):estInsertion(d,v,sc,mins,skillReq,area);
+      if(!c||c.over>1)continue;
+      out.push({d,v,crew:a.crew.map(x=>x.emp),finish:c.newFinish,addDrive:c.addDriveMin,onsitePer:c.onsitePer,real:c.real,sameArea:c.sameArea||false,buffer:a.win.endMin-c.newFinish,win:a.win.netH,k:a.k,onSiteH:a.onSiteClockH,drive:a.driveH});
+    }
+  }
+  out.sort((x,y)=>{ if(!pt&&x.sameArea!==y.sameArea)return x.sameArea?-1:1; if(x.d!==y.d)return x.d<y.d?-1:1; return y.buffer-x.buffer; });
   return out;
 }
 function renderFind(){
+  const tok=MTOKEN();
   const h='<div class=card><h2 style="margin:0 0 4px">Find capacity for a new job</h2>'+
     '<div class=note>Enter a new/urgent job and I’ll find the best day, truck and crew it fits into — computing the actual extra road travel to slot in one more stop, its on-site time, the skills needed and any customer time restriction. It never moves a scheduled job to another day.</div>'+
     (ROUTING()?'':'<div class=rec info style="margin-top:8px">Routing isn’t configured yet, so driving‑aware capacity can’t be shown here. Add the Mapbox token and this fills in automatically.</div>')+
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:12px">'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px">'+
+    '<div style="grid-column:1/-1"><label class=fl>Property address '+(tok?'(real travel)':'(token needed for exact travel)')+'</label><input id=fAddr class=fin placeholder="e.g. 14 Pittwater Rd, Manly"></div>'+
     '<div><label class=fl>On-site minutes</label><input id=fMin class=fin type=number min=5 step=5 value=90></div>'+
     '<div><label class=fl>Work type</label><select id=fSkill class=fin><option value=Basic>Basic (mow/edge/blow)</option><option value=Specialist>Specialist (hedge/garden)</option><option value=Mixed>Mixed</option></select></div>'+
-    '<div><label class=fl>Area</label><select id=fArea class=fin><option value=Any>Any area</option>'+REGIONS.map(r=>'<option value="'+esc(r)+'">'+esc(r)+'</option>').join('')+'</select></div>'+
+    '<div><label class=fl>Appointment (optional)</label><input id=fAppt class=fin type=time></div>'+
+    '<div><label class=fl>Area (if no address)</label><select id=fArea class=fin><option value=Any>Any area</option>'+REGIONS.map(r=>'<option value="'+esc(r)+'">'+esc(r)+'</option>').join('')+'</select></div>'+
     '<div style="display:flex;align-items:flex-end"><button class=btn id=fGo style="width:100%">Find</button></div>'+
     '</div><div id=fRes></div></div>';
   $('p-find').innerHTML=h;
   $('fGo').onclick=runFind; runFind();
 }
-function runFind(){
+async function runFind(){
   const mins=Math.max(5,parseInt($('fMin').value,10)||90);
   const skillReq=$('fSkill').value, area=$('fArea').value;
-  const res=findCapacity(mins,skillReq,area);
+  const addr=($('fAddr').value||'').trim();
+  const apptMin=parseHM($('fAppt').value||'');
+  $('fRes').innerHTML='<div class=note style="margin-top:12px">Searching…</div>';
+  let pt=null, geoFail=false;
+  if(addr&&MTOKEN()){ pt=await geocodeAddr(addr); if(!pt)geoFail=true; }
+  const res=await findCapacity(mins,skillReq,area,pt,apptMin);
   let h='';
+  if(geoFail) h+='<div class=rec info style="margin-top:12px">Couldn’t locate “'+esc(addr)+'” on the map — showing a typical‑leg estimate instead. Check the address.</div>';
   if(!res.length){
     const anySpec=DATA.dates.some(d=>{const sc=defaultScenario(d);return VEH().some(v=>assessVeh(d,v,sc).haveSpec);});
     const noRoute=ROUTING()&&!DATA.dates.some(d=>{const m=matrixFor(d);return m&&m.dur;});
-    h='<div class="rec bad" style="margin-top:12px">No truck has room for a '+mins+'m '+skillReq+' job on a currently-rostered day'+(area==='Any'?'':' in '+esc(area))+'.<br>'+
+    h+='<div class="rec bad" style="margin-top:12px">No truck has room for a '+mins+'m '+skillReq+' job'+(apptMin!=null?' at '+fmtClock(apptMin):'')+' on a currently-rostered day'+(area==='Any'||pt?'':' in '+esc(area))+'.<br>'+
       (noRoute?'Driving times aren’t available yet, so I can only confirm fit once routes compute. ':'')+
       ((skillReq!=='Basic'&&!anySpec)?'No specialist (Blake/Julen) is rostered in this window. ':'')+
+      (apptMin!=null?'No truck has crew on board at '+fmtClock(apptMin)+' with room. ':'')+
       'Options: add a part-day helper that day, or approve overtime. Scheduled jobs are never moved to make room.</div>';
   } else {
-    h='<div class=note style="margin-top:12px;font-weight:700">Best fits ('+res.length+' option'+(res.length>1?'s':'')+') — a '+mins+'m '+skillReq+' job'+(area==='Any'?'':' in '+esc(area))+':</div>';
+    h+='<div class=note style="margin-top:12px;font-weight:700">Best fits ('+res.length+' option'+(res.length>1?'s':'')+') — a '+mins+'m '+skillReq+' job'+(pt?' at '+esc(addr):(area==='Any'?'':' in '+esc(area)))+(apptMin!=null?' · appt '+fmtClock(apptMin):'')+':</div>';
     h+=res.slice(0,6).map((o,i)=>'<div class="rec '+(i===0?'ok':'')+'" style="margin-top:8px"><b>'+fmtDate(o.d)+' · '+rotLabel(o.d)+'</b> — \u{1F69A} '+o.v+' ('+esc(o.crew.join(' + '))+')'+
-      (o.sameArea?' · <b>same area</b>':' · different area')+'<br>Currently '+r1(o.onSiteH)+'h on-site + '+r1(o.drive)+'h driving over '+o.k+' crew, finishing earlier. Adding this job ≈ +'+o.addDrive+'m driving + '+Math.round(o.onsitePer)+'m on-site → finish ~'+fmtClock(o.finish)+', '+fmtDur(Math.max(0,o.buffer))+' inside the shift.</div>').join('');
-    h+='<div class=note style="margin-top:8px">Extra travel is estimated from that day’s typical leg (closer if it’s in an area the truck already visits); confirm the exact detour once the stop is added. Ranked by same-area, then soonest, then most room.</div>';
+      (o.real?' · <b>real travel</b>':(o.sameArea?' · same area':' · est. travel'))+'<br>Currently '+r1(o.onSiteH)+'h on-site + '+r1(o.drive)+'h driving over '+o.k+' crew. Adding this job ≈ +'+o.addDrive+'m driving + '+Math.round(o.onsitePer)+'m on-site → finish ~'+fmtClock(o.finish)+', '+fmtDur(Math.max(0,o.buffer))+' inside the shift.</div>').join('');
+    h+='<div class=note style="margin-top:8px">'+(pt?'Travel is the real Mapbox detour to slot this address between existing stops (symmetric‑leg approximation; confirm once added).':'Extra travel is estimated from that day’s typical leg — add an address above for the exact detour.')+' Ranked by soonest, then most room.</div>';
   }
   $('fRes').innerHTML=h;
 }
