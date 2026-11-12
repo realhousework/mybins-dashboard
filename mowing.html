@@ -85,7 +85,21 @@ label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;l
 .cmp{font-size:12.5px;color:#1a5a34;background:#e7f4ec;border:1px solid #cfe9d9;border-radius:8px;padding:7px 11px;margin:7px 0}
 .cmp.neutral{color:#5b6b60;background:#f3f6f4;border-color:#e3eae5}
 .viol{color:#b4452b;font-weight:800}
-@media(max-width:720px){.weekstrip{grid-template-columns:1fr 1fr}.vehgrid{grid-template-columns:1fr}.vstat{grid-template-columns:repeat(2,1fr)}}
+.apcard{border-color:#cfe0f3 !important;background:#f7faff}.aphead{font-weight:800;font-size:15px;margin:6px 0 4px;color:#1a3a6a}
+.apwhy{margin:4px 0 10px;padding-left:18px;color:#1a5a34;font-size:13px}.apwhy li{margin:2px 0}
+table.apcmp{width:100%;border-collapse:collapse;margin:6px 0;background:#fff;border:1px solid #e3eae5;border-radius:10px;overflow:hidden}
+.apcmp th,.apcmp td{padding:7px 10px;font-size:13px;text-align:left;border-top:1px solid #eef2ef}
+.apcmp thead th{background:#eef3f8;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#44554b;border-top:0}
+.apcmp td.ml{color:#5b6b60}.apcmp td.mv{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.apcmp td.mv.bet{color:#1a7a43}.apcmp td.mv.wor{color:#b4452b}
+.apcrews{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0;font-size:12.5px}
+.apk{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#8a988f;font-weight:700;margin-bottom:3px}
+.apot{color:#b4452b;font-weight:700}.apopts{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.apopt{text-align:left;border:1px solid #cfe0d6;background:#fff;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;cursor:pointer}
+.apopt.on{border-color:#2e8b57;background:#e7f4ec;font-weight:700}.apthr{font-size:12px;color:#5b6b60;margin-left:auto;align-self:center}
+.apthr input{border:1px solid #cfe0d6;border-radius:6px;padding:4px 6px;font:inherit}
+.apbadge{display:inline-block;font-size:10px;font-weight:800;background:#eaf1fb;color:#2a4a7a;border:1px solid #cfe0f3;border-radius:999px;padding:1px 6px;margin-top:4px}
+@media(max-width:720px){.weekstrip{grid-template-columns:1fr 1fr}.vehgrid{grid-template-columns:1fr}.vstat{grid-template-columns:repeat(2,1fr)}.apcrews{grid-template-columns:1fr}}
 </style></head><body><div class=wrap>
 <header><div><div class=logo>my<b>Mowing</b> <span style="font-weight:600;color:#5b6b60;font-size:15px">Operations Planner</span></div></div>
 <div class=asof id=asof></div></header>
@@ -477,7 +491,8 @@ function renderWeek(){
       '<div class=u>'+(a.driveH!=null?'+ '+r1(a.driveH)+'h drive':'<span style="color:#b07d2a">drive n/a</span>')+' · '+a.active.length+' jobs · '+a.ros.length+' crew'+(done===a.active.length&&a.active.length?' · ✓ done':done?' · ✓'+done+'/'+a.active.length:'')+(a.resched.length?' · ↩ '+a.resched.length:'')+'</div>'+
       '<div class=u style="color:#8a988f">'+a.vehs.filter(x=>x.status!=='n').map(x=>x.v+' '+STLABEL[x.status][0]).join(' · ')+'</div>'+
       '<div class=statusbar><span style="width:'+Math.min(100,maxFill)+'%;background:'+col+'"></span></div>'+
-      '<span class="pill '+a.status+'">'+STLABEL[a.status]+'</span>')
+      '<span class="pill '+a.status+'">'+STLABEL[a.status]+'</span>'+
+      ((maxFill>=Math.round((DATA.config&&DATA.config.autoThreshold||0.87)*100)||((a.status==='r'||a.status==='a')&&a.ros.length))?'<div class=apbadge>\u{1F916} Auto Plan</div>':''))
       :'<div class=big style="color:#cfd8d2;font-size:15px;margin-top:12px">No jobs</div><div class=u>'+(a.ros.length?esc(a.ros.map(x=>x.emp).join(' + '))+' rostered':'no roster')+'</div><span class="pill n">—</span>')+
       '</div>';
   }).join('')+'</div>'+
@@ -619,6 +634,7 @@ function renderDay(){
     '<div><div class=k>Available</div><div class=v>'+day.workingCount+'</div></div>'+
     '</div>'+(isDefault(curDay)?'':'<div class=note style="color:#8a6d1a;font-weight:700">● Showing a PROPOSED arrangement — not yet in Deputy</div>')+'</div>';
   h+='<h2>Recommendation</h2>'+dayRecs(day).map(r=>'<div class="rec '+(r[0]||'')+'">'+r[1]+'</div>').join('');
+  h+='<div id=autoMount></div>';
   h+='<h2>Vehicles</h2><div class=vehgrid>'+day.vehs.filter(a=>a.status!=='n'||a.crew.length).map(vehCard).join('')+'</div>';
   h+=reschedPanel(day);
   h+='<h2>What-if planner</h2><div id=wiMount>'+renderWI()+'</div>';
@@ -626,6 +642,7 @@ function renderDay(){
   h+='<div style="margin:16px 0;display:flex;gap:8px;flex-wrap:wrap"><button class=btn id=wa>\u{1F4F2} '+fmtShort(nd)+' — summary</button> <button class=btn id=wadet>\u{1F4CB} '+fmtShort(nd)+' — run sheet</button> <button class="btn ghost" id=waday>Copy '+fmtShort(curDay)+'</button> <button class="btn ghost" id=wadayd>'+fmtShort(curDay)+' — detailed</button></div>';
   $('p-day').innerHTML=daySelector()+h;
   wireSel();wireWI();wireCards();
+  try{ renderAutoInto(); }catch(e){ var m=$('autoMount'); if(m)m.innerHTML='<div class=note>Auto Plan unavailable: '+esc(e.message)+'</div>'; }
   $('wa').onclick=()=>copyWA(nextPlannableDay());
   $('wadet').onclick=()=>copyWA(nextPlannableDay(),true);
   $('waday').onclick=()=>copyWA(curDay);
@@ -843,6 +860,212 @@ async function runFind(){
   $('fRes').innerHTML=h;
 }
 
+// ===== myMowing Auto Plan (Phase 1) — search over the SAME engine; ranks by Amos's priorities =====
+// NEVER skips a job, never double-counts, never writes to Deputy/Zenkit. Deputy plan stays untouched.
+(function(){
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const AUTO_THRESHOLD = () => (DATA.config && DATA.config.autoThreshold) || 0.87;
+  function agg(day){
+    let otMin=0, driveMin=0, driveKnown=true, paidMin=0, underUtilMin=0;
+    let apptViol=0, specShort=0, driverGap=0, impossible=0, unroutable=0;
+    const fins=[]; const perVeh=[];
+    day.vehs.forEach(a=>{
+      otMin += a.ot||0;
+      if(a.driveMin==null) driveKnown=false; else driveMin += a.driveMin;
+      apptViol+=a.flags.apptViol.length; specShort+=a.flags.specShort.length;
+      driverGap+=a.flags.driverGap.length; impossible+=a.flags.impossible.length;
+      unroutable+=a.flags.unroutable.length;
+      const hasWork=a.order.length>0;
+      const vStart=a.startMin!=null?a.startMin:(a.win?a.win.startMin:CFGSTART());
+      const vFin=a.finishMin!=null?a.finishMin:vStart;
+      if(hasWork) fins.push(vFin);
+      (a.crew||[]).forEach(c=>{ const span=Math.max(0,c.end-c.start); paidMin+=span;
+        const prod=Math.max(0, Math.min(c.end,vFin)-Math.max(c.start,vStart));
+        underUtilMin += Math.max(0, Math.min(8*60, span) - prod); });
+      perVeh.push({v:a.v, fin:vFin, ot:a.ot||0, k:a.k||0, jobs:a.jobs?a.jobs.length:0,
+                   onSiteH:a.onSiteClockH||0, driveH:a.driveH, status:a.status, crew:(a.crew||[]).map(c=>c.emp)});
+    });
+    const conflict=(day.conflicts||[]).length;
+    const allocJobs=day.vehs.reduce((s,a)=>s+(a.jobs?a.jobs.length:0),0);
+    const missing=day.active.length-allocJobs;
+    const balanceMin=fins.length>1?Math.abs(fins[0]-fins[1]):0;
+    const feas = impossible*1e6 + apptViol*1e5 + specShort*1e5 + conflict*1e5 + driverGap*1e4 + Math.max(0,missing)*1e7 + (driveKnown?0:unroutable*2e4);
+    return {otMin,driveMin,driveKnown,paidMin,underUtilMin,balanceMin,feas,apptViol,specShort,driverGap,impossible,conflict,unroutable,missing,
+            maxFin:fins.length?Math.max.apply(null,fins):null, perVeh, addedHelpers:0};
+  }
+  function score(a){ return a.feas + (a.underUtilMin/60)*8000 + a.driveMin*300 + a.otMin*120 + a.balanceMin*40 + (a.paidMin/60)*100 + (a.addedHelpers||0)*5000; }
+  function emptySc(d){ const sc={emp:{},region:{},job:{},helpers:{},order:{},locks:{}}; VEH().forEach(v=>{sc.helpers[v]=[];sc.locks[v]={};}); return sc; }
+  function place(sc,emp,v,start,end){ sc.helpers[v]=sc.helpers[v]||[]; sc.helpers[v].push({emp,start,end}); }
+  function crewInfo(d){ const base=defaultScenario(d); const rostered=[];
+    VEH().forEach(v=>(base.helpers[v]||[]).forEach(h=>{ if(rostered.indexOf(h.emp)<0) rostered.push(h.emp); }));
+    const avail=availOn(d); const helpers=Object.keys(avail).filter(e=>avail[e]&&avail[e].working&&rostered.indexOf(e)<0);
+    return {rostered, helpers, base};
+  }
+  function shiftOf(d,e){ const r=rosterOn(d).find(x=>x.emp===e);
+    if(r) return {start:r.start||'07:00', end:r.end||'17:00'};
+    const sh=rosterShift(d,e); return {start: sh.start!=null?pad2(sh.start):'07:00', end: sh.end!=null?pad2(sh.end):'15:00'}; }
+  function optimiseJobs(d,sc){
+    const jobs=activeJobs(d); const byVeh=crewByVeh(sc);
+    const vehsWithCrew=VEH().filter(v=>(byVeh[v]||[]).length);
+    const target = vehsWithCrew.length?vehsWithCrew:VEH().slice(0,1);
+    const hasSpec=v=>(byVeh[v]||[]).some(e=>isSpec(e));
+    const covers=(v,j)=>(byVeh[v]||[]).some(e=>{const r=rosterOn(d).find(x=>x.emp===e);return r&&crewCovers(r.areas,j.area);});
+    const load={}; target.forEach(v=>load[v]=0);
+    jobs.slice().sort((a,b)=>(b.est||0)-(a.est||0)).forEach(j=>{
+      const needSpec=j.skill==='Specialist'||j.skill==='Mixed';
+      let legal=target.filter(v=>!needSpec||hasSpec(v)); if(!legal.length) legal=target.slice();
+      const cov=legal.filter(v=>covers(v,j)); const pool=cov.length?cov:legal;
+      pool.sort((x,y)=>load[x]-load[y]); const v=pool[0]; sc.job[jobKey(j)]=v; load[v]+=(j.est||1);
+    });
+    let curS=score(agg(assessDay(d,sc))), improved=true, guard=0;
+    while(improved && guard++<3){ improved=false;
+      for(const j of jobs){ const k=jobKey(j), from=sc.job[k];
+        for(const v of target){ if(v===from)continue;
+          sc.job[k]=v; if(sc.order)VEH().forEach(x=>delete sc.order[x]);
+          const s=score(agg(assessDay(d,sc)));
+          if(s<curS-1){ curS=s; improved=true; } else { sc.job[k]=from; } } } }
+    if(sc.order)VEH().forEach(x=>delete sc.order[x]);
+    return {sc, day:assessDay(d,sc)};
+  }
+  function buildFromSc(d,sc,addedHelpers){ const r=optimiseJobs(d,sc); const a=agg(r.day); a.addedHelpers=addedHelpers||0; return {sc:r.sc, day:r.day, agg:a, score:score(a)}; }
+  function buildCandidate(d,part,addedHelpers){
+    const sc=emptySc(d);
+    Object.keys(part).forEach(e=>{ const v=part[e]; if(v&&v!=='off'){ const s=shiftOf(d,e); place(sc,e,v,s.start,s.end); } });
+    REGIONS.forEach(reg=>{ sc.region[reg]=VEH().find(v=>(sc.helpers[v]||[]).length)||VEH()[0]; });
+    return buildFromSc(d,sc,addedHelpers);
+  }
+  function teamSplits(team){
+    const A=VEH()[0], B=VEH()[1]||VEH()[0], out=[];
+    if(team.length===0) return out;
+    if(team.length===1 || VEH().length<2){ const p={}; team.forEach(e=>p[e]=A); return [p]; }
+    const tSpecs=team.filter(isSpec), rest=team.filter(e=>!isSpec(e));
+    if(tSpecs.length>=2){ const p={}; p[tSpecs[0]]=A; p[tSpecs[1]]=B; tSpecs.slice(2).forEach((e,i)=>p[e]=(i%2?B:A)); rest.forEach((e,i)=>p[e]=(i%2?B:A)); out.push(p); }
+    { const p={}; tSpecs.concat(rest).forEach((e,i)=>p[e]=(i%2?B:A)); out.push(p); }
+    return out;
+  }
+  function autoPlan(d){
+    const base=defaultScenario(d); const baseDay=assessDay(d,base); const baseAgg=agg(baseDay); baseAgg.addedHelpers=0;
+    const baseScore=score(baseAgg); const info=crewInfo(d); const cands=[];
+    { try{ cands.push(buildFromSc(d, clone(base), 0)); }catch(e){} }
+    if(info.rostered.length>=2){ const p={}; info.rostered.forEach(e=>p[e]=VEH()[0]); try{ cands.push(buildCandidate(d,p,0)); }catch(e){} }
+    teamSplits(info.rostered).forEach(p=>{ try{ cands.push(buildCandidate(d,p,0)); }catch(e){} });
+    for(let h=1; h<=info.helpers.length; h++){ if(cands.some(c=>c.agg.feas===0)) break;
+      const team=info.rostered.concat(info.helpers.slice(0,h)); teamSplits(team).forEach(p=>{ try{ cands.push(buildCandidate(d,p,h)); }catch(e){} }); }
+    cands.sort((a,b)=>a.score-b.score);
+    const seen={}, ranked=[]; cands.forEach(c=>{ const sig=planSig(d,c.sc); if(!seen[sig]){seen[sig]=1;ranked.push(c);} });
+    const top=ranked.slice(0,3).map(c=>decorate(d,base,baseDay,baseAgg,c));
+    const anyFeasible=top.some(o=>o.feasible); const o0=top[0];
+    const changed = o0 && (o0.moved.length||o0.added.length||o0.jobMoves>0) && !samePlan(d,base,o0.c.sc);
+    const gain = o0 && ((baseAgg.feas>0 && o0.feasible) || (o0.savings.finMin!=null && o0.savings.finMin>=10) || (o0.savings.otMin>=10)
+                     || (o0.savings.driveMin!=null && o0.savings.driveMin>=10) || (baseAgg.balanceMin - o0.c.agg.balanceMin >= 20));
+    const bestImproves = !!(changed && gain);
+    let shortfall=null;
+    if(!anyFeasible && top.length){ const b=top[0].c.agg; const bits=[];
+      if(b.otMin>5) bits.push('best case still needs ~'+fmtDur(b.otMin)+' overtime');
+      if(b.apptViol>0) bits.push(b.apptViol+' fixed appointment(s) can’t be met');
+      if(b.specShort>0) bits.push('no specialist for '+b.specShort+' garden/hedge job(s)');
+      if(b.impossible>0) bits.push(b.impossible+' job(s) can’t be staffed at all');
+      shortfall={ bits, allAvailUsed: info.helpers.length>0 && top[0].added.length>=info.helpers.length,
+        workH: Math.round(activeJobs(d).reduce((s,j)=>s+(j.est||0),0)/60*10)/10, people: info.rostered.length+info.helpers.length };
+    }
+    const noCrew = info.rostered.length===0 && info.helpers.length===0;
+    return {date:d, base:{sc:base, day:baseDay, agg:baseAgg, score:baseScore}, options:top, improves:bestImproves,
+            anyFeasible, shortfall, noCrew, rostered:info.rostered, helpers:info.helpers,
+            fill:dayFill(baseDay), threshold:AUTO_THRESHOLD(), needs: dayFill(baseDay)>=AUTO_THRESHOLD() || baseAgg.feas>0};
+  }
+  function planSig(d,sc){ const crew=VEH().map(v=>v+':'+(sc.helpers[v]||[]).map(h=>h.emp).sort().join(',')).join('|');
+    const jobs=activeJobs(d).map(j=>jobKey(j)+'>'+(sc.job[jobKey(j)]||'')).sort().join(';'); return crew+'||'+jobs; }
+  function samePlan(d,a,b){ return planSig(d,a)===planSig(d,b); }
+  function dayFill(day){ return day.vehs.reduce((m,a)=>{ if(a.win&&a.win.netH&&a.onSiteClockH!=null&&a.driveH!=null){ return Math.max(m,(a.onSiteClockH+a.driveH)/a.win.netH); } return m; },0); }
+  function decorate(d,base,baseDay,baseAgg,c){
+    const changes=[]; const added=[]; const bPos={}, cPos={};
+    VEH().forEach(v=>{ (base.helpers[v]||[]).forEach(h=>bPos[h.emp]=v); (c.sc.helpers[v]||[]).forEach(h=>cPos[h.emp]=v); });
+    Object.keys(cPos).forEach(e=>{ if(bPos[e]==null){ added.push(e); } else if(bPos[e]!==cPos[e]){ changes.push('move '+e+' to '+cPos[e]); } });
+    let jobMoves=0; activeJobs(d).forEach(j=>{ const k=jobKey(j); if((base.job[k]||base.region[j.area])!==(c.sc.job[k])) jobMoves++; });
+    const parts=[];
+    if(changes.length) parts.push(changes.join(', '));
+    if(added.length) parts.push('add '+added.join(', ')+' (needs approval + roster change)');
+    if(jobMoves) parts.push('move '+jobMoves+' job'+(jobMoves>1?'s':'')+' between trucks');
+    const feasible=c.agg.feas===0;
+    const headline = parts.length ? ('Recommended: '+parts.join('; ')+'.')
+                   : feasible ? 'Deputy plan is already efficient — no change needed.'
+                   : 'No better staffing found — this day can’t be fully completed as rostered (see shortfall).';
+    const dOt=baseAgg.otMin-c.agg.otMin, dDrive=(baseAgg.driveKnown&&c.agg.driveKnown)?(baseAgg.driveMin-c.agg.driveMin):null;
+    const dFin=(baseAgg.maxFin!=null&&c.agg.maxFin!=null)?(baseAgg.maxFin-c.agg.maxFin):null;
+    const why=[];
+    if(baseAgg.feas>0 && c.agg.feas===0) why.push('completes all '+baseDay.active.length+' jobs within the shift (Deputy plan can’t)');
+    if(dFin>5) why.push('finishes '+fmtDur(dFin)+' earlier');
+    if(dOt>5) why.push('cuts overtime by '+fmtDur(dOt));
+    if(dDrive!=null && dDrive>5) why.push('saves ~'+Math.round(dDrive)+' min driving');
+    if(baseAgg.balanceMin-c.agg.balanceMin>15) why.push('balances both crews');
+    if(c.agg.underUtilMin < baseAgg.underUtilMin-30) why.push('uses rostered crew more fully');
+    return {c, headline, why, jobMoves, added, moved:changes, feasible:c.agg.feas===0, savings:{otMin:dOt, driveMin:dDrive, finMin:dFin}};
+  }
+  window.AutoPlan = { run:autoPlan, agg, score, dayFill, AUTO_THRESHOLD, planSig };
+})();
+
+// ---- Auto Plan UI: comparison card, ranked options, select + WhatsApp ----
+var __apCache={}, __apSel={};
+function apThresholdPct(){ return Math.round((AutoPlan.AUTO_THRESHOLD())*100); }
+function apRun(d){ if(!__apCache[d]) __apCache[d]=AutoPlan.run(d); return __apCache[d]; }
+function apClear(d){ delete __apCache[d]; }
+function apMetrics(ag){ const trucks=ag.perVeh.filter(x=>x.jobs>0).length; const onSite=ag.perVeh.reduce((s,x)=>s+(x.onSiteH||0),0);
+  return { fin: ag.maxFin!=null?fmtClock(ag.maxFin):'—', onSite: r1(onSite), drive: ag.driveKnown?r1(ag.driveMin/60):null, ot: ag.otMin, balance: ag.balanceMin, trucks }; }
+function apMetricTable(baseAg, optAg){
+  const b=apMetrics(baseAg), o=apMetrics(optAg);
+  const row=(label,bv,ov,good)=>'<tr><td class=ml>'+label+'</td><td class=mv>'+bv+'</td><td class="mv '+(good>0?'bet':good<0?'wor':'')+'">'+ov+'</td></tr>';
+  const finGood=(baseAg.maxFin!=null&&optAg.maxFin!=null)?(baseAg.maxFin-optAg.maxFin):0;
+  let h='<table class=apcmp><thead><tr><th></th><th>Deputy</th><th>Auto Plan</th></tr></thead><tbody>';
+  h+=row('Latest finish', b.fin, o.fin, finGood);
+  h+=row('On-site hours', b.onSite+'h', o.onSite+'h', 0);
+  h+=row('Driving', b.drive!=null?b.drive+'h':'n/a', o.drive!=null?o.drive+'h':'n/a', (b.drive!=null&&o.drive!=null)?(b.drive-o.drive):0);
+  h+=row('Overtime', b.ot?fmtDur(b.ot):'none', o.ot?fmtDur(o.ot):'none', b.ot-o.ot);
+  h+=row('Crew balance gap', b.balance?fmtDur(b.balance):'even', o.balance?fmtDur(o.balance):'even', b.balance-o.balance);
+  h+=row('Trucks working', b.trucks, o.trucks, 0);
+  return h+'</tbody></table>';
+}
+function apCrewLine(ag){ return ag.perVeh.filter(x=>x.crew.length||x.jobs>0).map(x=>'<b>'+esc(x.v)+'</b> '+(x.crew.length?esc(x.crew.join(' + ')):'—')+' · '+x.jobs+' jobs'+(x.fin!=null?' · finish '+fmtClock(x.fin):'')+(x.ot?' · <span class=apot>OT '+fmtDur(x.ot)+'</span>':'')).join('<br>'); }
+function renderAutoCard(){
+  const d=curDay, r=apRun(d);
+  if(__apSel.date!==d){ __apSel={date:d, idx:0}; }
+  const base=r.base; const flagged=r.needs;
+  let h='<div class="card apcard"><div class=vhead><h3 style="margin:0">\u{1F916} Auto Plan</h3>'+
+    '<span class=note>fill '+Math.round(r.fill*100)+'% · trigger ≥'+apThresholdPct()+'% '+(flagged?'<b style="color:#b4452b">● needs a look</b>':'<span style="color:#1a7a43">✓ under threshold</span>')+'</span></div>';
+  h+='<div class=note style="margin:2px 0 8px">Auto Plan keeps every job on its day and never changes Deputy or Zenkit. Any plan you pick is <b>proposed</b> until management approves it.</div>';
+  if(r.noCrew){ h+='<div class="rec bad">No one is rostered to myMowing (and no one else is available) for this day yet. Roster crew in Deputy, then press Regenerate.</div>'+
+    '<div style="margin-top:8px"><button class="btn ghost sm" id=apGen>↻ Regenerate</button> <span class=apthr>Trigger <input id=apThr type=number min=50 max=100 step=1 value="'+apThresholdPct()+'" style="width:58px"> %</span></div></div>'; return h; }
+  if(!r.improves && r.anyFeasible){ h+='<div class="rec ok">✅ The Deputy plan already completes this day efficiently — no change suggested.'+(base.agg.otMin?(' (It carries '+fmtDur(base.agg.otMin)+' overtime, but no reshuffle removes it without hurting the day.)'):'')+'</div>'+
+    '<div style="margin-top:8px"><button class="btn ghost sm" id=apGen>↻ Regenerate</button> <span class=apthr>Trigger <input id=apThr type=number min=50 max=100 step=1 value="'+apThresholdPct()+'" style="width:58px"> %</span></div></div>'; return h; }
+  if(!r.anyFeasible && r.shortfall){ h+='<div class="rec bad" style="margin-bottom:8px"><b>This day can’t be fully completed as-is.</b> '+esc(r.shortfall.bits.join('; '))+'. '+(r.shortfall.allAvailUsed?'Every available person is already used in the best option below. ':'')+'Options: approve overtime, bring in more hours, or move the overflow to another day (your call — Auto Plan never moves jobs off their date).</div>'; }
+  const sel=__apSel.idx<r.options.length?__apSel.idx:0; const opt=r.options[sel];
+  h+='<div class=aphead>'+esc(opt.headline)+'</div>';
+  if(opt.why.length) h+='<ul class=apwhy>'+opt.why.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul>';
+  h+=apMetricTable(base.agg, opt.c.agg);
+  h+='<div class=apcrews><div><div class=apk>Deputy crews</div>'+apCrewLine(base.agg)+'</div><div><div class=apk>Auto Plan crews</div>'+apCrewLine(opt.c.agg)+'</div></div>';
+  if(r.options.length>1){ h+='<div class=note style="margin-top:10px;font-weight:700">Other options</div><div class=apopts>';
+    r.options.forEach((o,i)=>{ h+='<button class="apopt'+(i===sel?' on':'')+'" data-apopt="'+i+'">'+(i+1)+'. '+esc(o.headline.replace('Recommended: ','').replace(/\.$/,''))+' <span class=note>'+(o.feasible?'✓ fits':'⚠ shortfall')+'</span></button>'; });
+    h+='</div>'; }
+  const isApplied = !isDefault(d) && AutoPlan.planSig(d,scenario)===AutoPlan.planSig(d,opt.c.sc);
+  h+='<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+     '<button class="btn'+(isApplied?' ghost':'')+'" id=apUse>'+(isApplied?'✓ Using this plan':'Use this plan')+'</button>'+
+     '<button class="btn ghost" id=apRevert>Revert to Deputy</button>'+
+     '<button class="btn ghost" id=apWA>\u{1F4F2} Copy to WhatsApp</button>'+
+     '<button class="btn ghost sm" id=apGen>↻ Regenerate</button>'+
+     '<span class=apthr>Trigger <input id=apThr type=number min=50 max=100 step=1 value="'+apThresholdPct()+'" style="width:58px"> %</span></div>';
+  h+='<div class=note style="margin-top:6px">Selecting a plan shows it across the Vehicles and What-if sections as a <b>proposed</b> arrangement. Adjust it there, then copy to WhatsApp for sign-off.</div></div>';
+  return h;
+}
+function wireAuto(){
+  const d=curDay, r=apRun(d);
+  const gen=$('apGen'); if(gen) gen.onclick=()=>{ apClear(d); renderDay(); };
+  const thr=$('apThr'); if(thr) thr.onchange=()=>{ let v=parseInt(thr.value,10); if(isNaN(v))v=87; v=Math.max(50,Math.min(100,v)); DATA.config.autoThreshold=v/100; try{localStorage.setItem('mowAutoThreshold',String(v/100));}catch(e){} __apCache={}; renderDay(); };
+  [...document.querySelectorAll('[data-apopt]')].forEach(b=>b.onclick=()=>{ __apSel={date:d, idx:+b.dataset.apopt}; const m=$('autoMount'); if(m){ m.innerHTML=renderAutoCard(); wireAuto(); } });
+  const use=$('apUse'); if(use) use.onclick=()=>{ const sel=__apSel.idx<r.options.length?__apSel.idx:0; scenario=JSON.parse(JSON.stringify(r.options[sel].c.sc)); toast('Auto Plan applied — proposed, not yet in Deputy'); renderDay(); };
+  const rev=$('apRevert'); if(rev) rev.onclick=()=>{ scenario=defaultScenario(d); renderDay(); };
+  const wa=$('apWA'); if(wa) wa.onclick=()=>{ const sel=__apSel.idx<r.options.length?__apSel.idx:0; scenario=JSON.parse(JSON.stringify(r.options[sel].c.sc)); renderDay(); copyWA(d); };
+}
+function renderAutoInto(){ const m=$('autoMount'); if(m){ m.innerHTML=renderAutoCard(); wireAuto(); } }
+
 // ---- WhatsApp ----
 function copyWA(date,detailed){
   const useSc=date===curDay?scenario:defaultScenario(date);
@@ -908,6 +1131,9 @@ async function load(){
 }
 function start(){
   $('gate').innerHTML=''; $('app').hidden=false;
+  DATA.config=DATA.config||{};
+  try{ var _t=localStorage.getItem('mowAutoThreshold'); if(_t){ DATA.config.autoThreshold=parseFloat(_t); } }catch(e){}
+  if(DATA.config.autoThreshold==null) DATA.config.autoThreshold=0.87;
   weekAnchor=DATA.today; DATA.week=weekOf(DATA.today);
   $('asof').textContent='Updated '+DATA.generatedAt;
   $('sub').innerHTML='Zenkit jobs + Deputy availability + '+(ROUTING()?'Mapbox driving times':'driving times (pending)')+' · <b>read-only</b> · feed covers '+fmtDate(DATA.dates[0])+' → '+fmtDate(DATA.dates[DATA.dates.length-1]);
