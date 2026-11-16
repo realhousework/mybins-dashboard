@@ -730,7 +730,10 @@ function renderVerdict(day,meta){
   else {
     const probs=[]; day.vehs.forEach(a=>{ if(a.status==='r'||a.status==='a') a.reasons.forEach(r=>probs.push((a.v)+': '+r)); });
     day.conflicts.forEach(c=>probs.push(esc(c.emp)+' is on both trucks at once.'));
-    if(day.status==='g'){cls='g';ic='✅';head=meta.estimated?'This day should work (driving estimated).':'This day works.';}
+    const miss=dayMissingLoc(curDay);
+    if(miss)probs.unshift('<b>'+miss+'</b> stop'+(miss>1?'s':'')+' couldn’t be located — their driving isn’t counted, so the finish may be earlier than reality.');
+    if(day.status==='g'&&miss){cls='a';ic='⚠️';head='Looks OK, but travel is incomplete:';items=probs;}
+    else if(day.status==='g'){cls='g';ic='✅';head=meta.estimated?'This day should work (driving estimated).':'This day works.';}
     else if(day.status==='a'){cls='a';ic='⚠️';head='This day works, but check these:';items=probs;}
     else {cls='r';ic='⛔';head='This day won’t work as planned:';items=probs;}
   }
@@ -899,10 +902,14 @@ function weekCard(d,rec){
     else if(day.status==='a'){cls='a';label='Check this day';}
     else {cls='g';label=status==='final'?'Finalised':'Ready';}
   }
+  // Never show a day as Ready/green while important travel info is missing (unlocated stops).
+  const miss=dayMissingLoc(d);
+  if(miss && cls==='g'){ cls='a'; label='Check — '+miss+' stop'+(miss>1?'s':'')+' not located'; }
   let tags='';
   if(status==='final')tags+='<span class="wtag" style="background:#d8efdc;color:#1f6b38">FINAL</span>';
   else if(assigned>0)tags+='<span class="wtag prov">draft</span>';
   if(!req.feasible)tags+='<span class="wtag busy">heavy day</span>';
+  if(miss)tags+='<span class="wtag busy">travel incomplete</span>';
   const estH=req.estHours?' · ~'+r1(req.estHours)+'h/truck':'';
   const sub=reqTxt+estH+(assigned?' · '+assigned+' assigned':'');
   return '<div class="weekcard '+cls+'" data-day="'+d+'"><div class=dcol><div class=dname>'+dname+'</div><div class=ddate>'+ddate+'</div></div>'+
