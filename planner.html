@@ -130,6 +130,7 @@ dialog .df{padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;bord
 </div>
 <div id=demobar></div>
 <div id=main>
+<div id=routeWarn></div>
 <div id=weekView>
   <div class=weeknav>
     <button class=nav id=wprev aria-label="Previous week">‹</button>
@@ -650,6 +651,31 @@ function setDate(date){
   });
 }
 function migrate(p){ const sc={alloc:p.alloc||{},helpers:p.helpers||{},order:p.order||{},status:p.status||'draft'}; VEH().forEach(v=>{sc.helpers[v]=sc.helpers[v]||[];}); return sc; }
+/* ============ ROUTING / MAPBOX HEALTH ============
+   Make missing geocodes and missing driving times visible. A stop with no location contributes its
+   on-site time but NO driving — so finish times look earlier than reality. We never present that as
+   precise: we flag it, name the likely cause (Mapbox over its limit), and say it self-corrects on refresh. */
+function routingStatus(){
+  const rh=MOWING.config&&MOWING.config.routingHealth;
+  const jobs=MOWING.jobs||[];
+  const unverified=jobs.filter(j=>j.geo===null).length;   // API error / couldn't verify
+  const notFound=jobs.filter(j=>j.geo===false).length;    // tried, not found
+  const mx=MOWING.matrix||{}; const mUnavail=Object.keys(mx).filter(d=>mx[d]&&mx[d].reason==='matrix-unavailable').length;
+  const overLimit = rh?!!rh.overLimit : (unverified>0||mUnavail>0);
+  return {unverified,notFound,mUnavail,overLimit};
+}
+function renderRouteWarn(){
+  const box=$('routeWarn'); if(!box)return;
+  if(DEMO){box.innerHTML='';return;}
+  const s=routingStatus();
+  if(!s.unverified && !s.mUnavail){ box.innerHTML=''; return; }
+  const bits=[];
+  if(s.unverified)bits.push('<b>'+s.unverified+'</b> address'+(s.unverified>1?'es':'')+' couldn’t be located');
+  if(s.mUnavail)bits.push('<b>'+s.mUnavail+'</b> day'+(s.mUnavail>1?'s':'')+' have no driving times');
+  const cause=s.overLimit?'Mapbox is over its usage limit':'the mapping service didn’t respond';
+  box.innerHTML='<div style="background:#fdecea;border:1px solid #e2b4ab;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px">⚠️ Routing is incomplete — '+cause+'. '+bits.join(' and ')+'. Those stops’ <b>driving time isn’t counted</b>, so finish times on affected days are optimistic. This self-corrects once Mapbox is restored and the feed refreshes.</div>';
+}
+function dayMissingLoc(d){ return activeJobs(d).filter(j=>j.geo===null||j.geo===false).length; }
 function render(){
   if(LOADERR){ renderError(); return; }
   $('demobar').innerHTML=DEMO?'<div class=demobar>🧪 DEMO DATA — these are not real jobs</div>':'';
@@ -658,11 +684,14 @@ function render(){
   $('datePick').value=date; $('rot').textContent=rotLabel(date);
   const eb=$('estb'); if(meta.provisional){eb.className='estbadge proj';eb.textContent='PROJECTED';}else{eb.className='estbadge conf';eb.textContent='CONFIRMED';}
   const day=assessDay(date,scenario);
+  renderRouteWarn();
   renderChanges(date); renderStaffReq(date); renderVerdict(day,meta); renderProposed(date); renderPool(date,day); renderReminders(date); renderCrew(date); renderVehicles(date,day);
   const dirty=planSig(scenario)!==planSavedSig;
   $('saveBtn').textContent=dirty||planSavedSig==null?'💾 Save plan':'✓ Saved'; $('saveBtn').disabled=!(dirty||planSavedSig==null)&&planSavedSig!=null?true:false;
   { const fin=(scenario.status==='final'); const sb=$('statusBtn'); if(sb){ sb.textContent=fin?'✓ Finalised — reopen as draft':'Mark finalised'; sb.className='btn ghost'+(fin?' blue':''); } }
-  $('foot').innerHTML=(meta.estimated?'Driving times are <b>estimated</b> from distances (no live traffic for this day). ':'')+
+  const miss=dayMissingLoc(date);
+  $('foot').innerHTML=(miss?'<span style="color:#b4452b">⚠️ <b>'+miss+'</b> stop'+(miss>1?'s':'')+' on this day couldn’t be located — their driving time isn’t counted, so the finish times may be earlier than reality.</span><br>':'')+
+    (meta.estimated?'Driving times are <b>estimated</b> from distances (no live traffic for this day). ':'')+
     (meta.provisional?'This day is <b>projected</b> from each job’s real repeat schedule — staff it here when you’re ready to plan it.':'')+
     (PLANS_API||DEMO?'':' · Preview: plans save to this device only until the shared login is set up.');
 }
@@ -831,6 +860,7 @@ function weekShift(n){ const t=todayISO(); const minMon=weekMonday(t); const max
 async function renderWeek(){
   if(LOADERR){renderError();return;}
   $('demobar').innerHTML=DEMO?'<div class=demobar>🧪 DEMO DATA — these are not real jobs</div>':'';
+  renderRouteWarn();
   const mon=weekAnchor, dates=weekDates(mon);
   const t=new Date(mon+'T12:00:00'),f=new Date(dates[4]+'T12:00:00');
   $('weekTitle').textContent='Week of '+t.getDate()+' '+t.toLocaleDateString('en-AU',{month:'short'})+' – '+f.getDate()+' '+f.toLocaleDateString('en-AU',{month:'short'});
