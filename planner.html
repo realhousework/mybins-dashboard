@@ -158,6 +158,7 @@ dialog .df{padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;bord
 <div id=verdict></div>
 <div id=proposedNote></div>
 <div id=pool></div>
+<div id=cleared></div>
 <div id=reminders></div>
 <div id=crewCard></div>
 <div class=vehgrid id=vehs></div>
@@ -222,14 +223,40 @@ function fmtDur(min){min=Math.round(min);if(min<60)return min+' min';const h=Mat
 const REGIONS=['Manly Council','Warringah/Pittwater','North Shore'];
 
 function jobsOn(d){return DATA.jobs.filter(j=>j.date===d);}
-// `done` is only trustworthy on a job's OWN day or earlier — a future job cannot be complete.
-// On a future date `done` is stale carry-over from the recurring card's previous occurrence,
-// so it must NEVER hide the next occurrence. We never drop a job from a day's plan based on
-// `done`; only reliable per-occurrence evidence (occCompleted / occCancelled, which the feed
-// may add later) may hide a specific future occurrence. Completion is identified via isCompleted().
-function activeJobs(d){return jobsOn(d).filter(j=>isJob(j)&&j.occCompleted!==true&&j.occCancelled!==true);}
-// Reliable completion: a job marked done on its own day or earlier (not a stale future flag).
-function isCompleted(j){return !!(j.done&&DATA.today&&j.date<=DATA.today)||j.occCompleted===true;}
+
+/* ============ OCCURRENCE WORK-STATUS (accurate reschedule / done / skip handling) ============
+   Zenkit stores each recurring visit as its OWN dated occurrence with its own state. A visit marked
+   Done (Stage=Done / occState 'taskDone') is that specific occurrence being cleared — it is genuinely
+   NOT due that day, and this is reliable per-occurrence (not a stale carry-over flag). So done
+   occurrences are excluded from the day's workload, but kept visible: where the work actually went
+   (serviced early / moved to another day — matched by property) and when it's next due. Blake can
+   override a single occurrence (still-due, or done) — saved against THAT occurrence, never against the
+   recurring customer, so the regular job keeps appearing on future dates. */
+let OCCRES={}; let OCCRES_VER=0; const OCCRES_KEY='0001-01-03';   // per-occurrence resolutions (shared, like classifications)
+function occKey(j){ return j.id!=null?('O'+j.id):('O'+j.date+'|'+(j.ruleId!=null?j.ruleId:j.address)); }
+function workStatus(j){
+  const ov=OCCRES[occKey(j)];
+  if(ov==='due')return 'due';
+  if(ov==='done')return 'done';
+  return j.done ? 'done' : 'due';                 // trust Zenkit's per-occurrence Done state
+}
+function activeJobs(d){ return jobsOn(d).filter(j=>isJob(j)&&workStatus(j)==='due'); }   // genuine workload (counts, routing, staffing, Find all use this)
+function clearedOn(d){ return jobsOn(d).filter(j=>isJob(j)&&workStatus(j)==='done'); }    // done / not due this day
+function isCompleted(j){ return workStatus(j)==='done'; }
+const _ak=a=>(a||'').toLowerCase().replace(/\s+/g,' ').trim();
+// For a done occurrence: where the work actually went (same property serviced nearby) + next due date.
+function doneInfo(j){
+  const ak=_ak(j.address); let serviced=null;
+  (MOWING.jobs||[]).forEach(o=>{ if(o!==j && o.done && o.date!==j.date && _ak(o.address)===ak){ const near=Math.abs((new Date(o.date)-new Date(j.date))/86400000)<=10; if(near&&(!serviced||o.date<serviced))serviced=o.date; } });
+  let nextDue=null; const R=j.ruleId!=null?String(j.ruleId):null;
+  if(R&&MOWING.ruleOcc&&MOWING.ruleOcc[R]){ const fl=MOWING.ruleOcc[R].filter(o=>!o.done&&o.date>MOWING.today).map(o=>o.date).sort(); if(fl.length)nextDue=fl[0]; }
+  if(!nextDue&&R&&PROJ&&PROJ.byDate){ const ds=Object.keys(PROJ.byDate).filter(dt=>dt>MOWING.today&&(PROJ.byDate[dt]||[]).some(o=>String(o.ruleId)===R)).sort(); if(ds.length)nextDue=ds[0]; }
+  return {serviced, nextDue, uncertain:(!!R && !serviced && !nextDue), oneOff:!R};
+}
+function uncertainOn(d){ return clearedOn(d).filter(j=>doneInfo(j).uncertain); }
+async function loadOcc(){ if(DEMO)return; try{ const r=await Store.get(OCCRES_KEY); if(r&&r.plan&&r.plan._occres)OCCRES=r.plan._occres; OCCRES_VER=(r&&r.version)||0; }catch(e){} }
+async function saveOcc(){ try{ let r=await Store.put(OCCRES_KEY,{_occres:OCCRES},OCCRES_VER); if(r&&r.ok===false&&r.error==='conflict'){await loadOcc();r=await Store.put(OCCRES_KEY,{_occres:OCCRES},OCCRES_VER);} if(r&&r.version)OCCRES_VER=r.version; }catch(e){} }
+function resolveOcc(key,status){ if(status)OCCRES[key]=status; else delete OCCRES[key]; REQ_CACHE={}; buildDay(curDay); render(); saveOcc(); }
 
 /* ============ JOB vs NOTE/REMINDER CLASSIFICATION ============
    Some Zenkit cards are operational notes/reminders ("BLAKE — sort out X next Wed"), not jobs.
@@ -686,7 +713,7 @@ function render(){
   const eb=$('estb'); if(meta.provisional){eb.className='estbadge proj';eb.textContent='PROJECTED';}else{eb.className='estbadge conf';eb.textContent='CONFIRMED';}
   const day=assessDay(date,scenario);
   renderRouteWarn();
-  renderChanges(date); renderStaffReq(date); renderVerdict(day,meta); renderProposed(date); renderPool(date,day); renderReminders(date); renderCrew(date); renderVehicles(date,day);
+  renderChanges(date); renderStaffReq(date); renderVerdict(day,meta); renderProposed(date); renderPool(date,day); renderCleared(date); renderReminders(date); renderCrew(date); renderVehicles(date,day);
   const dirty=planSig(scenario)!==planSavedSig;
   $('saveBtn').textContent=dirty||planSavedSig==null?'💾 Save plan':'✓ Saved'; $('saveBtn').disabled=!(dirty||planSavedSig==null)&&planSavedSig!=null?true:false;
   { const fin=(scenario.status==='final'); const sb=$('statusBtn'); if(sb){ sb.textContent=fin?'✓ Finalised — reopen as draft':'Mark finalised'; sb.className='btn ghost'+(fin?' blue':''); } }
@@ -722,7 +749,9 @@ function renderStaffReq(date){
   else if(assigned===0){ bg='#fff6e5';bd='#e8cf8f'; msg='No staff assigned yet — this day '+need+'. Pick who works below.'; }
   else if(assigned<req.employees){ bg='#fff6e5';bd='#e8cf8f'; msg='You’ve assigned <b>'+assigned+'</b> of the ~'+req.employees+' this day needs ('+need+').'; }
   else { bg='#eef7f0';bd='#bfe0cd'; msg='You’ve assigned <b>'+assigned+'</b> — meets the ~'+req.employees+' needed. This day '+need+'.'; }
-  box.innerHTML='<div style="background:'+bg+';border:1px solid '+bd+';border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:13px">👷 '+msg+'</div>';
+  const unc=uncertainOn(date).length;
+  const prov= unc?'<div style="margin-top:6px;color:#8a6d1a">⚑ <b>Provisional</b> — '+unc+' job'+(unc>1?'s':'')+' couldn’t be confirmed as done or still‑due (see “Done / not due” below). The staffing may change once resolved.</div>':'';
+  box.innerHTML='<div style="background:'+bg+';border:1px solid '+bd+';border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:13px">👷 '+msg+prov+'</div>';
 }
 function renderVerdict(day,meta){
   let cls,ic,head,items=[];
@@ -750,7 +779,8 @@ function renderPool(date,day){
     const donem=isCompleted(j)?'<span style="color:#2f8f46;font-weight:600;font-size:11px;margin-left:6px">&#10003; done</span>':'';
     h+='<div class=jrow><div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'<span class="sk '+(j.skill||'Unknown')+'">'+(j.skill||'?')+'</span>'+(j.appt?'<span class=appt>⏰'+apptLabel(normAppt(j.appt))+'</span>':'')+est+nomap+donem+'</div><div class=jsvc>'+esc(j.service||'')+(j.est!=null?' · '+j.est+' min':' · <span style=color:#b4452b>no time estimate</span>')+'</div></div>'+
       '<div class=assignbtns><button class=toH data-assign=HOPPER data-key="'+esc(allocKey(j))+'">→ HOPPER</button><button class=toM data-assign=MOE data-key="'+esc(allocKey(j))+'">→ MOE</button>'+
-      '<button class=linkbtn style="font-size:11px;opacity:.65" data-tonote="'+esc(classKey(j))+'" title="This is a note/reminder, not a job">not a job?</button></div></div>';
+      '<button class=linkbtn style="font-size:11px;opacity:.65" data-tonote="'+esc(classKey(j))+'" title="This is a note/reminder, not a job">not a job?</button>'+
+      '<button class=linkbtn style="font-size:11px;opacity:.65" data-markdone="'+esc(occKey(j))+'" title="Already done / not needed this day">already done?</button></div></div>';
   });
   h+='</div>'; box.innerHTML=h;
 }
@@ -763,6 +793,24 @@ function renderReminders(date){
     const txt=esc(j.service||j.title||'')||'<span class=small muted>(no detail)</span>';
     h+='<div class=jrow><div class=jmain><div class=jaddr>'+esc(j.address||'(no title)')+(unsure?'<span class=estdot style="background:#e6a700;color:#3a2d00"> is this a job?</span>':'')+'</div><div class=jsvc>'+txt+'</div></div>'+
        '<div class=assignbtns><button class=linkbtn data-tojob="'+esc(classKey(j))+'" title="Treat this as a real job">✓ it’s a job</button></div></div>';
+  });
+  h+='</div>'; box.innerHTML=h;
+}
+function fmtShort(d){ const t=new Date(d+'T12:00:00'); return DOW[t.getDay()].slice(0,3)+' '+t.getDate()+' '+t.toLocaleDateString('en-AU',{month:'short'}); }
+function renderCleared(date){
+  const box=$('cleared'); const cl=clearedOn(date);
+  if(!cl.length){box.innerHTML='';return;}
+  let h='<div class="card"><div class="sechead"><span>✓ Done / not due this day ('+cl.length+')</span><span class=small muted>not counted in the workload</span></div>';
+  cl.forEach(j=>{
+    const info=doneInfo(j);
+    let tag;
+    if(info.uncertain) tag='<span class=estdot style="background:#e6a700;color:#3a2d00">needs review</span>';
+    else if(info.serviced) tag='<span class=estdot style="background:#e3eee6;color:#1f6b38">done '+fmtShort(info.serviced)+'</span>';
+    else if(info.oneOff) tag='<span class=estdot style="background:#e3eee6;color:#1f6b38">completed</span>';
+    else tag='<span class=estdot style="background:#e3eee6;color:#1f6b38">cleared</span>';
+    const nd=info.nextDue?'<span class=small muted> · next due '+fmtShort(info.nextDue)+'</span>':(info.oneOff?'':'<span class=small muted> · no next date</span>');
+    h+='<div class=jrow><div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+tag+'</div><div class=jsvc>'+esc(j.service||'')+nd+'</div></div>'+
+       '<div class=assignbtns><button class=linkbtn style="font-size:11px" data-stilldue="'+esc(occKey(j))+'" title="This visit still needs doing on this day">↩ still needs doing</button></div></div>';
   });
   h+='</div>'; box.innerHTML=h;
 }
@@ -906,13 +954,17 @@ function weekCard(d,rec){
   // Never show a day as Ready/green while important travel info is missing (unlocated stops).
   const miss=dayMissingLoc(d);
   if(miss && cls==='g'){ cls='a'; label='Check — '+miss+' stop'+(miss>1?'s':'')+' not located'; }
+  // Unconfirmed occurrences make the workload (and staffing) provisional — never show a confident green.
+  const unc=uncertainOn(d).length, cleared=clearedOn(d).length;
+  if(unc && cls==='g'){ cls='a'; label='Review — '+unc+' unconfirmed'; }
   let tags='';
   if(status==='final')tags+='<span class="wtag" style="background:#d8efdc;color:#1f6b38">FINAL</span>';
   else if(assigned>0)tags+='<span class="wtag prov">draft</span>';
   if(!req.feasible)tags+='<span class="wtag busy">heavy day</span>';
   if(miss)tags+='<span class="wtag busy">travel incomplete</span>';
+  if(unc)tags+='<span class="wtag busy">provisional</span>';
   const estH=req.estHours?' · ~'+r1(req.estHours)+'h/truck':'';
-  const sub=reqTxt+estH+(assigned?' · '+assigned+' assigned':'');
+  const sub=reqTxt+estH+(assigned?' · '+assigned+' assigned':'')+(cleared?' · '+cleared+' done':'');
   return '<div class="weekcard '+cls+'" data-day="'+d+'"><div class=dcol><div class=dname>'+dname+'</div><div class=ddate>'+ddate+'</div></div>'+
     '<div class=jcol><div class=jnum>'+jobs+'</div><div class=jlbl>jobs</div></div>'+
     '<div class=scol><div class="wready '+cls+'">'+label+'</div><div class=wsub>'+sub+'</div>'+(tags?'<div style="margin-top:2px">'+tags+'</div>':'')+'</div>'+
@@ -1022,6 +1074,8 @@ document.addEventListener('click',e=>{
   const st=e.target.closest('[data-staff]'); if(st){ toggleStaffAttr(st.dataset.staff,st.dataset.attr); return; }
   if(e.target.id==='addStaffBtn'){ addStaffFromInput(); return; }
   const tn=e.target.closest('[data-tonote]'); if(tn){reclassify(tn.dataset.tonote,'reminder');toast('Moved to notes — no longer counted as a job');return;}
+  const sd=e.target.closest('[data-stilldue]'); if(sd){resolveOcc(sd.dataset.stilldue,'due');toast('Marked still due — added back to the workload');return;}
+  const md=e.target.closest('[data-markdone]'); if(md){resolveOcc(md.dataset.markdone,'done');toast('Marked done — moved out of the workload');return;}
   if(e.target.id==='autoAlloc'){autoAllocate();return;}
   const wc=e.target.closest('.weekcard[data-day]'); if(wc){showDay(wc.dataset.day);return;}
   const ft=e.target.closest('#fType [data-type]'); if(ft){segPick('fType',ft);findInput.skill=ft.dataset.type==='Specialist'?'Specialist':'Basic';return;}
@@ -1165,6 +1219,7 @@ async function boot(){
   if(LOADERR){ renderError(); return; }
   await loadClass();   // Blake's saved job/reminder overrides (shared), applied before any count
   await loadStaff();   // our own staff list (skills, driving, hours) — no Deputy
+  await loadOcc();     // per-occurrence still-due / done resolutions (shared)
   const today=MOWING.today||new Date().toISOString().slice(0,10);
   curDay=today; weekAnchor=weekMonday(today);
   showWeek();   // land on the Weekly Overview
