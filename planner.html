@@ -671,7 +671,7 @@ function renderRouteWarn(){
   if(!s.unverified && !s.mUnavail){ box.innerHTML=''; return; }
   const bits=[];
   if(s.unverified)bits.push('<b>'+s.unverified+'</b> address'+(s.unverified>1?'es':'')+' couldn’t be located');
-  if(s.mUnavail)bits.push('<b>'+s.mUnavail+'</b> day'+(s.mUnavail>1?'s':'')+' have no driving times');
+  if(s.mUnavail)bits.push('<b>'+s.mUnavail+'</b> day'+(s.mUnavail>1?'s have':' has')+' no driving times');
   const cause=s.overLimit?'Mapbox is over its usage limit':'the mapping service didn’t respond';
   box.innerHTML='<div style="background:#fdecea;border:1px solid #e2b4ab;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px">⚠️ Routing is incomplete — '+cause+'. '+bits.join(' and ')+'. Those stops’ <b>driving time isn’t counted</b>, so finish times on affected days are optimistic. This self-corrects once Mapbox is restored and the feed refreshes.</div>';
 }
