@@ -156,6 +156,7 @@ dialog .df{padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;bord
 <div id=verdict></div>
 <div id=proposedNote></div>
 <div id=pool></div>
+<div id=reminders></div>
 <div id=crewCard></div>
 <div class=vehgrid id=vehs></div>
 <div class=actions>
@@ -223,9 +224,35 @@ function jobsOn(d){return DATA.jobs.filter(j=>j.date===d);}
 // so it must NEVER hide the next occurrence. We never drop a job from a day's plan based on
 // `done`; only reliable per-occurrence evidence (occCompleted / occCancelled, which the feed
 // may add later) may hide a specific future occurrence. Completion is identified via isCompleted().
-function activeJobs(d){return jobsOn(d).filter(j=>j.occCompleted!==true&&j.occCancelled!==true);}
+function activeJobs(d){return jobsOn(d).filter(j=>isJob(j)&&j.occCompleted!==true&&j.occCancelled!==true);}
 // Reliable completion: a job marked done on its own day or earlier (not a stale future flag).
 function isCompleted(j){return !!(j.done&&DATA.today&&j.date<=DATA.today)||j.occCompleted===true;}
+
+/* ============ JOB vs NOTE/REMINDER CLASSIFICATION ============
+   Some Zenkit cards are operational notes/reminders ("BLAKE — sort out X next Wed"), not jobs.
+   They must NOT count toward job totals, hours, routing, staffing or Find Capacity — but must stay
+   visible. We classify from RELIABLE Zenkit-derived signals (recurrence rule, a work-time estimate,
+   a recognised service skill, a real street address) — never from the note wording alone — and let
+   Blake override any call. Overrides are keyed by recurrence rule so they stick for every future
+   occurrence, and are shared (saved to the same store as plans). Nothing is written back to Zenkit. */
+let CLASSIFY={}; let CLASSIFY_VER=0; const RECLASS_KEY='0001-01-01'; // reserved shared row holding overrides
+const STREETY=/\b(st|street|rd|road|ave|avenue|ln|lane|dr|drive|pl|place|ct|court|cres|crescent|pde|parade|way|cl|close|tce|terrace|bvd|blvd|boulevard|hwy|highway|cct|circuit|gr|grove|esplanade|esp|promenade|wharf|cove|bay|point|pt|heights|hts|rise|glen|walk|row|mews|quay|ave|avenue)\b/i;
+function looksLikeAddress(a){a=a||'';return /\d/.test(a)&&(STREETY.test(a)||a.includes(','));}
+// 'job' | 'reminder' | 'uncertain'. A job shows at least one hallmark of real work.
+function autoKind(j){
+  if(j._proposed)return 'job';                                  // Find-Capacity proposals are always jobs
+  const hasRule=j.ruleId!=null, hasEst=j.est!=null, knownSkill=!!(j.skill&&j.skill!=='Unknown');
+  if(hasRule||hasEst||knownSkill)return 'job';
+  if(!looksLikeAddress(j.address))return 'reminder';            // e.g. "BLAKE" — no address, no work signals
+  return 'uncertain';                                           // has an address but no work signals → ask Blake
+}
+function classKey(j){ if(j.ruleId!=null)return 'R'+j.ruleId; if(j.id!=null)return '#'+j.id; return 'A|'+(j.address||''); }
+function kindOf(j){ const o=CLASSIFY[classKey(j)]; if(o==='job'||o==='reminder')return o; return autoKind(j); }
+function isJob(j){ return kindOf(j)==='job'; }
+function remindersOn(d){ return jobsOn(d).filter(j=>!isJob(j)); } // reminders + uncertain (both excluded from job math)
+function reclassify(key,kind){ if(kind)CLASSIFY[key]=kind; else delete CLASSIFY[key]; buildDay(curDay); render(); saveClass(); }
+async function loadClass(){ if(DEMO)return; try{ const r=await Store.get(RECLASS_KEY); if(r&&r.plan&&r.plan._classifications)CLASSIFY=r.plan._classifications; CLASSIFY_VER=(r&&r.version)||0; }catch(e){} }
+async function saveClass(){ try{ let r=await Store.put(RECLASS_KEY,{_classifications:CLASSIFY},CLASSIFY_VER); if(r&&r.ok===false&&r.error==='conflict'){ await loadClass(); r=await Store.put(RECLASS_KEY,{_classifications:CLASSIFY},CLASSIFY_VER); } if(r&&r.version)CLASSIFY_VER=r.version; }catch(e){} }
 function availOn(d){return (DATA.availability&&DATA.availability[d])||{};}
 function rosterOn(d){return (DATA.roster&&DATA.roster[d])||[];}
 function isSpec(e){return !!(DATA.staff[e]&&DATA.staff[e].specialist);}
@@ -533,7 +560,7 @@ function render(){
   $('datePick').value=date; $('rot').textContent=rotLabel(date);
   const eb=$('estb'); if(meta.provisional){eb.className='estbadge proj';eb.textContent='PROJECTED';}else{eb.className='estbadge conf';eb.textContent='CONFIRMED';}
   const day=assessDay(date,scenario);
-  renderChanges(date); renderVerdict(day,meta); renderProposed(date); renderPool(date,day); renderCrew(date); renderVehicles(date,day);
+  renderChanges(date); renderVerdict(day,meta); renderProposed(date); renderPool(date,day); renderReminders(date); renderCrew(date); renderVehicles(date,day);
   const dirty=planSig(scenario)!==planSavedSig;
   $('saveBtn').textContent=dirty||planSavedSig==null?'💾 Save plan':'✓ Saved'; $('saveBtn').disabled=!(dirty||planSavedSig==null)&&planSavedSig!=null?true:false;
   $('foot').innerHTML=(meta.estimated?'Driving times are <b>estimated</b> from distances (no live traffic for this day). ':'')+
@@ -578,7 +605,20 @@ function renderPool(date,day){
     const est=(j._status==='estimated')?'<span class=estdot>projected</span>':''; const nomap=!j.geo?'<span class=nomap>no map location</span>':'';
     const donem=isCompleted(j)?'<span style="color:#2f8f46;font-weight:600;font-size:11px;margin-left:6px">&#10003; done</span>':'';
     h+='<div class=jrow><div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'<span class="sk '+(j.skill||'Unknown')+'">'+(j.skill||'?')+'</span>'+(j.appt?'<span class=appt>⏰'+apptLabel(normAppt(j.appt))+'</span>':'')+est+nomap+donem+'</div><div class=jsvc>'+esc(j.service||'')+(j.est!=null?' · '+j.est+' min':' · <span style=color:#b4452b>no time estimate</span>')+'</div></div>'+
-      '<div class=assignbtns><button class=toH data-assign=HOPPER data-key="'+esc(allocKey(j))+'">→ HOPPER</button><button class=toM data-assign=MOE data-key="'+esc(allocKey(j))+'">→ MOE</button></div></div>';
+      '<div class=assignbtns><button class=toH data-assign=HOPPER data-key="'+esc(allocKey(j))+'">→ HOPPER</button><button class=toM data-assign=MOE data-key="'+esc(allocKey(j))+'">→ MOE</button>'+
+      '<button class=linkbtn style="font-size:11px;opacity:.65" data-tonote="'+esc(classKey(j))+'" title="This is a note/reminder, not a job">not a job?</button></div></div>';
+  });
+  h+='</div>'; box.innerHTML=h;
+}
+function renderReminders(date){
+  const box=$('reminders'); const rem=remindersOn(date);
+  if(!rem.length){box.innerHTML='';return;}
+  let h='<div class="card"><div class="sechead"><span>📌 Notes &amp; reminders ('+rem.length+')</span><span class=small muted>not counted as jobs</span></div>';
+  rem.forEach(j=>{
+    const unsure=(!CLASSIFY[classKey(j)]&&autoKind(j)==='uncertain');
+    const txt=esc(j.service||j.title||'')||'<span class=small muted>(no detail)</span>';
+    h+='<div class=jrow><div class=jmain><div class=jaddr>'+esc(j.address||'(no title)')+(unsure?'<span class=estdot style="background:#e6a700;color:#3a2d00"> is this a job?</span>':'')+'</div><div class=jsvc>'+txt+'</div></div>'+
+       '<div class=assignbtns><button class=linkbtn data-tojob="'+esc(classKey(j))+'" title="Treat this as a real job">✓ it’s a job</button></div></div>';
   });
   h+='</div>'; box.innerHTML=h;
 }
@@ -797,6 +837,8 @@ document.addEventListener('click',e=>{
   const o=e.target.closest('[data-ord]'); if(o){reorder(o.dataset.v,o.dataset.key,o.dataset.ord);return;}
   const mv=e.target.closest('[data-move]'); if(mv){assign(mv.dataset.key,mv.dataset.move);return;}
   const as=e.target.closest('[data-assign]'); if(as){assign(as.dataset.key,as.dataset.assign);return;}
+  const tj=e.target.closest('[data-tojob]'); if(tj){reclassify(tj.dataset.tojob,'job');toast('Moved to jobs — it now counts and can be allocated');return;}
+  const tn=e.target.closest('[data-tonote]'); if(tn){reclassify(tn.dataset.tonote,'reminder');toast('Moved to notes — no longer counted as a job');return;}
   if(e.target.id==='autoAlloc'){autoAllocate();return;}
   const wc=e.target.closest('.weekcard[data-day]'); if(wc){showDay(wc.dataset.day);return;}
   const ft=e.target.closest('#fType [data-type]'); if(ft){segPick('fType',ft);findInput.skill=ft.dataset.type==='Specialist'?'Specialist':'Basic';return;}
@@ -937,6 +979,7 @@ async function boot(){
     }catch(e){ LOADERR=true; LOADERR_MSG=String(e&&e.message||e); }
   }
   if(LOADERR){ renderError(); return; }
+  await loadClass();   // Blake's saved job/reminder overrides (shared), applied before any count
   const today=MOWING.today||new Date().toISOString().slice(0,10);
   curDay=today; weekAnchor=weekMonday(today);
   showWeek();   // land on the Weekly Overview
