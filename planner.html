@@ -618,7 +618,8 @@ function buildDay(date){
   jobs=jobs.concat((PROPOSED[date]||[]).map(j=>Object.assign({},j)));   // provisional new jobs from Find Capacity (never in Zenkit)
   jobs.forEach(j=>{ j.geo=(j.lng!=null&&j.lat!=null); });
   const depot=(MOWING.config&&MOWING.config.depotCoord)||[151.2735,-33.7942];
-  const baked=(MOWING.matrix&&MOWING.matrix[date])||null;
+  // Real Mapbox matrix: in-window days from MOWING.matrix, future/projected days from PROJ.matrix.
+  const baked=(MOWING.matrix&&MOWING.matrix[date])||(PROJ&&PROJ.matrix&&PROJ.matrix[date])||null;
   let matrix;
   if(baked&&baked.dur){matrix=baked;} else {const pts=jobs.filter(j=>j.geo);matrix=pts.length?estMatrix(depot,pts):{ids:[],dur:null};estimated=true;}
   if(matrix.estimated)estimated=true;
