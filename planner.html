@@ -663,7 +663,7 @@ function render(){
   $('saveBtn').textContent=dirty||planSavedSig==null?'💾 Save plan':'✓ Saved'; $('saveBtn').disabled=!(dirty||planSavedSig==null)&&planSavedSig!=null?true:false;
   { const fin=(scenario.status==='final'); const sb=$('statusBtn'); if(sb){ sb.textContent=fin?'✓ Finalised — reopen as draft':'Mark finalised'; sb.className='btn ghost'+(fin?' blue':''); } }
   $('foot').innerHTML=(meta.estimated?'Driving times are <b>estimated</b> from distances (no live traffic for this day). ':'')+
-    (meta.provisional?'This day is <b>projected</b> from each job’s real repeat schedule — crew is provisional until Deputy rosters are published.':'')+
+    (meta.provisional?'This day is <b>projected</b> from each job’s real repeat schedule — staff it here when you’re ready to plan it.':'')+
     (PLANS_API||DEMO?'':' · Preview: plans save to this device only until the shared login is set up.');
 }
 function renderError(){
@@ -843,7 +843,7 @@ async function renderWeek(){
   let html='';
   dates.forEach((d,i)=>{ html+=weekCard(d,saved[i]); });
   $('weekgrid').innerHTML=html;
-  $('weekfoot').innerHTML='“Ready” means staff are rostered in Deputy and every job is on a truck. A day stays amber while the roster is only provisional.';
+  $('weekfoot').innerHTML='Each day shows the staffing it needs from the workload. “Ready” means you’ve assigned enough staff and every job is on a truck. Amber means a day still needs staffing or more people.';
 }
 function weekCard(d,rec){
   buildDay(d);
@@ -1082,9 +1082,9 @@ function renderFindResults(top,info){
     if(info.freq>0&&o.future){ if(o.future.total===0)fut='<div class="fut ok">First visit fits; future dates are beyond the 12-week window.</div>';
       else if(o.future.fit===o.future.total)fut='<div class="fut ok">✅ Keeps fitting on all '+o.future.total+' future visits in the next 12 weeks.</div>';
       else fut='<div class="fut bad">⚠ Fits now, but '+(o.future.total-o.future.fit)+' of '+o.future.total+' future visits look tight — review those weeks.</div>';
-      if(o.future.prov)fut+='<div class="small" style="color:#8a6d1a">Future weeks assume a normal crew — Deputy rosters not published yet.</div>'; }
+      if(o.future.prov)fut+='<div class="small" style="color:#8a6d1a">Future weeks assume a normal crew until you staff them.</div>'; }
     const basis = o.provRoster
-      ? '<div class="small" style="color:#8a6d1a;margin-top:3px">⚑ Provisional — Deputy roster not published; assumes a normal crew.</div>'
+      ? '<div class="small" style="color:#8a6d1a;margin-top:3px">⚑ Estimate — this day isn’t staffed yet; assumes a normal crew.</div>'
       : (!o.planned ? '<div class="small muted" style="margin-top:3px">Estimate — this day isn’t planned yet; based on your usual allocation.</div>'
                     : '<div class="small" style="color:#1a7a43;margin-top:3px">✓ Based on the saved plan for this day.</div>');
     const proxTxt=o.prox==null?'first job of the day':(o.prox<1.2?'right by an existing stop ('+r1(o.prox)+' km)':r1(o.prox)+' km from the nearest stop');
