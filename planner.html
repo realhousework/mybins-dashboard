@@ -218,7 +218,14 @@ function fmtDur(min){min=Math.round(min);if(min<60)return min+' min';const h=Mat
 const REGIONS=['Manly Council','Warringah/Pittwater','North Shore'];
 
 function jobsOn(d){return DATA.jobs.filter(j=>j.date===d);}
-function activeJobs(d){return jobsOn(d).filter(j=>!(j.done&&DATA.today&&j.date>DATA.today));}
+// `done` is only trustworthy on a job's OWN day or earlier — a future job cannot be complete.
+// On a future date `done` is stale carry-over from the recurring card's previous occurrence,
+// so it must NEVER hide the next occurrence. We never drop a job from a day's plan based on
+// `done`; only reliable per-occurrence evidence (occCompleted / occCancelled, which the feed
+// may add later) may hide a specific future occurrence. Completion is identified via isCompleted().
+function activeJobs(d){return jobsOn(d).filter(j=>j.occCompleted!==true&&j.occCancelled!==true);}
+// Reliable completion: a job marked done on its own day or earlier (not a stale future flag).
+function isCompleted(j){return !!(j.done&&DATA.today&&j.date<=DATA.today)||j.occCompleted===true;}
 function availOn(d){return (DATA.availability&&DATA.availability[d])||{};}
 function rosterOn(d){return (DATA.roster&&DATA.roster[d])||[];}
 function isSpec(e){return !!(DATA.staff[e]&&DATA.staff[e].specialist);}
@@ -569,7 +576,8 @@ function renderPool(date,day){
   let h='<div class="card need"><div class="sechead need"><span>Jobs to allocate ('+day.unalloc.length+')</span><button class=linkbtn id=autoAlloc>Auto-allocate (suggestion)</button></div>';
   day.unalloc.forEach(j=>{
     const est=(j._status==='estimated')?'<span class=estdot>projected</span>':''; const nomap=!j.geo?'<span class=nomap>no map location</span>':'';
-    h+='<div class=jrow><div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'<span class="sk '+(j.skill||'Unknown')+'">'+(j.skill||'?')+'</span>'+(j.appt?'<span class=appt>⏰'+apptLabel(normAppt(j.appt))+'</span>':'')+est+nomap+'</div><div class=jsvc>'+esc(j.service||'')+(j.est!=null?' · '+j.est+' min':' · <span style=color:#b4452b>no time estimate</span>')+'</div></div>'+
+    const donem=isCompleted(j)?'<span style="color:#2f8f46;font-weight:600;font-size:11px;margin-left:6px">&#10003; done</span>':'';
+    h+='<div class=jrow><div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'<span class="sk '+(j.skill||'Unknown')+'">'+(j.skill||'?')+'</span>'+(j.appt?'<span class=appt>⏰'+apptLabel(normAppt(j.appt))+'</span>':'')+est+nomap+donem+'</div><div class=jsvc>'+esc(j.service||'')+(j.est!=null?' · '+j.est+' min':' · <span style=color:#b4452b>no time estimate</span>')+'</div></div>'+
       '<div class=assignbtns><button class=toH data-assign=HOPPER data-key="'+esc(allocKey(j))+'">→ HOPPER</button><button class=toM data-assign=MOE data-key="'+esc(allocKey(j))+'">→ MOE</button></div></div>';
   });
   h+='</div>'; box.innerHTML=h;
