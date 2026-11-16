@@ -200,7 +200,7 @@ const DOW=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday
 const fmtLong=d=>{const t=new Date(d+'T12:00:00');return DOW[t.getDay()]+' '+t.getDate()+' '+t.toLocaleDateString('en-AU',{month:'short'});};
 
 let DATA=null, curDay=null, scenario=null;
-let MOWING=null, PROJ=null, DEMO=false, LOADERR=false;
+let MOWING=null, PROJ=null, DEMO=false, LOADERR=false, LOADERR_MSG='';
 let dayMeta={}, planVersion=0, planSavedSig=null, planManifest=null, hoursOpen={};
 let VIEW='week', weekAnchor=null;
 let PROPOSED={}, pendingAlloc=null, findInput={skill:'Basic',freq:0,days:[],time:'any'};
@@ -535,7 +535,7 @@ function render(){
 }
 function renderError(){
   $('demobar').innerHTML='';
-  $('main').innerHTML='<div class=errbox><h2>⚠️ Couldn’t load the live schedule</h2><p>The job data didn’t load. Check your connection, or that the feed has published, then try again.</p><button class="btn" style="flex:none" onclick="location.reload()">Try again</button></div>';
+  $('main').innerHTML='<div class=errbox><h2>⚠️ Couldn’t load the live schedule</h2><p>The job data didn’t load — no sample data is shown instead.</p>'+(LOADERR_MSG?'<p class=small style="opacity:.8">Reason: '+esc(LOADERR_MSG)+'</p>':'')+'<button class="btn" style="flex:none" onclick="location.reload()">Try again</button></div>';
 }
 function renderChanges(date){
   const box=$('changebar');
@@ -925,8 +925,8 @@ async function boot(){
         fetch('mowing.json?cb='+Date.now()).then(r=>r.ok?r.json():Promise.reject()).catch(()=>null),
         fetch('projection.json?cb='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null)
       ]);
-      if(mj&&mj.jobs){ MOWING=mj; PROJ=pj||{byDate:{},jobs:[]}; } else { LOADERR=true; }
-    }catch(e){ LOADERR=true; }
+      if(mj&&mj.jobs){ MOWING=mj; PROJ=pj||{byDate:{},jobs:[]}; } else { LOADERR=true; LOADERR_MSG=(mj&&mj.error)?(mj.error+(mj.detail?' — '+mj.detail:'')):'the schedule feed returned no jobs'; }
+    }catch(e){ LOADERR=true; LOADERR_MSG=String(e&&e.message||e); }
   }
   if(LOADERR){ renderError(); return; }
   const today=MOWING.today||new Date().toISOString().slice(0,10);
