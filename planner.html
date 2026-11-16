@@ -622,6 +622,7 @@ function renderVehicles(date,day){
       '<h3><span class="light '+a.status+'"></span>'+a.v+'</h3><div class=crewline>'+crew+'</div>'+
       '<div class=vstat><span><span class=k>Finish</span><b>'+fin+'</b></span><span><span class=k>Driving</span><b>'+drv+'</b></span><span><span class=k>On-site</span><b>'+work+'</b></span></div>';
     const ord=a.order;
+    if(ord.length>=2){ h+='<button class=mvb style="margin:0 0 8px;color:#2e8b57;border-color:#bfe0cd" data-optveh="'+a.v+'" title="Re-order the stops for the shortest day, keeping appointment times">🧭 Optimise route</button>'; }
     if(!ord.length){ h+='<div class="small muted" style="padding:8px 0">No jobs on this truck yet.</div>'; }
     ord.forEach((j,i)=>{
       const estDot=(j._status==='estimated')?'<span class=estdot>projected</span>':''; const nomap=!j.geo?'<span class=nomap>no map location</span>':''; const newTag=j._proposed?'<span class=appt style="background:#eae0ff;color:#6b2fb3">NEW</span>':'';
@@ -767,6 +768,7 @@ document.addEventListener('click',e=>{
   const fd=e.target.closest('#fDays [data-dow]'); if(fd){const dow=+fd.dataset.dow;fd.classList.toggle('on');const ix=findInput.days.indexOf(dow);if(ix<0)findInput.days.push(dow);else findInput.days.splice(ix,1);return;}
   const ao=e.target.closest('[data-addopt]'); if(ao){addProposedFromFind(+ao.dataset.addopt);return;}
   const rp=e.target.closest('[data-rmprop]'); if(rp){removeProposed(rp.dataset.rmprop);return;}
+  const ov=e.target.closest('[data-optveh]'); if(ov){ const v=ov.dataset.optveh; const o=optimiseOrder(curDay,v,scenario); scenario.order=scenario.order||{}; scenario.order[v]=o.order.map(jobKey); render(); toast('Route optimised — appointment times kept'); return; }
 });
 function segPick(id,btn){ document.querySelectorAll('#'+id+' button').forEach(b=>{b.classList.remove('on');b.classList.remove('H');b.classList.remove('M');}); btn.classList.add('on');btn.classList.add('H'); }
 $('wprev').onclick=()=>weekShift(-1); $('wnext').onclick=()=>weekShift(1);
