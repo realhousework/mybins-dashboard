@@ -139,7 +139,8 @@ dialog .df{padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;bord
   <div class=weekhint id=weekHint></div>
   <button class="btn blue ghost" id=openFind style="width:100%;margin-bottom:4px">🔍 Find space for a new job</button>
   <div class=weekgrid id=weekgrid></div>
-  <div class=small muted style="margin-top:14px" id=weekfoot></div>
+  <button class=linkbtn id=reportWeek style="margin:10px 0 0">🐞 Report a problem</button>
+  <div class=small muted style="margin-top:8px" id=weekfoot></div>
 </div>
 <div id=dayView hidden>
 <button class=backbtn id=backWeek>‹ Week overview</button>
@@ -162,7 +163,8 @@ dialog .df{padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;bord
   <button class="btn blue ghost" id=suggestBtn>✨ Suggest a better plan</button>
   <button class="btn ghost" id=waBtn>📋 Copy to WhatsApp</button>
 </div>
-<div class=small muted style="margin-top:14px" id=foot></div>
+<button class=linkbtn id=reportDay style="margin-top:8px">🐞 Report a problem</button>
+<div class=small muted style="margin-top:8px" id=foot></div>
 </div>
 <div id=findView hidden>
   <button class=backbtn id=findBack>‹ Week overview</button>
@@ -752,6 +754,33 @@ function copyWA(){
 let _toastT; function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show'),2300);}
 function showDlg(h,b){$('dlgH').textContent=h;$('dlgB').textContent=b;$('dlgYes').hidden=true;$('dlgNo').textContent='Close';$('dlg').showModal();}
 function confirmDlg(h,b,yes,onYes,no,onNo){$('dlgH').textContent=h;$('dlgB').textContent=b;const Y=$('dlgYes'),N=$('dlgNo');Y.hidden=false;Y.textContent=yes;N.textContent=no||'Cancel';Y.onclick=()=>{$('dlg').close();onYes&&onYes();};N.onclick=()=>{$('dlg').close();onNo&&onNo();};$('dlg').showModal();}
+// ---- Report a problem (testing aid): captures exactly what the app is showing ----
+function reportContext(){
+  let c='PROBLEM REPORT — myMowing planner\n';
+  c+='When: '+new Date().toString()+'\n';
+  c+='By: '+($('who').textContent||'')+'\n';
+  c+='View: '+VIEW+'\n';
+  c+='Feed generated: '+((MOWING&&MOWING.generatedAt)||'?')+(DEMO?'  [DEMO DATA]':'')+'\n';
+  if(VIEW==='day'&&curDay){
+    const day=assessDay(curDay,scenario), meta=dayMeta[curDay]||{};
+    c+='Day: '+fmtLong(curDay)+' ('+rotLabel(curDay)+(meta.provisional?', PROJECTED':', confirmed')+(meta.estimated?', driving estimated':'')+')\n';
+    c+='Overall: '+({g:'Green',a:'Amber',r:'Red',n:'No jobs'}[day.status])+'  ·  Jobs: '+day.active.length+'  ·  Unallocated: '+day.unalloc.length+'\n';
+    day.vehs.forEach(a=>{ c+='['+a.v+'] crew: '+(a.crewNames.join(', ')||'none')+' | '+a.order.length+' stops | finish '+(a.finishMin!=null?fmtClock(a.finishMin):'-')+' | drive '+(a.driveComplete?r1(a.driveH)+'h':'~'+(a.driveMin?fmtDur(a.driveMin):'?'))+' | on-site '+r1(a.onSiteH)+'h | '+a.status.toUpperCase()+'\n';
+      a.order.forEach((j,i)=>{ c+='   '+(i+1)+'. '+(j.address||'')+(j.appt?' ['+apptLabel(normAppt(j.appt))+']':'')+(j.skill?' '+j.skill:'')+(j.est!=null?' '+j.est+'m':' NO-EST')+'\n'; });
+      if(a.reasons.length)c+='   ! '+a.reasons.join(' | ')+'\n'; });
+  } else if(VIEW==='week'){ c+='Week of '+weekAnchor+'\n'; }
+  return c;
+}
+function reportProblem(){
+  const ctx=reportContext();
+  $('dlgH').textContent='🐞 Report a problem';
+  $('dlgB').innerHTML='<div class=small muted style="margin-bottom:6px">Say what looks wrong and what you expected. The planner’s current state is captured automatically below.</div>'+
+    '<textarea id=reportNote placeholder="e.g. 5 Darley Rd is at the wrong truck; or finish time looks too early; or this customer shouldn’t be due today" style="width:100%;min-height:84px;padding:9px;border:1px solid #cfe0d6;border-radius:8px;font:inherit;font-size:14px"></textarea>'+
+    '<div class=small muted style="margin:8px 0 3px">Captured automatically:</div><pre style="white-space:pre-wrap;font-size:11.5px;background:#f3f6f4;border-radius:8px;padding:8px;max-height:34vh;overflow:auto;margin:0">'+esc(ctx)+'</pre>';
+  const Y=$('dlgYes'),N=$('dlgNo'); Y.hidden=false; Y.textContent='📋 Copy report'; N.textContent='Close';
+  Y.onclick=()=>{ const note=(document.getElementById('reportNote')||{}).value||'(no note)'; const full='WHAT’S WRONG: '+note+'\n\n'+ctx; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(full).then(()=>toast('Report copied — paste it to Amos / the issue log')).catch(()=>{});} };
+  $('dlg').showModal();
+}
 
 document.addEventListener('click',e=>{
   const c=e.target.closest('[data-crew]'); if(c){setCrewVeh(c.dataset.crew,c.dataset.v);render();return;}
@@ -774,6 +803,7 @@ function segPick(id,btn){ document.querySelectorAll('#'+id+' button').forEach(b=
 $('wprev').onclick=()=>weekShift(-1); $('wnext').onclick=()=>weekShift(1);
 $('backWeek').onclick=()=>{ weekAnchor=weekMonday(curDay||todayISO()); showWeek(); };
 $('openFind').onclick=showFind; $('findBack').onclick=()=>showWeek(); $('findRun').onclick=findSpace;
+$('reportDay').onclick=reportProblem; $('reportWeek').onclick=reportProblem;
 document.addEventListener('change',e=>{ const t=e.target.closest('[data-hrs]'); if(t){setHours(t.dataset.hrs,t.dataset.se,t.value);render();}
   if(e.target.id==='datePick'&&e.target.value)setDate(e.target.value); });
 $('prev').onclick=()=>shiftDay(-1); $('next').onclick=()=>shiftDay(1);
