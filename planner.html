@@ -166,6 +166,7 @@ dialog .df{padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;bord
   <button class="btn" id=saveBtn>💾 Save plan</button>
   <button class="btn ghost" id=statusBtn>Mark finalised</button>
   <button class="btn blue ghost" id=suggestBtn>✨ Suggest a better plan</button>
+  <button class="btn ghost" id=resetAlloc title="Take every job back off the trucks (keeps your crew)">↺ Reset allocations</button>
   <button class="btn ghost" id=waBtn>📋 Copy to WhatsApp</button>
 </div>
 <button class=linkbtn id=reportDay style="margin-top:8px">🐞 Report a problem</button>
@@ -1096,6 +1097,7 @@ document.addEventListener('change',e=>{ const t=e.target.closest('[data-hrs]'); 
 $('prev').onclick=()=>shiftDay(-1); $('next').onclick=()=>shiftDay(1);
 $('saveBtn').onclick=savePlan; $('suggestBtn').onclick=suggestPlan; $('waBtn').onclick=copyWA;
 $('statusBtn').onclick=()=>{ scenario.status=(scenario.status==='final')?'draft':'final'; render(); toast(scenario.status==='final'?'Marked finalised — Save to keep it':'Reopened as draft'); };
+$('resetAlloc').onclick=()=>{ const n=activeJobs(curDay).filter(j=>vehOfJob(scenario,j)).length; if(!n){toast('Nothing allocated to reset');return;} confirmDlg('Reset allocations?','Take all '+n+' job'+(n>1?'s':'')+' back off the trucks and into “Jobs to allocate”. Your crew and hours stay as they are. (Save afterwards to keep it.)','Reset',()=>{ scenario.alloc={}; scenario.order={}; render(); toast('Cleared — all jobs back in the pool'); },'Cancel'); };
 function shiftDay(n){const d=new Date(curDay+'T12:00:00');d.setDate(d.getDate()+n);setDate(d.toISOString().slice(0,10));}
 
 /* =================== FIND CAPACITY =================== */
