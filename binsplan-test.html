@@ -66,6 +66,13 @@
       <input id="ph" type="range" min="7" max="11" step="0.5" value="9"></label>
     <label>Clean-time uncertainty shown as a range (quarterly/once-off cleans may run slower — unvalidated).</label>
   </div>
+  <div class="ctrls" style="background:#132a1e;border-color:#2c6b48">
+    <b style="color:#7ee3c7">Wes — your review</b>
+    <label>Does this day's run list &amp; staffing look right?
+      <select class="dayq" data-q="overall"><option value="">—</option><option>Looks right</option><option>Not sure</option><option>Wrong — see notes</option></select></label>
+    <button id="copyfb" style="background:#2c6b48;color:#dfffe9;border:0;border-radius:7px;padding:7px 12px;font-weight:600;cursor:pointer">📋 Copy my feedback for Amos</button>
+    <span class="mut" style="font-size:11.5px">Your tweaks are saved on this device only and never change the model — just paste the copied notes to Amos.</span>
+  </div>
 
   <div class="days" id="days"></div>
   <div class="daysum" id="daysum"></div>
@@ -81,6 +88,25 @@ var HIST = { Monday:{staff:'6-7', lo:52, hi:82}, Tuesday:{staff:'10-11', lo:98, 
 var AREAN = {NB:'Northern Beaches', NS:'North Shore', City:'City / East'};
 var FEED=null, DAY=null, PH=9;
 var $=function(s){return document.querySelector(s);};
+// ---- Wes feedback (per-device only; never changes the model) ----
+function loadFB(){ try{ return JSON.parse(localStorage.getItem('binsFB')||'{}'); }catch(e){ return {}; } }
+var FB=loadFB(); FB.runs=FB.runs||{}; FB.questions=FB.questions||{};
+function saveFB(){ try{ localStorage.setItem('binsFB',JSON.stringify(FB)); }catch(e){} }
+function rk(r){ return r.date+'|'+r.shortId; }
+function wireFeedback(){
+  document.querySelectorAll('.wh').forEach(function(i){ i.onchange=function(){ var k=i.dataset.k; FB.runs[k]=FB.runs[k]||{}; FB.runs[k].h=i.value; saveFB(); }; });
+  document.querySelectorAll('.wn').forEach(function(i){ i.onchange=function(){ var k=i.dataset.k; FB.runs[k]=FB.runs[k]||{}; FB.runs[k].n=i.value; saveFB(); }; });
+  var dq=document.querySelector('.dayq'); if(dq){ dq.value=FB.questions[DAY]||''; dq.onchange=function(){ FB.questions[DAY]=dq.value; saveFB(); }; }
+}
+function buildFeedback(){
+  var L=['myBins planner — Wes feedback ('+(FEED?FEED.weekStart:'')+')',''];
+  Object.keys(FB.questions).forEach(function(d){ if(FB.questions[d]) L.push(d+': '+FB.questions[d]); });
+  L.push(''); L.push('Run adjustments / notes:');
+  var any=false;
+  Object.keys(FB.runs).forEach(function(k){ var v=FB.runs[k]; if(v && (v.h||v.n)){ any=true; L.push('  '+k+' → '+(v.h?('Wes '+v.h+'h'):'')+(v.n?('  "'+v.n+'"'):'')); } });
+  if(!any) L.push('  (none yet)');
+  return L.join('\n');
+}
 function clamp(x){return Math.max(0.7,Math.min(1.4,x));}
 function h1(x){return (Math.round(x*10)/10)+'h';}
 
@@ -109,6 +135,7 @@ async function boot(){
   $('#estbanner').innerHTML='Geographic productivity (per-run minutes/bin) is <b>estimated from Mapbox travel + bins-per-building</b>, anchored to the business benchmark — <b>labelled estimate</b> until Fleetsu GPS and more history validate it. Original model shown struck-through for comparison.';
   DAY = FEED.weekDates.indexOf(FEED.today)>=0 ? FEED.today : FEED.weekDates[0];
   $('#ph').oninput=function(){ PH=+this.value; $('#phlab').textContent=PH.toFixed(1); render(); };
+  var cf=$('#copyfb'); if(cf){ cf.onclick=function(){ var t=buildFeedback(); try{ navigator.clipboard.writeText(t); cf.textContent='✓ Copied — paste to Amos'; setTimeout(function(){cf.textContent='📋 Copy my feedback for Amos';},2500);}catch(e){ alert(t); } }; }
   renderDays(); render();
 }
 function renderDays(){ $('#days').innerHTML=FEED.weekDates.map(function(d){ var rs=FEED.runs.filter(function(r){return r.date===d&&!r.isSpecial;});
@@ -143,6 +170,7 @@ function render(){
     if(ex.length) html+=ex.map(function(c){return '<div class="meta" style="margin:6px 0">Extras · <b>'+c._run.name+'</b> — '+c.veg+' VEG job(s) · ~'+h1(c.mid)+' <span style="color:var(--mut)">(VEG not yet calibrated)</span></div>';}).join('');
   });
   $('#board').innerHTML=html;
+  wireFeedback();
 }
 function card(c){ var r=c._run;
   var range = c.lo.toFixed(1)===c.hi.toFixed(1) ? h1(c.mid) : (h1(c.lo)+'–'+h1(c.hi));
@@ -155,6 +183,9 @@ function card(c){ var r=c._run;
       '<div class="fig"><div class="n">'+Math.max(1,Math.ceil(c.mid/9))+'</div><div class="l">≈staff</div></div></div>'+
     '<div class="eff"><span class="est">effective: move '+c.effMove.toFixed(2)+'m/bin'+effClean+'</span> · density ×'+c.df.toFixed(2)+' <span style="color:var(--mut)">(geo-estimated)</span></div>'+
     (c.heavy.length?'<div class="heavy">Why heavier — larger / infrequent cleans:<ul><li>'+c.heavy.join('</li><li>')+'</li></ul><div style="color:var(--mut);margin-top:3px">Clean time for these is uncertain (shown as the range above).</div></div>':'')+
+    '<div class="wesfb" style="margin-top:9px;border-top:1px solid var(--line);padding-top:7px;font-size:12px">'+
+      'Wes — your estimate: <input class="wh" data-k="'+rk(r)+'" type="number" step="0.5" placeholder="'+c.mid.toFixed(0)+'" value="'+(FB.runs[rk(r)]&&FB.runs[rk(r)].h||'')+'" style="width:52px;background:#0e1626;border:1px solid var(--line);color:var(--ink);border-radius:5px;padding:3px 5px">h '+
+      '<input class="wn" data-k="'+rk(r)+'" type="text" placeholder="note (optional)" value="'+((FB.runs[rk(r)]&&FB.runs[rk(r)].n||'').replace(/"/g,"&quot;"))+'" style="width:46%;background:#0e1626;border:1px solid var(--line);color:var(--ink);border-radius:5px;padding:3px 6px"></div>'+
     '</div>';
 }
 boot();
