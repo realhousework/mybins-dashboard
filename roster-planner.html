@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>myBins Roster Planner</title><style>
+:root{color-scheme:light}*{box-sizing:border-box}
+body{margin:0;background:#f4f6f4;color:#17201a;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:16px 18px 70px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-bottom:3px solid #2e8b57;padding-bottom:12px}
+.logo{font-size:22px;font-weight:800;letter-spacing:-.02em}.logo b{color:#2e8b57}
+.asof{font-size:12.5px;background:#e7f4ec;color:#0f7a43;border:1px solid #cfe9d9;border-radius:999px;padding:4px 12px;font-weight:700}
+.sub{color:#5b6b60;font-size:13px;margin:8px 0 2px}
+.ctl{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;margin:16px 0 6px}
+label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;letter-spacing:.03em;display:block;margin-bottom:3px}
+.fin{padding:9px 11px;border:1px solid #cfe0d6;border-radius:8px;font:inherit;font-size:14px;background:#fff}
+.rotbadge{font-size:12px;font-weight:800;background:#eef3f0;color:#2e8b57;border:1px solid #cfe9d9;border-radius:999px;padding:6px 13px}
+.dow{font-size:16px;font-weight:800}
+.spacer{flex:1}
+.btn{border:1px solid #2e8b57;background:#2e8b57;color:#fff;font:inherit;font-weight:700;font-size:13px;border-radius:8px;padding:9px 15px;cursor:pointer}
+.btn.ghost{background:#fff;color:#2e8b57}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.saved{font-size:12.5px;color:#1a7a43;font-weight:700;align-self:center}
+.summary{display:flex;gap:9px;flex-wrap:wrap;margin:6px 0 2px;font-size:12.5px;color:#5b6b60}
+.summary b{color:#17201a}
+.rec{border-radius:10px;padding:10px 14px;font-size:13.5px;margin:8px 0;display:flex;gap:9px;align-items:flex-start}
+.rec .ic{font-weight:800}
+.rec.warn{background:#fff8ec;border:1px solid #f0e2c4;color:#7a5e12}
+.rec.bad{background:#fde8e4;border:1px solid #f3c9bf;color:#8a2f1a}
+.rec.info{background:#eaf1fb;border:1px solid #cfe0f3;color:#2a4a7a}
+.rec.ok{background:#e7f4ec;border:1px solid #cfe9d9;color:#1a5a34}
+.cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:13px;margin-top:6px}
+.card{background:#fff;border:1px solid #e3eae5;border-radius:12px;padding:13px 15px}
+.card.flagged{border-color:#f0e2c4;box-shadow:0 0 0 2px #fbe9c6 inset}
+.card.conflict{border-color:#f3c9bf;box-shadow:0 0 0 2px #fbd9cf inset}
+.chead{display:flex;align-items:center;gap:9px;margin-bottom:4px}
+.ava{width:30px;height:30px;border-radius:50%;background:#2e8b57;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.who{font-weight:800;font-size:15px;border:0;background:transparent;color:#17201a;cursor:pointer;flex:1;padding:3px 4px;border-radius:7px;appearance:none;-webkit-appearance:none}
+.who:hover{background:#f1f5f2}
+.vehsel{font-size:11px;font-weight:800;color:#2e8b57;background:#eef3f0;border:1px solid #cfe9d9;border-radius:999px;padding:4px 10px;cursor:pointer;appearance:none;-webkit-appearance:none}
+.rx{border:0;background:transparent;color:#b4452b;cursor:pointer;font-size:13px;font-weight:700;padding:2px 5px;border-radius:6px}
+.rx:hover{background:#fde8e4}
+.runs{margin-top:4px}
+.job{border-top:1px solid #eef2ef;padding:8px 0;display:flex;gap:9px;align-items:center}
+.job:first-of-type{border-top:0}
+.rt{font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;flex:none}
+.rt-IN{background:#e3eefb;color:#2f5fb3}.rt-OUT{background:#e7f4ec;color:#1a7a43}.rt-CLEAN{background:#efe3fb;color:#6b2fb3}.rt-VEG{background:#eef7dd;color:#5a7a1a}
+.rn{flex:1;font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rb{font-size:11.5px;color:#8a988f;font-variant-numeric:tabular-nums;font-weight:700}
+.rmv{border:1px solid #e3eae5;background:#fff;color:#5b6b60;border-radius:6px;font-size:13px;cursor:pointer;padding:1px 7px;line-height:1.4}
+.rmv:hover{border-color:#2e8b57;color:#2e8b57}
+.flagline{font-size:12px;color:#8a6d1a;background:#fff8ec;border:1px solid #f0e2c4;border-radius:8px;padding:6px 9px;margin-top:8px}
+.cfline{font-size:12px;color:#8a2f1a;background:#fde8e4;border:1px solid #f3c9bf;border-radius:8px;padding:6px 9px;margin-top:8px}
+.cfoot{display:flex;gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap}
+.cfoot .n{font-size:11.5px;color:#8a988f;margin-right:auto}
+.addbar{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.unassigned{background:#fff8ec;border:1px solid #f0e2c4;border-radius:12px;padding:13px 15px;margin-top:14px}
+.unassigned h3{margin:0 0 4px;font-size:14px;color:#7a5e12}
+.unassigned .job{border-top-color:#f0e2c4}
+.menu{position:fixed;z-index:60;background:#fff;border:1px solid #e3eae5;border-radius:10px;padding:5px;box-shadow:0 12px 34px rgba(0,0,0,.14);min-width:180px;max-height:320px;overflow:auto}
+.menu div{padding:8px 11px;border-radius:7px;cursor:pointer;font-size:13.5px}
+.menu div:hover{background:#e7f4ec;color:#1a5a34}
+.menu .hd{color:#8a988f;font-size:11px;cursor:default;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.menu .hd:hover{background:transparent;color:#8a988f}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#17201a;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:70}
+.toast.show{opacity:1}
+.loading{color:#8a988f;padding:40px 0;text-align:center}
+@media(max-width:720px){.cols{grid-template-columns:1fr}}
+</style></head>
+<body><div class="wrap">
+  <header>
+    <div class="logo">my<b>Bins</b> Roster Planner</div>
+    <div class="asof" id="asof">loading…</div>
+  </header>
+  <div class="sub">Open a day — the roster Wes normally builds is already suggested from history. Adjust for anything unusual, then save.</div>
+
+  <div class="ctl">
+    <div><label class="fl">Date</label><input type="date" id="date" class="fin"></div>
+    <div><span class="dow" id="dow"></span> <span class="rotbadge" id="rot"></span></div>
+    <div class="spacer"></div>
+    <button class="btn ghost sm" id="reset">Reset to suggested</button>
+    <button class="btn" id="save">Save plan</button>
+    <span class="saved" id="saved"></span>
+  </div>
+  <div class="summary" id="summary"></div>
+  <div id="exc"></div>
+  <div id="main"><div class="loading">Loading roster…</div></div>
+  <div class="toast" id="toast"></div>
+</div>
+<script>
+var FEED=null, DATE=null, DOW=null, ROT=null, STATE=null, VERSION=0, SAVING=false;
+var $=function(s){return document.querySelector(s);};
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2200);}
+function initials(n){return (n||'?').split(/\s+/).map(function(x){return x[0];}).slice(0,2).join('').toUpperCase();}
+function first(n){return (n||'').split(/\s+/)[0];}
+function rotationOf(iso){ // Monday of anchor week = W1, fortnightly
+  var anchor=FEED.rotationAnchorMon||'2026-11-09';
+  var d=new Date(iso+'T12:00:00Z'); var dow=(d.getUTCDay()+6)%7; var mon=new Date(d); mon.setUTCDate(d.getUTCDate()-dow);
+  var a=new Date(anchor+'T12:00:00Z'); var weeks=Math.round((mon-a)/(7*864e5));
+  return (((weeks%2)+2)%2===0)?'W1':'W2';
+}
+function dowName(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'long',timeZone:'UTC'});}
+
+async function boot(){
+  try{var r=await fetch('/binsplan.json',{cache:'no-store'}); FEED=await r.json();}
+  catch(e){ $('#main').innerHTML='<div class="loading">Could not load the roster feed. Open through the planner login.</div>'; return; }
+  $('#asof').textContent=FEED.generatedAt||'';
+  var dp=$('#date');
+  var dates=(FEED.weekDates||[]); DATE = (dates.indexOf(FEED.today)>=0)?FEED.today:(dates[0]||FEED.today);
+  dp.value=DATE; dp.min=dates[0]||''; dp.max=dates[dates.length-1]||'';
+  dp.onchange=function(){ DATE=dp.value; loadDay(); };
+  $('#save').onclick=doSave; $('#reset').onclick=function(){ STATE=suggested(); render(); toast('Reset to the suggested roster'); };
+  loadDay();
+}
+
+function tmplKey(){return DOW+'|'+ROT;}
+function rotLabel(){return ROT==='W1'?'Week 1':'Week 2';}
+function dueRuns(){ return (FEED.byDate&&FEED.byDate[DATE])||[]; }
+function runById(id){ return dueRuns().find(function(r){return r.id===id;}); }
+function nSamples(){ var t=FEED.template&&FEED.template[tmplKey()]; return t?(t.nSamples||0):0; }
+
+function suggested(){
+  var t=(FEED.template&&FEED.template[tmplKey()])||{shifts:[],helpers:[]};
+  var due=dueRuns(); var used={};
+  var shifts=t.shifts.map(function(s){
+    var rs=[]; (s.runIds||[]).forEach(function(id){ var r=runById(id); if(r){ rs.push(id); used[id]=1; } });
+    return {veh:s.veh,who:s.who,runs:rs};
+  });
+  // any due run not in a template shift -> unassigned
+  var tray=due.filter(function(r){return !used[r.id];}).map(function(r){return r.id;});
+  return {shifts:shifts, tray:tray};
+}
+async function loadDay(){
+  DOW=dowName(DATE); ROT=rotationOf(DATE);
+  $('#dow').textContent=DOW; $('#rot').textContent=(ROT==='W1'?'Week 1':'Week 2')+' rotation';
+  // try load saved plan for this exact date
+  STATE=null; VERSION=0; var fromSaved=false;
+  try{ var r=await fetch('/api/roster/'+DATE,{cache:'no-store'}); if(r.ok){ var j=await r.json(); if(j.roster){ STATE=j.roster; VERSION=j.version||0; fromSaved=true; } } }catch(e){}
+  if(!STATE){ STATE=suggested(); }
+  else { reconcile(); } // preserve Wes's allocations, surface new/removed Zenkit work
+  STATE._fromSaved=fromSaved;
+  render();
+}
+// Reconcile a SAVED plan with the latest due runs: keep allocations, drop gone runs, send new work to Unassigned.
+function reconcile(){
+  STATE.shifts=STATE.shifts||[]; STATE.tray=STATE.tray||[];
+  var due=dueRuns(); var dueIds={}; due.forEach(function(r){dueIds[r.id]=1;});
+  var inPlan={}; STATE.shifts.forEach(function(s){(s.runs||[]).forEach(function(id){inPlan[id]=1;});}); STATE.tray.forEach(function(id){inPlan[id]=1;});
+  var removed=0;
+  STATE.shifts.forEach(function(s){ s.runs=(s.runs||[]).filter(function(id){ if(dueIds[id])return true; removed++; return false; }); });
+  STATE.tray=STATE.tray.filter(function(id){ if(dueIds[id])return true; removed++; return false; });
+  var added=[]; due.forEach(function(r){ if(!inPlan[r.id]){ STATE.tray.push(r.id); added.push(r.id); } });
+  STATE._added=added; STATE._removed=removed;
+}
+
+function exceptions(){
+  // ONLY from real current workload. Genuinely-unusual cleans (once-off/catch-up) always flag;
+  // routine recurring work (incl. a quarterly that's on its normal cycle) does NOT.
+  var out=[]; var due=dueRuns();
+  due.forEach(function(r){
+    if(r.type!=='CLEAN'||!r.clean) return; var c=r.clean;
+    var unusual=(c.onceoff||0)+(c.catchup||0);
+    var heavyCycle=(c.quarterly||0)+(c.halfyearly||0)+(c.yearly||0);
+    if(unusual>0){ out.push({runId:r.id,text:'Extra '+unusual+' once-off / catch-up cleaning bins this week — may need assistance.'}); }
+    else if(r.baseline!=null){ var extra=(r.bins||0)-r.baseline; if(extra>=25) out.push({runId:r.id,text:'Extra '+extra+' cleaning bins vs a normal '+rotLabel()+' '+DOW+' — may need assistance.'}); }
+    else if(heavyCycle>=60){ out.push({runId:r.id,soft:true,text:'Larger quarterly / half-yearly clean this week ('+heavyCycle+' bins) — limited history to compare, so check if help is needed.'}); }
+  });
+  return out;
+}
+function pwToday(){ return (FEED.pw||[]).filter(function(p){return p.date===DATE;}); }
+
+function render(){
+  var due=dueRuns();
+  var exc=exceptions(); var excByRun={}; exc.forEach(function(e){ (excByRun[e.runId]=excByRun[e.runId]||[]).push(e); });
+  // conflicts: a run assigned twice, or a person/vehicle used twice
+  var runCount={}, whoCount={}, vehCount={};
+  STATE.shifts.forEach(function(s){ whoCount[s.who]=(whoCount[s.who]||0)+1; vehCount[s.veh]=(vehCount[s.veh]||0)+1; s.runs.forEach(function(id){runCount[id]=(runCount[id]||0)+1;}); });
+
+  // top summary
+  var assigned=0; STATE.shifts.forEach(function(s){assigned+=s.runs.length;});
+  $('#summary').innerHTML='<span><b>'+STATE.shifts.length+'</b> shifts</span><span><b>'+due.length+'</b> runs due</span><span><b>'+STATE.tray.length+'</b> unassigned</span>'+(VERSION?'<span>saved v'+VERSION+'</span>':'<span>not yet saved</span>');
+
+  // exceptions banner (real data only)
+  var pw=pwToday(); var eb='';
+  var hadFlag=false;
+  exc.forEach(function(e){ var r=runById(e.runId); hadFlag=true; eb+='<div class="rec warn"><span class="ic">⚠</span><div><b>'+esc(r?r.short||r.name:'')+'</b> — '+esc(e.text)+'</div></div>'; });
+  if(pw.length){ eb+='<div class="rec info"><span class="ic">🧽</span><div><b>'+pw.length+' pressure-washing job'+(pw.length>1?'s':'')+'</b> booked this day — whoever is put on pressure washing is unavailable for bins. Allocate in the pressure-washing tab.</div></div>'; }
+  if(!hadFlag){
+    if(nSamples()>=2) eb+='<div class="rec ok"><span class="ic">✓</span><div>Nothing unusual — this looks like a normal '+rotLabel()+' '+DOW+'. The suggested roster below should be about right.</div></div>';
+    else eb+='<div class="rec info"><span class="ic">ℹ</span><div>No big quarterly / once-off cleans detected this week. History for '+rotLabel()+' '+DOW+' is still limited, so double-check the cleaning runs before relying on the suggestion.</div></div>';
+  }
+  if(STATE._fromSaved && ((STATE._added&&STATE._added.length)||STATE._removed)){
+    var parts=[];
+    if(STATE._added&&STATE._added.length) parts.push('<b>'+STATE._added.length+'</b> new run'+(STATE._added.length>1?'s':'')+' added (now in Unassigned)');
+    if(STATE._removed) parts.push('<b>'+STATE._removed+'</b> run'+(STATE._removed>1?'s':'')+' no longer due');
+    eb='<div class="rec bad"><span class="ic">↻</span><div>Zenkit changed since this plan was saved: '+parts.join(' · ')+'. Your other allocations are kept.</div></div>'+eb;
+  }
+  $('#exc').innerHTML=eb;
+
+  if(!(FEED.template&&FEED.template[tmplKey()])){
+    $('#main').innerHTML='<div class="rec info" style="margin-top:4px"><span class="ic">ℹ</span><div>No learned roster for '+DOW+' ('+(ROT==='W1'?'Week 1':'Week 2')+') yet — all '+due.length+' due runs are shown as unassigned below for you to allocate.</div></div><div id="cards"></div>'+trayHtml(due,runCount);
+  } else {
+    $('#main').innerHTML='<div class="cols" id="cards"></div>'+trayHtml(due,runCount);
+  }
+  var html=STATE.shifts.map(function(s,si){
+    var flagged=false, conflicts=[];
+    if(whoCount[s.who]>1) conflicts.push(first(s.who)+' is on '+whoCount[s.who]+' shifts');
+    if(s.veh&&vehCount[s.veh]>1) conflicts.push(s.veh+' used on '+vehCount[s.veh]+' shifts');
+    var rows=s.runs.map(function(id){ var r=runById(id); if(!r) return '';
+      var fl=excByRun[id]?' ':''; if(excByRun[id])flagged=true;
+      var dup=runCount[id]>1?' <span class="rt rt-CLEAN" style="background:#fde8e4;color:#b4452b">shared ×'+runCount[id]+'</span>':'';
+      return '<div class="job"><span class="rt rt-'+r.type+'">'+r.type+'</span><span class="rn">'+esc(r.short||r.name)+dup+'</span>'+(r.bins?'<span class="rb">'+r.bins+'</span>':'')+'<button class="rmv" data-mv="'+si+'|'+id+'">move ▾</button></div>';
+    }).join('');
+    var flLines=(s.runs.filter(function(id){return excByRun[id];}).map(function(id){ var r=runById(id); return excByRun[id].map(function(e){return '<div class="flagline">⚠ <b>'+esc(r.short||r.name)+'</b>: '+esc(e.text)+'</div>';}).join(''); }).join(''));
+    var cfLines=conflicts.map(function(c){return '<div class="cfline">⚠ Clash: '+esc(c)+'</div>';}).join('');
+    var bins=s.runs.reduce(function(a,id){var r=runById(id);return a+(r?(r.bins||0):0);},0);
+    return '<div class="card'+(flagged?' flagged':'')+(conflicts.length?' conflict':'')+'">'+
+      '<div class="chead"><span class="ava">'+esc(initials(s.who))+'</span>'+
+        '<select class="who" data-who="'+si+'">'+(FEED.staff||[]).map(function(n){return '<option'+(n===s.who?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select>'+
+        '<select class="vehsel" data-veh="'+si+'"><option value="">—</option>'+(FEED.vehicles||[]).map(function(v){return '<option'+(v===s.veh?' selected':'')+'>'+esc(v)+'</option>';}).join('')+'</select>'+
+        '<button class="rx" data-rm="'+si+'" title="remove shift">✕</button></div>'+
+      '<div class="runs">'+(rows||'<div class="job" style="color:#8a988f;font-size:12.5px">No runs — add from unassigned, or remove this shift.</div>')+'</div>'+
+      flLines+cfLines+
+      '<div class="cfoot"><span class="n">'+s.runs.length+' runs'+(bins?' · '+bins+' bins':'')+'</span><button class="btn ghost sm" data-add="'+si+'">+ run</button></div>'+
+    '</div>';
+  }).join('');
+  $('#cards').innerHTML=html;
+  // add-employee button at end of cards grid
+  if(FEED.template&&FEED.template[tmplKey()]){
+    $('#cards').insertAdjacentHTML('beforeend','<div class="card" style="display:flex;align-items:center;justify-content:center;border-style:dashed"><button class="btn ghost" id="addemp">+ add employee</button></div>');
+  }
+  wire();
+}
+function trayHtml(due,runCount){
+  if(!STATE.tray.length) return '<div class="unassigned"><h3>Unassigned runs</h3><div style="color:#8a7a4a;font-size:12.5px">Everything due today is assigned. Runs you remove from a shift appear here.</div></div>';
+  var rows=STATE.tray.map(function(id){ var r=runById(id); if(!r) return '';
+    return '<div class="job"><span class="rt rt-'+r.type+'">'+r.type+'</span><span class="rn">'+esc(r.short||r.name)+'</span>'+(r.bins?'<span class="rb">'+r.bins+'</span>':'')+'<button class="rmv" data-asg="'+id+'">assign ▸</button></div>';
+  }).join('');
+  return '<div class="unassigned"><h3>Unassigned runs <span style="font-weight:600;color:#8a7a4a;font-size:12px">· due in Zenkit but not in the usual roster</span></h3>'+rows+'</div>';
+}
+
+var MENU=null;
+function closeMenu(){if(MENU){MENU.remove();MENU=null;}}
+function openMenu(x,y,items){closeMenu();MENU=document.createElement('div');MENU.className='menu';
+  MENU.innerHTML=items.map(function(it){return it.hd?'<div class="hd">'+esc(it.hd)+'</div>':'<div data-act="'+it.act+'">'+esc(it.label)+'</div>';}).join('');
+  document.body.appendChild(MENU);var b=MENU.getBoundingClientRect();
+  MENU.style.left=Math.min(x,innerWidth-b.width-8)+'px';MENU.style.top=Math.min(y,innerHeight-b.height-8)+'px';
+  MENU.querySelectorAll('[data-act]').forEach(function(d){d.onclick=function(){var a=d.getAttribute('data-act');closeMenu();act(a);};});}
+document.addEventListener('click',function(e){if(MENU&&!MENU.contains(e.target)&&!/rmv|data-mv|data-asg/.test(e.target.className+' '+(e.target.getAttribute&&(e.target.getAttribute('data-mv')||e.target.getAttribute('data-asg'))||'')))closeMenu();});
+
+function act(a){var p=a.split(':');
+  if(p[0]==='mvShift'){var si=+p[1],id=p[2],to=+p[3];var s=STATE.shifts[si];s.runs=s.runs.filter(function(x){return x!==id;});STATE.shifts[to].runs.push(id);}
+  else if(p[0]==='mvTray'){var si2=+p[1],id2=p[2];STATE.shifts[si2].runs=STATE.shifts[si2].runs.filter(function(x){return x!==id2;});if(STATE.tray.indexOf(id2)<0)STATE.tray.push(id2);}
+  else if(p[0]==='asg'){var id3=p[1],to3=+p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id3;});STATE.shifts[to3].runs.push(id3);}
+  else if(p[0]==='addrun'){var si3=+p[1],id4=p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id4;});STATE.shifts[si3].runs.push(id4);}
+  render();
+}
+function wire(){
+  document.querySelectorAll('.who').forEach(function(sel){sel.onchange=function(){STATE.shifts[+sel.dataset.who].who=sel.value;render();};});
+  document.querySelectorAll('.vehsel').forEach(function(sel){sel.onchange=function(){STATE.shifts[+sel.dataset.veh].veh=sel.value;render();};});
+  document.querySelectorAll('.rx').forEach(function(b){b.onclick=function(){var si=+b.dataset.rm;STATE.shifts[si].runs.forEach(function(id){if(STATE.tray.indexOf(id)<0)STATE.tray.push(id);});STATE.shifts.splice(si,1);render();};});
+  document.querySelectorAll('[data-mv]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var pr=b.dataset.mv.split('|'),si=+pr[0],id=pr[1];
+    var items=[{hd:'Move run to…'}];STATE.shifts.forEach(function(s,i){if(i!==si)items.push({act:'mvShift:'+si+':'+id+':'+i,label:first(s.who)+(s.veh?' ('+s.veh+')':'')});});items.push({act:'mvTray:'+si+':'+id,label:'↓ Unassigned'});
+    openMenu(e.clientX,e.clientY,items);};});
+  document.querySelectorAll('[data-asg]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var id=b.dataset.asg;
+    var items=[{hd:'Assign to…'}];STATE.shifts.forEach(function(s,i){items.push({act:'asg:'+id+':'+i,label:first(s.who)+(s.veh?' ('+s.veh+')':'')});});openMenu(e.clientX,e.clientY,items);};});
+  document.querySelectorAll('[data-add]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var si=+b.dataset.add;
+    if(!STATE.tray.length){openMenu(e.clientX,e.clientY,[{hd:'No unassigned runs'}]);return;}
+    var items=[{hd:'Add run'}];STATE.tray.forEach(function(id){var r=runById(id);items.push({act:'addrun:'+si+':'+id,label:(r.short||r.name)});});openMenu(e.clientX,e.clientY,items);};});
+  var ae=$('#addemp');if(ae)ae.onclick=function(){STATE.shifts.push({veh:'',who:(FEED.staff||[''])[0],runs:[]});render();};
+}
+
+async function doSave(){
+  if(SAVING)return;SAVING=true;$('#save').disabled=true;
+  try{
+    var r=await fetch('/api/roster/'+DATE,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({roster:STATE,baseVersion:VERSION})});
+    var j=await r.json();
+    if(j.ok){VERSION=j.version;$('#saved').textContent='✓ Saved v'+VERSION;setTimeout(function(){$('#saved').textContent='';},2500);toast('Saved '+DATE);render();}
+    else if(j.error==='conflict'){toast('Someone else saved this day (v'+j.currentVersion+'). Reloading.');await loadDay();}
+    else toast('Save failed: '+(j.error||'error'));
+  }catch(e){toast('Save failed — check your connection');}
+  SAVING=false;$('#save').disabled=false;
+}
+boot();
+</script>
+</body></html>
