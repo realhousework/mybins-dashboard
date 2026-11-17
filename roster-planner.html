@@ -159,11 +159,12 @@ function exceptions(){
   var out=[]; var due=dueRuns();
   due.forEach(function(r){
     if(r.type!=='CLEAN'||!r.clean) return; var c=r.clean;
-    var unusual=(c.onceoff||0)+(c.catchup||0);
-    var heavyCycle=(c.quarterly||0)+(c.halfyearly||0)+(c.yearly||0);
-    if(unusual>0){ out.push({runId:r.id,text:'Extra '+unusual+' once-off / catch-up cleaning bins this week — may need assistance.'}); }
-    else if(r.baseline!=null){ var extra=(r.bins||0)-r.baseline; if(extra>=25) out.push({runId:r.id,text:'Extra '+extra+' cleaning bins vs a normal '+rotLabel()+' '+DOW+' — may need assistance.'}); }
-    else if(heavyCycle>=60){ out.push({runId:r.id,soft:true,text:'Larger quarterly / half-yearly clean this week ('+heavyCycle+' bins) — limited history to compare, so check if help is needed.'}); }
+    var unusual=(c.onceoff||0)+(c.catchup||0); // genuinely non-recurring work
+    // 1) once-off / catch-up above a meaningful size (not routine recurring quarterly work)
+    if(unusual>=15){ out.push({runId:r.id,text:'Extra '+unusual+' once-off / catch-up cleaning bins this week — may need assistance.'}); return; }
+    // 2) this run is materially heavier than its OWN normal for this weekday+rotation (needs a baseline)
+    if(r.baseline!=null){ var extra=(r.bins||0)-r.baseline; if(extra>=40) out.push({runId:r.id,text:'Extra '+extra+' cleaning bins vs a normal '+rotLabel()+' '+DOW+' — may need assistance.'}); }
+    // Note: a quarterly/half-yearly clean that's simply on its normal cycle is NOT flagged.
   });
   return out;
 }
