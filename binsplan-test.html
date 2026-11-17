@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>myBins Roster Planner — CALIBRATED TEST (not live)</title>
+<style>
+  :root{--bg:#0f1420;--panel:#172033;--panel2:#1d2840;--ink:#e8eef9;--mut:#93a1bd;--line:#2a3550;
+    --out:#3b82f6;--in:#8b5cf6;--clean:#14b8a6;--veg:#84cc16;--accent:#38bdf8;
+    --normal:#22c55e;--heavy:#ef4444;--light:#64748b;--warn:#f59e0b;--test:#a855f7;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px}
+  h1{font-size:19px;margin:0 0 2px}
+  .testtag{display:inline-block;background:var(--test);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;vertical-align:middle;margin-left:8px}
+  .sub{color:var(--mut);font-size:12.5px}
+  .ver{color:var(--mut);font-size:11.5px;margin-top:2px}
+  .banner{border-radius:9px;padding:9px 12px;font-size:12.5px;margin:10px 0}
+  .b-test{background:#2a1a3a;border:1px solid #6b3ca0;color:#e6ccff}
+  .b-pw{background:#3a2a0e;border:1px solid #7a5a12;color:#f1d98a}
+  .b-est{background:#10263a;border:1px solid #2d618a;color:#bfe3ff}
+  .ctrls{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}
+  .ctrls label{font-size:12.5px;color:var(--mut)}
+  .ctrls input[type=range]{vertical-align:middle}
+  .ctrls b{color:var(--ink)}
+  .days{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+  .day{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 12px;cursor:pointer;font-weight:600}
+  .day small{display:block;color:var(--mut);font-weight:400;font-size:11px}
+  .day.on{background:var(--accent);color:#06203a;border-color:var(--accent)}
+  .day.on small{color:#0a2b47}
+  .daysum{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+  .dsrow{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;align-items:baseline}
+  .dsrow .big{font-size:20px;font-weight:800}
+  .dsrow .mut{color:var(--mut);font-size:12px}
+  .why{margin-top:8px;font-size:12.5px;color:#f1d98a}
+  .hist{margin-top:8px;font-size:12.5px;color:var(--mut)}
+  .hist b{color:var(--ink)}
+  .area{margin:16px 0 6px;font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 13px}
+  .crow{display:flex;align-items:center;gap:8px}
+  .cname{font-weight:700;font-size:14px;flex:1}
+  .badge{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px}
+  .b-OUT{background:var(--out)}.b-IN{background:var(--in)}.b-CLEAN{background:var(--clean)}.b-VEG{background:var(--veg);color:#1a2e05}.b-MOVE{background:var(--out)}
+  .load-Normal{background:var(--normal);color:#05230f}.load-Heavy{background:var(--heavy)}.load-Light{background:var(--light)}
+  .meta{color:var(--mut);font-size:12px;margin-top:3px}
+  .figs{display:flex;gap:16px;margin-top:9px;align-items:flex-end;flex-wrap:wrap}
+  .fig .n{font-size:17px;font-weight:800;line-height:1}
+  .fig .l{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em;margin-top:2px}
+  .fig.orig .n{color:var(--mut);font-weight:700;font-size:14px;text-decoration:line-through;text-decoration-color:#55617a}
+  .fig.cal .n{color:#7ee3c7}
+  .eff{margin-top:8px;font-size:11.5px;color:var(--mut)}
+  .eff .est{color:#bfe3ff}
+  .heavy{margin-top:8px;font-size:12px;background:#2a1414;border:1px solid #5c2b2b;border-radius:7px;padding:7px 9px;color:#ffc9c9}
+  .heavy ul{margin:4px 0 0;padding-left:16px}
+</style></head>
+<body><div class="wrap">
+  <h1>myBins Roster Planner <span class="testtag">CALIBRATED TEST</span></h1>
+  <div class="sub" id="sub"></div>
+  <div class="ver" id="ver"></div>
+
+  <div class="banner b-test">This is a <b>test model, separate from Wes's live planner</b>. Estimates are calibrated from real Deputy hours + Zenkit completions; the live planner is unchanged.</div>
+  <div class="banner b-pw">⚠ <b>Pressure-washing not yet integrated</b> — staffing availability is incomplete. Staff on pressure washing are <b>not</b> subtracted here, so treat staff numbers as the bin workload requirement, not final availability.</div>
+  <div class="banner b-est" id="estbanner"></div>
+
+  <div class="ctrls">
+    <label>Planned paid hours / person: <b id="phlab">9.0</b>h
+      <input id="ph" type="range" min="7" max="11" step="0.5" value="9"></label>
+    <label>Clean-time uncertainty shown as a range (quarterly/once-off cleans may run slower — unvalidated).</label>
+  </div>
+
+  <div class="days" id="days"></div>
+  <div class="daysum" id="daysum"></div>
+  <div id="board"></div>
+</div>
+<script>
+// ---- calibrated model v1 (fit on 9-17 Nov Deputy hours; clean rate uncertain) ----
+var MODEL = { version: 'calib-v1 · fitted 9-17 Nov (7 days) · move rate solid, clean rate uncertain',
+  moveRate: 1.27, cleanLo: 2.78, cleanHi: 4.46, K: 0.35, benchTpb: 1.003 };
+// actual Deputy staffing by weekday (banked 9-17 Nov) — confident..incl-mixed
+var HIST = { Monday:{staff:'6-7', lo:52, hi:82}, Tuesday:{staff:'10-11', lo:98, hi:120},
+  Wednesday:{staff:11, lo:110, hi:131}, Thursday:{staff:8, lo:63, hi:96}, Friday:{staff:6, lo:49, hi:87} };
+var AREAN = {NB:'Northern Beaches', NS:'North Shore', City:'City / East'};
+var FEED=null, DAY=null, PH=9;
+var $=function(s){return document.querySelector(s);};
+function clamp(x){return Math.max(0.7,Math.min(1.4,x));}
+function h1(x){return (Math.round(x*10)/10)+'h';}
+
+function splitRun(r){ var mv=0,cl=0,veg=0,byFreq={}; (r.stops||[]).forEach(function(s){(s.jobs||[]).forEach(function(j){var b=j.bins||1;
+  if(j.type==='CLEAN'){cl+=b; byFreq[j.cleanFreq||'?']=(byFreq[j.cleanFreq||'?']||0)+b;} else if(j.type==='VEG'){veg++;} else {mv+=b;}});});
+  return {mv:mv,cl:cl,veg:veg,byFreq:byFreq}; }
+function calib(r){ var sp=splitRun(r); var bins=sp.mv+sp.cl;
+  var tpb = bins>0 ? ((r.est.driveMin||0)+(r.est.walkMin||0))/bins : MODEL.benchTpb;
+  var df = clamp(1 + MODEL.K*(tpb-MODEL.benchTpb)/MODEL.benchTpb);
+  var effMove = MODEL.moveRate*df, effCleanLo = MODEL.cleanLo*df, effCleanHi = MODEL.cleanHi*df;
+  var lo = (sp.mv*effMove + sp.cl*effCleanLo)/60, hi = (sp.mv*effMove + sp.cl*effCleanHi)/60;
+  var mid=(lo+hi)/2;
+  // heavy reasons: infrequent cleans
+  var heavy=[]; ['Once-off','Half-yearly','Quarterly','Catch-up','Bi-monthly','Monthly'].forEach(function(k){ if(sp.byFreq[k]) heavy.push(k+': '+sp.byFreq[k]+' bins'); });
+  var infreq=(sp.byFreq['Once-off']||0)+(sp.byFreq['Half-yearly']||0)+(sp.byFreq['Quarterly']||0)+(sp.byFreq['Catch-up']||0);
+  var band = infreq>0.4*(sp.cl||1) && sp.cl>20 ? 'Heavy' : (bins<30 && sp.veg<2 ? 'Light':'Normal');
+  return {mv:sp.mv, cl:sp.cl, veg:sp.veg, bins:bins, parks:r.est.parkPoints||1, binsPerPark: bins/(r.est.parkPoints||1),
+    tpb:tpb, df:df, effMove:effMove, effCleanLo:effCleanLo, effCleanHi:effCleanHi, lo:lo, hi:hi, mid:mid,
+    density:r.est.density, driveSrc:r.est.driveSrc, heavy:heavy, infreq:infreq, band:band, orig:r.est.personHours||0 };
+}
+
+async function boot(){
+  try{ var r=await fetch('/binsplan.json',{cache:'no-store'}); FEED=await r.json(); }catch(e){ document.body.innerHTML='<div class=wrap>Could not load the feed. Open through the planner login.</div>'; return; }
+  $('#sub').textContent='Week of '+FEED.weekStart+' · '+(FEED.generatedAt||'');
+  $('#ver').textContent='Model '+MODEL.version;
+  $('#estbanner').innerHTML='Geographic productivity (per-run minutes/bin) is <b>estimated from Mapbox travel + bins-per-building</b>, anchored to the business benchmark — <b>labelled estimate</b> until Fleetsu GPS and more history validate it. Original model shown struck-through for comparison.';
+  DAY = FEED.weekDates.indexOf(FEED.today)>=0 ? FEED.today : FEED.weekDates[0];
+  $('#ph').oninput=function(){ PH=+this.value; $('#phlab').textContent=PH.toFixed(1); render(); };
+  renderDays(); render();
+}
+function renderDays(){ $('#days').innerHTML=FEED.weekDates.map(function(d){ var rs=FEED.runs.filter(function(r){return r.date===d&&!r.isSpecial;});
+  return '<div class="day '+(d===DAY?'on':'')+'" data-d="'+d+'">'+FEED.dateToDay[d]+'<small>'+rs.length+' runs</small></div>'; }).join('');
+  document.querySelectorAll('.day').forEach(function(el){el.onclick=function(){DAY=el.dataset.d;renderDays();render();};}); }
+
+function render(){
+  var runs=FEED.runs.filter(function(r){return r.date===DAY;});
+  var C=runs.map(function(r){ var c=calib(r); c._run=r; return c; });
+  var reg=C.filter(function(c){return !c._run.isSpecial;});
+  var origTot=reg.reduce(function(s,c){return s+c.orig;},0);
+  var loTot=reg.reduce(function(s,c){return s+c.lo;},0), hiTot=reg.reduce(function(s,c){return s+c.hi;},0), midTot=(loTot+hiTot)/2;
+  var staffLo=Math.ceil(loTot/PH), staffHi=Math.ceil(hiTot/PH);
+  var dow=FEED.dateToDay[DAY]; var H=HIST[dow];
+  // why busy: infrequent clean bins today
+  var infreqTot=reg.reduce(function(s,c){return s+c.infreq;},0);
+  var cleanTot=reg.reduce(function(s,c){return s+c.cl;},0), moveTot=reg.reduce(function(s,c){return s+c.mv;},0);
+  var why = infreqTot>0 ? ('Heavier than usual: '+infreqTot+' infrequent clean bins (quarterly / half-yearly / once-off / catch-up) are scheduled today.') : '';
+  $('#daysum').innerHTML =
+    '<div class="dsrow"><span><span class="mut">Calibrated</span> <span class="big">'+h1(loTot)+'–'+h1(hiTot)+'</span> person-hours</span>'+
+    '<span class="mut">was '+h1(origTot)+' (original model)</span>'+
+    '<span><span class="mut">Staff needed @'+PH+'h:</span> <span class="big">'+staffLo+'–'+staffHi+'</span></span>'+
+    '<span class="mut">'+reg.length+' runs · '+moveTot+' move + '+cleanTot+' clean bins</span></div>'+
+    (why?'<div class="why">⚠ '+why+'</div>':'')+
+    (H?'<div class="hist">Historical actual on a '+dow+' (9–17 Nov): <b>'+H.staff+' staff</b>, <b>'+H.lo+'–'+H.hi+'h</b> (confident → incl. mixed-service). Employees often do several runs in a day.</div>':'');
+  // board
+  var html=''; ['NB','NS','City'].forEach(function(a){ var rs=reg.filter(function(c){return c._run.area===a;});
+    var ex=C.filter(function(c){return c._run.isSpecial && c._run.area===a;});
+    if(!rs.length&&!ex.length) return;
+    rs.sort(function(x,y){return y.mid-x.mid;});
+    html+='<div class="area">'+AREAN[a]+'</div><div class="cards">'+rs.map(card).join('')+'</div>';
+    if(ex.length) html+=ex.map(function(c){return '<div class="meta" style="margin:6px 0">Extras · <b>'+c._run.name+'</b> — '+c.veg+' VEG job(s) · ~'+h1(c.mid)+' <span style="color:var(--mut)">(VEG not yet calibrated)</span></div>';}).join('');
+  });
+  $('#board').innerHTML=html;
+}
+function card(c){ var r=c._run;
+  var range = c.lo.toFixed(1)===c.hi.toFixed(1) ? h1(c.mid) : (h1(c.lo)+'–'+h1(c.hi));
+  var effClean = c.cl>0 ? (' · clean '+c.effCleanLo.toFixed(1)+'–'+c.effCleanHi.toFixed(1)+'m/bin') : '';
+  return '<div class="card"><div class="crow"><span class="cname">'+r.name+'</span>'+
+    '<span class="badge b-'+r.type+'">'+r.type+'</span><span class="badge load-'+c.band+'">'+c.band.toUpperCase()+'</span></div>'+
+    '<div class="meta">'+(c.mv?c.mv+' move ':'')+(c.cl?c.cl+' clean ':'')+'bins · '+c.parks+' park-points ('+c.binsPerPark.toFixed(0)+' bins each) · '+c.density+(c.driveSrc!=='mapbox'?' · <span style="color:var(--warn)">travel estimated</span>':'')+'</div>'+
+    '<div class="figs"><div class="fig orig"><div class="n">'+h1(c.orig)+'</div><div class="l">original</div></div>'+
+      '<div class="fig cal"><div class="n">'+range+'</div><div class="l">calibrated</div></div>'+
+      '<div class="fig"><div class="n">'+Math.max(1,Math.ceil(c.mid/9))+'</div><div class="l">≈staff</div></div></div>'+
+    '<div class="eff"><span class="est">effective: move '+c.effMove.toFixed(2)+'m/bin'+effClean+'</span> · density ×'+c.df.toFixed(2)+' <span style="color:var(--mut)">(geo-estimated)</span></div>'+
+    (c.heavy.length?'<div class="heavy">Why heavier — larger / infrequent cleans:<ul><li>'+c.heavy.join('</li><li>')+'</li></ul><div style="color:var(--mut);margin-top:3px">Clean time for these is uncertain (shown as the range above).</div></div>':'')+
+    '</div>';
+}
+boot();
+</script>
+</body></html>
