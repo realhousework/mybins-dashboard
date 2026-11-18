@@ -717,6 +717,57 @@ const Store={
   async put(date,plan,baseVersion){ if(PLANS_API===null){const v=(baseVersion||0)+1;const rec={plan,version:v,updatedBy:'you (device)',updatedAt:new Date().toISOString()};localStorage.setItem('plan:'+date,JSON.stringify(rec));return Object.assign({ok:true,date},rec);} const r=await fetch(PLANS_API+'/api/plan/'+date,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan,baseVersion})});return await r.json(); }
 };
 function planSig(sc){return JSON.stringify({a:sc.alloc,h:sc.helpers,o:sc.order,s:sc.status||'draft'});}
+/* ===== Thursday->Friday handover: Blake marks next week "Ready for Wes" (never locks anything) ===== */
+const HANDOVER_KEY='0001-01-05'; let HANDOVER_ALL={}; let HANDOVER_VER=0;
+async function loadHandover(){ try{ const r=await Store.get(HANDOVER_KEY); let h=(r&&r.plan&&r.plan._handover)||{}; if(h&&h.weekMon){ h={[h.weekMon]:h}; } /* migrate old single-week shape -> map keyed by week */ HANDOVER_ALL=h||{}; HANDOVER_VER=(r&&r.version)||0; }catch(e){ HANDOVER_ALL={}; HANDOVER_VER=0; } }
+function handoverFor(mon){ return (HANDOVER_ALL&&HANDOVER_ALL[mon])||null; }
+function _h1(m){ return Math.round(m/60*10)/10; }
+function deriveCommit(d,sc){
+  const emps=[], vehs=[]; let assigned=0;
+  activeVEH(d).forEach(v=>{
+    const crew=crewIntervals(d,v,sc); const jobN=jobsForVeh(d,v,sc).length;
+    if(!crew.length && !jobN) return;
+    let vmin=null,vmax=null;
+    crew.forEach(c=>{ assigned++; emps.push({name:c.emp,start:fmtClock(c.start),end:fmtClock(c.end),hours:_h1(c.end-c.start),part:!!c.custom,vehicle:v,timingConfirmed:true});
+      if(vmin==null||c.start<vmin)vmin=c.start; if(vmax==null||c.end>vmax)vmax=c.end; });
+    if(vmin!=null){ const full=(vmax-vmin)>=(MAXH()*60-60); vehs.push({name:v,start:fmtClock(vmin),end:fmtClock(vmax),hours:_h1(vmax-vmin),part:!full,timingConfirmed:true}); }
+    else if(jobN){ vehs.push({name:v,hours:null,part:false,timingConfirmed:false}); }
+  });
+  let unfilled=0,issues=[];
+  try{ const req=requiredStaffing(d); unfilled=Math.max(0,(req.employees||0)-assigned); }catch(e){}
+  try{ const a=assessDay(d,sc); (a&&a.vehs||[]).forEach(vv=>{ if(vv.status==='r'&&vv.reasons&&vv.reasons.length) issues.push(vv.v+': '+vv.reasons[0]); }); }catch(e){}
+  return {employees:emps,vehicles:vehs,unfilled:unfilled,issues:issues};
+}
+async function markReadyForWes(){
+  const mon=weekAnchor||weekMonday(todayISO()); const dates=weekDates(mon);
+  const days={},sigs={},vers={}; const sS=scenario,sD=curDay;
+  for(const d of dates){ let rec=null; try{rec=await Store.get(d);}catch(e){} const sc=(rec&&rec.plan)?migrate(rec.plan):defaultScenario(d); scenario=sc; curDay=d; buildDay(d); days[d]=deriveCommit(d,sc); sigs[d]=planSig(sc); vers[d]=(rec&&rec.version)||0; }
+  scenario=sS; curDay=sD; buildDay(curDay);
+  const entry={weekMon:mon,readyAt:new Date().toISOString(),days:days,sigs:sigs,vers:vers};
+  // Merge this week into the shared map WITHOUT touching any other week; conflict-safe retry.
+  let ok=false;
+  for(let attempt=0; attempt<3 && !ok; attempt++){
+    await loadHandover();                              // freshest map + version
+    const map=Object.assign({},HANDOVER_ALL); map[mon]=entry;
+    const cut=weekMonday(todayISO());                  // retain >=90 days of handover history (never prune the week we're saving)
+    Object.keys(map).forEach(k=>{ if(k!==mon && ((new Date(cut)-new Date(k))/864e5)>90) delete map[k]; });
+    const r=await Store.put(HANDOVER_KEY,{_handover:map},HANDOVER_VER);
+    if(r&&r.version){ HANDOVER_VER=r.version; HANDOVER_ALL=map; ok=true; }
+    else if(!(r&&r.error==='conflict')) break;         // non-conflict failure: stop retrying
+  }
+  if(ok){ toast('Marked Ready for Wes - he can now see this week staff & vehicles in myBins'); }
+  else { toast('Could not save - someone else is editing the handover. Try again.'); }
+  renderWeek();
+}
+function handoverFoot(mon,dates,saved){
+  const h=handoverFor(mon); let changed=[];
+  if(h){ dates.forEach((d,i)=>{ const rec=saved[i]; const sc=(rec&&rec.plan)?migrate(rec.plan):defaultScenario(d); if(planSig(sc)!==((h.sigs&&h.sigs[d])||'')) changed.push(d); }); }
+  let status='';
+  if(h){ const w=new Date(h.readyAt); status='<span class="wready g" style="margin-left:10px">\u2713 Sent to Wes '+w.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})+'</span>';
+    if(changed.length) status+='<div class="rec bad" style="margin-top:8px">\u26a0 You changed '+changed.length+' day'+(changed.length>1?'s':'')+' since marking Ready for Wes ('+changed.map(fmtShort).join(', ')+'). Wes is being warned his copy may be out of date \u2014 press Ready for Wes again to send the update.</div>'; }
+  return '<div class="card" style="background:#f7faf8"><div class="sechead"><span>\ud83d\udce4 Hand this week to Wes</span></div><div class="small muted" style="margin-bottom:8px">When next week mowing staffing and vehicles look right, send them to Wes - he will see who and which vehicles are committed when he builds the bins roster. This does not lock anything.</div><button class="btn" id="readyWes" style="padding:9px 16px">Ready for Wes</button>'+status+'</div>';
+}
+
 
 /* =================== RENDER =================== */
 function setDate(date){
@@ -983,7 +1034,7 @@ async function renderWeek(){
   let html='';
   dates.forEach((d,i)=>{ html+=weekCard(d,saved[i]); });
   $('weekgrid').innerHTML=html;
-  $('weekfoot').innerHTML='Each day shows the staffing it needs from the workload. “Ready” means you’ve assigned enough staff and every job is on a truck. Amber means a day still needs staffing or more people.';
+  $('weekfoot').innerHTML=handoverFoot(mon,dates,saved)+'Each day shows the staffing it needs from the workload. “Ready” means you’ve assigned enough staff and every job is on a truck. Amber means a day still needs staffing or more people.';
 }
 function weekCard(d,rec){
   buildDay(d);
@@ -1134,6 +1185,7 @@ document.addEventListener('click',e=>{
   const sd=e.target.closest('[data-stilldue]'); if(sd){resolveOcc(sd.dataset.stilldue,'due');toast('Marked still due — added back to the workload');return;}
   const md=e.target.closest('[data-markdone]'); if(md){resolveOcc(md.dataset.markdone,'done');toast('Marked done — moved out of the workload');return;}
   const tt=e.target.closest('[data-tiptoggle]'); if(tt){toggleTip(tt.dataset.tiptoggle);toast(TIPREQ[tt.dataset.tiptoggle]?'Marked tip-truck required — assign it to Big Bertha':'Tip-truck requirement removed');return;}
+  if(e.target.id==='readyWes'){markReadyForWes();return;}
   if(e.target.id==='autoAlloc'){autoAllocate();return;}
   const wc=e.target.closest('.weekcard[data-day]'); if(wc){showDay(wc.dataset.day);return;}
   const ft=e.target.closest('#fType [data-type]'); if(ft){segPick('fType',ft);findInput.skill=ft.dataset.type==='Specialist'?'Specialist':'Basic';return;}
@@ -1295,6 +1347,7 @@ async function boot(){
   await loadStaff();   // our own staff list (skills, driving, hours) — no Deputy
   await loadOcc();     // per-occurrence still-due / done resolutions (shared)
   await loadTip();     // which jobs need the tip truck (Big Bertha), shared
+  await loadHandover();  // Blake Ready-for-Wes commitments (shared)
   const today=MOWING.today||new Date().toISOString().slice(0,10);
   curDay=today; weekAnchor=weekMonday(today);
   showWeek();   // land on the Weekly Overview
