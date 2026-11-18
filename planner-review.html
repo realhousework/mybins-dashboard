@@ -730,7 +730,7 @@ function deriveCommit(d,sc){
     let vmin=null,vmax=null;
     crew.forEach(c=>{ assigned++; emps.push({name:c.emp,start:fmtClock(c.start),end:fmtClock(c.end),hours:_h1(c.end-c.start),part:!!c.custom,vehicle:v,timingConfirmed:true});
       if(vmin==null||c.start<vmin)vmin=c.start; if(vmax==null||c.end>vmax)vmax=c.end; });
-    if(vmin!=null){ const full=(vmax-vmin)>=(MAXH()*60-60); vehs.push({name:v,start:fmtClock(vmin),end:fmtClock(vmax),hours:_h1(vmax-vmin),part:!full,timingConfirmed:true}); }
+    if(vmin!=null){ const anyFull=crew.some(c=>!c.custom); const full=anyFull||(vmax-vmin)>=450; /* tied up all day if any full-day crew, or span covers a standard ~7.5h+ workday */ vehs.push({name:v,start:fmtClock(vmin),end:fmtClock(vmax),hours:_h1(vmax-vmin),part:!full,timingConfirmed:true}); }
     else if(jobN){ vehs.push({name:v,hours:null,part:false,timingConfirmed:false}); }
   });
   let unfilled=0,issues=[];
