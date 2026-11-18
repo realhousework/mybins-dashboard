@@ -272,7 +272,16 @@ function vehCrew(v){ return ((scenario&&scenario.helpers&&scenario.helpers[v])||
 function vehJobs(d,v){ return activeJobs(d).filter(j=>vehOfJob(scenario,j)===v).length; }
 // Big Bertha only appears when it's relevant: a tip-required job exists, or it already has crew/jobs.
 function bbRelevant(d){ return tipReqJobs(d).length>0 || vehCrew(BB)>0 || vehJobs(d,BB)>0; }
-function activeVEH(d){ const all=VEH(); return bbRelevant(d)?all:all.filter(v=>v!==BB); }
+let EXTRAVEH={}; // curDay -> [optional vehicles Blake manually added this session]
+const EMPTY_TRAY=['ALPHA','DELTA']; // empty-tray utes, shared across myMowing/myBins
+function isOptVeh(v){ return v===BB || EMPTY_TRAY.indexOf(v)>=0; }
+function vehInUse(d,v){ return vehCrew(v)>0 || vehJobs(d,v)>0 || (v===BB && tipReqJobs(d).length>0); }
+// crew/assign controls: base trucks always, plus optional vehicles in use or manually added.
+function activeVEH(d){ const added=EXTRAVEH[d]||[]; return VEH().filter(v=> !isOptVeh(v) || vehInUse(d,v) || added.indexOf(v)>=0 ); }
+// vehicle CARDS: only vehicles with crew or jobs (empty cards hidden).
+function cardVEH(d){ return VEH().filter(v=> vehInUse(d,v) ); }
+function addVehList(d){ return VEH().filter(v=> activeVEH(d).indexOf(v)<0 ); }
+function addVehicle(v){ EXTRAVEH[curDay]=EXTRAVEH[curDay]||[]; if(EXTRAVEH[curDay].indexOf(v)<0)EXTRAVEH[curDay].push(v); render(); }
 function vehClass(v){ return v==='HOPPER'?'H':v==='MOE'?'M':'B'; }
 async function loadTip(){ if(DEMO)return; try{ const r=await Store.get(TIPREQ_KEY); if(r&&r.plan&&r.plan._tipreq)TIPREQ=r.plan._tipreq; TIPREQ_VER=(r&&r.version)||0; }catch(e){} }
 async function saveTip(){ try{ let r=await Store.put(TIPREQ_KEY,{_tipreq:TIPREQ},TIPREQ_VER); if(r&&r.ok===false&&r.error==='conflict'){await loadTip();r=await Store.put(TIPREQ_KEY,{_tipreq:TIPREQ},TIPREQ_VER);} if(r&&r.version)TIPREQ_VER=r.version; }catch(e){} }
@@ -693,8 +702,8 @@ function buildDay(date){
   if(matrix.estimated)estimated=true;
   const cfg=Object.assign({vehicles:['HOPPER','MOE'],maxHours:10,breakMins:30,startTime:'07:00',seats:{HOPPER:3,MOE:3},depotCoord:depot,returnToDepot:true},MOWING.config||{});
   // Big Bertha (tip truck) is always an available vehicle option in the planner (no Fleetsu integration).
-  cfg.vehicles=(cfg.vehicles||['HOPPER','MOE']).slice(); if(cfg.vehicles.indexOf('Big Bertha')<0)cfg.vehicles.push('Big Bertha');
-  cfg.seats=Object.assign({HOPPER:3,MOE:3,'Big Bertha':3},cfg.seats||{});
+  cfg.vehicles=(cfg.vehicles||['HOPPER','MOE']).slice(); ['ALPHA','DELTA','Big Bertha'].forEach(function(v){if(cfg.vehicles.indexOf(v)<0)cfg.vehicles.push(v);});
+  cfg.seats=Object.assign({HOPPER:3,MOE:3,'Big Bertha':3,ALPHA:3,DELTA:3},cfg.seats||{});
   DATA={ today:MOWING.today, dates:MOWING.dates, jobs, roster, availability, staff:MOWING.staff||{},
     config:cfg, matrix:{[date]:matrix} };
   dayMeta[date]={provisional,estimated};
@@ -915,13 +924,13 @@ function renderCrew(date){
     }
     h+='</div>';
   });
-  h+='</div>'; $('crewCard').innerHTML=h;
+  if(addVehList(date).length){ h+='<div class="small muted" style="margin-top:10px;padding-top:8px;border-top:1px solid #eee">Need another vehicle? '+addVehList(date).map(function(v){return '<button class=linkbtn data-addveh="'+esc(v)+'" style="margin-left:4px">+ '+(v===BB?'\ud83d\ude9b Big Bertha':v)+'</button>';}).join(' ')+'</div>'; } h+='</div>'; $('crewCard').innerHTML=h;
 }
 function renderVehicles(date,day){
   let h='';
-  const show=activeVEH(date);
+  const show=cardVEH(date);
   day.vehs.filter(a=>show.indexOf(a.v)>=0).forEach(a=>{
-    const vClass=vehClass(a.v); const others=show.filter(x=>x!==a.v);
+    const vClass=vehClass(a.v); const others=activeVEH(date).filter(x=>x!==a.v);
     const crew=a.crewNames.length?a.crewNames.join(', '):'<span class=muted>no crew yet</span>';
     const fin=a.finishMin!=null?fmtClock(a.finishMin):'—';
     const drv=a.driveComplete?r1(a.driveH)+'h':(a.driveMin?'~'+fmtDur(a.driveMin):'—');
@@ -1111,6 +1120,7 @@ function reportProblem(){
 
 document.addEventListener('click',e=>{
   const c=e.target.closest('[data-crew]'); if(c){setCrewVeh(c.dataset.crew,c.dataset.v);render();return;}
+  const av=e.target.closest('[data-addveh]'); if(av){addVehicle(av.dataset.addveh);return;}
   const f=e.target.closest('[data-full]'); if(f){setPartDay(f.dataset.full,false);render();return;}
   const p=e.target.closest('[data-part]'); if(p){setPartDay(p.dataset.part,true);render();return;}
   const o=e.target.closest('[data-ord]'); if(o){reorder(o.dataset.v,o.dataset.key,o.dataset.ord);return;}
