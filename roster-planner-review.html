@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>myBins Roster Planner</title><style>
+<title>myBins Roster Planner — REVIEW</title><style>
 :root{color-scheme:light}*{box-sizing:border-box}
 body{margin:0;background:#f4f6f4;color:#17201a;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
 .wrap{max-width:1180px;margin:0 auto;padding:16px 18px 70px}
@@ -64,11 +64,27 @@ label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;l
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#17201a;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:70}
 .toast.show{opacity:1}
 .loading{color:#8a988f;padding:40px 0;text-align:center}
+.share{border:1px solid #cfe9d9;background:#eef3f0;color:#2e8b57;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;padding:1px 7px;line-height:1.4}
+.share:hover{background:#e0efe6}
+.helpers{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 2px 26px}
+.hchip{display:inline-flex;align-items:center;gap:5px;background:#eef3f0;border:1px solid #cfe9d9;border-radius:999px;padding:2px 4px 2px 9px;font-size:11.5px;color:#1a5a34;font-weight:700}
+.hchip .hv{font-size:10px;font-weight:800;color:#2e8b57;background:#fff;border:1px solid #cfe9d9;border-radius:999px;padding:1px 5px;cursor:pointer;appearance:none;-webkit-appearance:none}
+.hchip .hh{width:30px;border:1px solid #cfe9d9;border-radius:6px;font:inherit;font-size:11px;font-weight:700;text-align:center;padding:1px 2px;background:#fff;color:#1a5a34}
+.hchip .hh::placeholder{color:#9bb3a6;font-weight:600}
+.hchip .hlead{border:0;background:transparent;color:#5b6b60;cursor:pointer;font-size:11px;font-weight:700;padding:1px 3px;border-radius:5px}
+.hchip .hlead:hover{background:#dbebe1;color:#1a5a34}
+.hchip .hx{border:0;background:transparent;color:#b4452b;cursor:pointer;font-size:12px;font-weight:800;padding:0 3px;border-radius:5px}
+.hchip .hx:hover{background:#fde8e4}
+.hchip .tbc{color:#8a7a4a;font-weight:600;font-style:italic}
+.assist{display:flex;gap:7px;align-items:center;border-top:1px dashed #d7e6dd;padding:7px 0 2px;margin-top:2px;font-size:12.5px;color:#1a6a3c}
+.assist .ab{font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;background:#e7f4ec;color:#1a7a43;flex:none}
+.assist .an{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.assist .ah{font-size:11px;color:#5b6b60;font-weight:700}
 @media(max-width:720px){.cols{grid-template-columns:1fr}}
 </style></head>
 <body><div class="wrap">
   <header>
-    <div class="logo">my<b>Bins</b> Roster Planner</div>
+    <div class="logo">my<b>Bins</b> Roster Planner <span style="font-size:11px;font-weight:800;background:#fff3cd;color:#8a6d1a;border:1px solid #f0e2c4;border-radius:999px;padding:3px 9px;vertical-align:middle">REVIEW</span></div>
     <div class="asof" id="asof">loading…</div>
   </header>
   <div class="sub">Open a day — the roster Wes normally builds is already suggested from history. Adjust for anything unusual, then save.</div>
@@ -210,6 +226,20 @@ function mowConflicts(){
       else out.push({cls:'bad',txt:esc(s.veh)+' is on mowing all day ('+esc(v.start)+'–'+esc(v.end)+') but you’ve assigned it to bins — it can’t be in two places.'});
     }
   });
+  // Helpers on shared runs are also people/vehicles — check them against mowing too.
+  var sm=(STATE.shared&&typeof STATE.shared==='object')?STATE.shared:{};
+  Object.keys(sm).forEach(function(id){ (sm[id]||[]).forEach(function(h){
+    var k=first(h.emp||'').toLowerCase(), nm=esc(first(h.emp||''));
+    if(k&&byName[k]&&!seenW[k]){ seenW[k]=1; var e=byName[k];
+      if(e.timingConfirmed===false) out.push({cls:'warn',txt:nm+' is reserved for mowing (times unconfirmed) but is helping on bins — confirm with Blake.'});
+      else if(e.part) out.push({cls:'warn',txt:nm+' is on mowing '+esc(e.start)+'–'+esc(e.end)+' and also helping on bins — only a clash if the hours overlap.'});
+      else out.push({cls:'bad',txt:nm+' is on mowing all day but is set as a bins helper — arrange cover or remove them.'});
+    }
+    var vk2=(h.veh||'').toUpperCase();
+    if(vk2&&byVeh[vk2]&&!seenV[vk2]){ seenV[vk2]=1; var v2=byVeh[vk2];
+      if(v2.timingConfirmed!==false && !v2.part) out.push({cls:'bad',txt:esc(h.veh)+' is on mowing all day but is set as a bins helper vehicle — it can’t be in two places.'});
+    }
+  }); });
   return out;
 }
 
@@ -241,16 +271,48 @@ function suggested(){
   });
   // any due run not in a template shift -> unassigned
   var tray=due.filter(function(r){return !used[r.id];}).map(function(r){return r.id;});
-  return {shifts:shifts, tray:tray};
+  return {shifts:shifts, tray:tray, shared:{}};
+}
+/* ===== SHARED RUNS (lead + helpers) =====
+   A run stays assigned to exactly ONE shift (its LEAD). Extra employees who help on the same
+   run are stored as HELPERS in STATE.shared, keyed by runId, so the run is never duplicated and
+   its bins are never counted more than once:
+       STATE.shared = { "<runId>": [ { emp:"Ben", veh:"MOE", hours:3|null }, ... ] }
+   hours=null means "helping, hours not yet known" (we never invent an allocation).            */
+function sharedMap(){ if(!STATE.shared||typeof STATE.shared!=='object') STATE.shared={}; return STATE.shared; }
+function helpersFor(id){ var m=sharedMap(); return (m[id]&&m[id].length)?m[id]:null; }
+function leadShiftOf(id){ for(var i=0;i<STATE.shifts.length;i++){ if((STATE.shifts[i].runs||[]).indexOf(id)>=0) return i; } return -1; }
+// People who already touch a run (lead + helpers) — so the "add helper" menu can exclude them.
+function peopleOnRun(id){ var out={}; var li=leadShiftOf(id); if(li>=0&&STATE.shifts[li].who) out[STATE.shifts[li].who]=1; (helpersFor(id)||[]).forEach(function(h){ if(h.emp) out[h.emp]=1; }); return out; }
+// Distinct employees per vehicle across leads AND helpers (for the 2-per-vehicle rule).
+function vehCrews(){ var map={}; function add(v,e){ if(!v||!e) return; (map[v]=map[v]||{})[e]=1; }
+  STATE.shifts.forEach(function(s){ if((s.runs||[]).length||s.who) add(s.veh,s.who); });
+  var m=sharedMap(); Object.keys(m).forEach(function(id){ (m[id]||[]).forEach(function(h){ add(h.veh,h.emp); }); });
+  return map; }
+// Drop helper records for runs that are no longer anywhere in the plan (e.g. removed from Zenkit).
+function pruneShared(){ var m=sharedMap(); var live={}; STATE.shifts.forEach(function(s){(s.runs||[]).forEach(function(id){live[id]=1;});});
+  Object.keys(m).forEach(function(id){ if(!live[id]){ delete m[id]; } else { m[id]=(m[id]||[]).filter(function(h){return h&&h.emp;}); if(!m[id].length) delete m[id]; } }); }
+// Upgrade any legacy roster where the SAME run sat in two shifts (old "shared ×N") into the new
+// lead+helper model: keep the first shift as lead, turn the rest into helpers. No run is lost.
+function migrateShared(){ var m=sharedMap(); var seen={};
+  STATE.shifts.forEach(function(s){ s.runs=(s.runs||[]).filter(function(id){
+    if(!seen[id]){ seen[id]=s; return true; }
+    var leadVeh=seen[id].veh||''; var list=m[id]=m[id]||[];
+    if(s.who && !list.some(function(h){return h.emp===s.who;})) list.push({emp:s.who,veh:s.veh||leadVeh,hours:null});
+    return false; // remove the duplicate run from this extra shift
+  }); });
+  pruneShared();
 }
 async function loadDay(){
   DOW=dowName(DATE); ROT=rotationOf(DATE);
   $('#dow').textContent=DOW; $('#rot').textContent=(ROT==='W1'?'Week 1':'Week 2')+' rotation';
   // try load saved plan for this exact date
   STATE=null; VERSION=0; var fromSaved=false;
-  try{ var r=await fetch('/api/roster/'+DATE,{cache:'no-store'}); if(r.ok){ var j=await r.json(); if(j.roster){ STATE=j.roster; VERSION=j.version||0; fromSaved=true; } } }catch(e){}
+  try{ var r=await fetch('/api/roster-review/'+DATE,{cache:'no-store'}); if(r.ok){ var j=await r.json(); if(j.roster){ STATE=j.roster; VERSION=j.version||0; fromSaved=true; } } }catch(e){}
   if(!STATE){ STATE=suggested(); }
   else { reconcile(); } // preserve Wes's allocations, surface new/removed Zenkit work
+  STATE.shifts=STATE.shifts||[]; STATE.tray=STATE.tray||[]; STATE.shared=STATE.shared||{};
+  migrateShared();   // upgrade any legacy double-assigned runs into lead+helper, prune orphans
   STATE._fromSaved=fromSaved;
   DIRTY=false; CONFLICT=null;
   await loadMowing();   // Blake's committed mowing staff/vehicles for this week (read-only)
@@ -265,6 +327,7 @@ function reconcile(){
   STATE.shifts.forEach(function(s){ s.runs=(s.runs||[]).filter(function(id){ if(dueIds[id])return true; removed++; return false; }); });
   STATE.tray=STATE.tray.filter(function(id){ if(dueIds[id])return true; removed++; return false; });
   var added=[]; due.forEach(function(r){ if(!inPlan[r.id]){ STATE.tray.push(r.id); added.push(r.id); } });
+  pruneShared(); // a run dropped from the plan must not leave orphan helper records
   STATE._added=added; STATE._removed=removed;
 }
 
@@ -288,13 +351,16 @@ function pwToday(){ return (FEED.pw||[]).filter(function(p){return p.date===DATE
 function render(){
   var due=dueRuns();
   var exc=exceptions(); var excByRun={}; exc.forEach(function(e){ (excByRun[e.runId]=excByRun[e.runId]||[]).push(e); });
-  // conflicts: a run assigned twice, or a person/vehicle used twice
-  var runCount={}, whoCount={}, vehCount={};
-  STATE.shifts.forEach(function(s){ whoCount[s.who]=(whoCount[s.who]||0)+1; vehCount[s.veh]=(vehCount[s.veh]||0)+1; s.runs.forEach(function(id){runCount[id]=(runCount[id]||0)+1;}); });
+  // conflicts: a run genuinely assigned to two lead shifts, a person on two lead shifts, or more
+  // than TWO people sharing one vehicle (lead + helpers). Two in a vehicle is allowed.
+  var runCount={}, whoCount={};
+  STATE.shifts.forEach(function(s){ whoCount[s.who]=(whoCount[s.who]||0)+1; s.runs.forEach(function(id){runCount[id]=(runCount[id]||0)+1;}); });
+  var crews=vehCrews(), vehOver={}; Object.keys(crews).forEach(function(v){ var n=Object.keys(crews[v]).length; if(n>2) vehOver[v]=n; });
 
   // top summary
   var assigned=0; STATE.shifts.forEach(function(s){assigned+=s.runs.length;});
-  $('#summary').innerHTML='<span><b>'+STATE.shifts.length+'</b> shifts</span><span><b>'+due.length+'</b> runs due</span><span><b>'+STATE.tray.length+'</b> unassigned</span>'+(VERSION?'<span>saved v'+VERSION+'</span>':'<span>not yet saved</span>');
+  var nShared=Object.keys(sharedMap()).filter(function(id){return (sharedMap()[id]||[]).length;}).length;
+  $('#summary').innerHTML='<span><b>'+STATE.shifts.length+'</b> shifts</span><span><b>'+due.length+'</b> runs due</span><span><b>'+STATE.tray.length+'</b> unassigned</span>'+(nShared?'<span><b>'+nShared+'</b> shared run'+(nShared>1?'s':'')+'</span>':'')+(VERSION?'<span>saved v'+VERSION+'</span>':'<span>not yet saved</span>');
 
   // exceptions banner (real data only)
   var pw=pwToday(); var eb='';
@@ -333,13 +399,35 @@ function render(){
   }
   var html=STATE.shifts.map(function(s,si){
     var flagged=false, conflicts=[];
-    if(whoCount[s.who]>1) conflicts.push(first(s.who)+' is on '+whoCount[s.who]+' shifts');
-    if(s.veh&&vehCount[s.veh]>1) conflicts.push(s.veh+' used on '+vehCount[s.veh]+' shifts');
+    if(whoCount[s.who]>1) conflicts.push(first(s.who)+' is leading '+whoCount[s.who]+' separate shifts');
+    if(s.veh&&vehOver[s.veh]) conflicts.push(vehOver[s.veh]+' people assigned to '+s.veh+' — max 2 per vehicle');
     var rows=s.runs.map(function(id){ var r=runById(id); if(!r) return '';
-      var fl=excByRun[id]?' ':''; if(excByRun[id])flagged=true;
-      var dup=runCount[id]>1?' <span class="rt rt-CLEAN" style="background:#fde8e4;color:#b4452b">shared ×'+runCount[id]+'</span>':'';
-      return '<div class="job"><span class="rt rt-'+r.type+'">'+r.type+'</span><span class="rn">'+esc(r.short||r.name)+dup+'</span>'+(r.bins?'<span class="rb">'+r.bins+'</span>':'')+'<button class="rmv" data-mv="'+si+'|'+id+'">move ▾</button></div>';
+      if(excByRun[id])flagged=true;
+      var dup=runCount[id]>1?' <span class="rt rt-CLEAN" style="background:#fde8e4;color:#b4452b">double-assigned ×'+runCount[id]+'</span>':'';
+      var hs=helpersFor(id);
+      var leadtag=hs?' <span class="rt rt-OUT" title="you are the lead on this shared run">LEAD</span>':'';
+      var row='<div class="job"><span class="rt rt-'+r.type+'">'+r.type+'</span><span class="rn">'+esc(r.short||r.name)+leadtag+dup+'</span>'+(r.bins?'<span class="rb">'+r.bins+'</span>':'')+'<button class="share" data-share="'+si+'|'+id+'" title="Share this run / add a helper">+ share</button><button class="rmv" data-mv="'+si+'|'+id+'">move ▾</button></div>';
+      if(hs){ var chips=hs.map(function(h,hi){
+          var vehOpts='<option value="">veh?</option>'+(FEED.vehicles||[]).map(function(v){return '<option'+(v===h.veh?' selected':'')+'>'+esc(v)+'</option>';}).join('');
+          var hasH=!(h.hours==null||h.hours==='');
+          var hrsIn='<input class="hh" data-hh="'+id+'|'+hi+'" inputmode="decimal" '+(hasH?'value="'+esc(h.hours)+'"':'placeholder="h"')+'>';
+          return '<span class="hchip" title="Helping '+esc(first(s.who))+' on this run">👥 '+esc(first(h.emp))+
+            ' <select class="hv" data-hv="'+id+'|'+hi+'">'+vehOpts+'</select> '+hrsIn+
+            (hasH?'<span style="font-size:10px;color:#5b6b60">h</span>':'<span class="tbc">TBC</span>')+
+            ' <button class="hlead" data-hlead="'+id+'|'+hi+'" title="Make '+esc(first(h.emp))+' the lead">↑ lead</button>'+
+            '<button class="hx" data-hx="'+id+'|'+hi+'" title="Remove helper">✕</button></span>';
+        }).join('');
+        row+='<div class="helpers">'+chips+'</div>';
+      }
+      return row;
     }).join('');
+    // Runs this person is HELPING on (lead is someone else) — shown on their own card.
+    var assistLines=''; var sm=sharedMap();
+    Object.keys(sm).forEach(function(id){ (sm[id]||[]).forEach(function(h){ if(h.emp!==s.who) return; var r=runById(id); if(!r) return;
+      var li=leadShiftOf(id); var leadWho=(li>=0&&STATE.shifts[li].who)?first(STATE.shifts[li].who):'—';
+      var hasH=!(h.hours==null||h.hours==='');
+      assistLines+='<div class="assist"><span class="ab">ASSIST</span><span class="an">'+esc(r.short||r.name)+' · lead '+esc(leadWho)+'</span><span class="ah">'+(hasH?esc(h.hours)+'h':'hours TBC')+(h.veh?' · '+esc(h.veh):'')+'</span></div>';
+    }); });
     var flLines=(s.runs.filter(function(id){return excByRun[id];}).map(function(id){ var r=runById(id); return excByRun[id].map(function(e){return '<div class="flagline">⚠ <b>'+esc(r.short||r.name)+'</b>: '+esc(e.text)+'</div>';}).join(''); }).join(''));
     var cfLines=conflicts.map(function(c){return '<div class="cfline">⚠ Clash: '+esc(c)+'</div>';}).join('');
     var bins=s.runs.reduce(function(a,id){var r=runById(id);return a+(r?(r.bins||0):0);},0);
@@ -349,7 +437,7 @@ function render(){
         '<select class="vehsel" data-veh="'+si+'"><option value="">—</option>'+(FEED.vehicles||[]).map(function(v){return '<option'+(v===s.veh?' selected':'')+'>'+esc(v)+'</option>';}).join('')+'</select>'+
         '<button class="rx" data-rm="'+si+'" title="remove shift">✕</button></div>'+
       '<div class="runs">'+(rows||'<div class="job" style="color:#8a988f;font-size:12.5px">No runs — add from unassigned, or remove this shift.</div>')+'</div>'+
-      flLines+cfLines+
+      assistLines+flLines+cfLines+
       '<div class="cfoot"><span class="n">'+s.runs.length+' runs'+(bins?' · '+bins+' bins':'')+'</span><button class="btn ghost sm" data-add="'+si+'">+ run</button></div>'+
     '</div>';
   }).join('');
@@ -382,8 +470,26 @@ function act(a){var p=a.split(':');
   else if(p[0]==='mvTray'){var si2=+p[1],id2=p[2];STATE.shifts[si2].runs=STATE.shifts[si2].runs.filter(function(x){return x!==id2;});if(STATE.tray.indexOf(id2)<0)STATE.tray.push(id2);}
   else if(p[0]==='asg'){var id3=p[1],to3=+p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id3;});STATE.shifts[to3].runs.push(id3);}
   else if(p[0]==='addrun'){var si3=+p[1],id4=p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id4;});STATE.shifts[si3].runs.push(id4);}
+  else if(p[0]==='addhelp'){var hsi=+p[1],hid=p[2],emp=p.slice(3).join(':');var lead=STATE.shifts[hsi];var m=sharedMap();var list=m[hid]=m[hid]||[];
+    if(emp && emp!==(lead&&lead.who) && !list.some(function(h){return h.emp===emp;})) list.push({emp:emp,veh:(lead&&lead.veh)||'',hours:null});}
   DIRTY=true; render();
 }
+// Swap a helper to be the lead of the run, demoting the current lead to a helper. The run is never lost.
+function makeLead(id,hi){ var m=sharedMap(); var list=m[id]||[]; var h=list[hi]; if(!h) return;
+  var li=leadShiftOf(id); var oldLead=(li>=0)?STATE.shifts[li]:null;
+  if(oldLead) oldLead.runs=oldLead.runs.filter(function(x){return x!==id;});
+  var ni=-1; for(var i=0;i<STATE.shifts.length;i++){ if(STATE.shifts[i].who===h.emp){ ni=i; break; } }
+  if(ni<0){ STATE.shifts.push({veh:h.veh||'',who:h.emp,runs:[]}); ni=STATE.shifts.length-1; }
+  if(STATE.shifts[ni].runs.indexOf(id)<0) STATE.shifts[ni].runs.push(id);
+  list.splice(hi,1);
+  if(oldLead && oldLead.who && oldLead.who!==h.emp && !list.some(function(x){return x.emp===oldLead.who;})) list.push({emp:oldLead.who,veh:oldLead.veh||'',hours:null});
+  if(!list.length) delete m[id]; else m[id]=list;
+  DIRTY=true; render();
+}
+function removeHelper(id,hi){ var m=sharedMap(); var list=m[id]||[]; list.splice(hi,1); if(!list.length) delete m[id]; else m[id]=list; DIRTY=true; render(); }
+function setHelperVeh(id,hi,v){ var m=sharedMap(); if(m[id]&&m[id][hi]){ m[id][hi].veh=v||''; DIRTY=true; render(); } }
+function setHelperHours(id,hi,val){ var m=sharedMap(); if(!(m[id]&&m[id][hi])) return; val=(val==null?'':String(val)).trim();
+  var num=parseFloat(val); m[id][hi].hours=(val===''||isNaN(num)||num<=0)?null:num; DIRTY=true; render(); }
 function wire(){
   document.querySelectorAll('.who').forEach(function(sel){sel.onchange=function(){STATE.shifts[+sel.dataset.who].who=sel.value;DIRTY=true;render();};});
   document.querySelectorAll('.vehsel').forEach(function(sel){sel.onchange=function(){STATE.shifts[+sel.dataset.veh].veh=sel.value;DIRTY=true;render();};});
@@ -396,6 +502,17 @@ function wire(){
   document.querySelectorAll('[data-add]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var si=+b.dataset.add;
     if(!STATE.tray.length){openMenu(e.clientX,e.clientY,[{hd:'No unassigned runs'}]);return;}
     var items=[{hd:'Add run'}];STATE.tray.forEach(function(id){var r=runById(id);items.push({act:'addrun:'+si+':'+id,label:(r.short||r.name)});});openMenu(e.clientX,e.clientY,items);};});
+  // Share a run: add another employee as a helper (excludes the lead and anyone already helping).
+  document.querySelectorAll('[data-share]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var pr=b.dataset.share.split('|'),si=+pr[0],id=pr[1];
+    var on=peopleOnRun(id); var avail=(FEED.staff||[]).filter(function(n){return !on[n];});
+    if(!avail.length){openMenu(e.clientX,e.clientY,[{hd:'Everyone is already on this run'}]);return;}
+    var items=[{hd:'Add helper on '+((runById(id)||{}).short||'this run')}];avail.forEach(function(n){items.push({act:'addhelp:'+si+':'+id+':'+n,label:n});});
+    openMenu(e.clientX,e.clientY,items);};});
+  document.querySelectorAll('[data-hlead]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var pr=b.dataset.hlead.split('|');makeLead(pr[0],+pr[1]);};});
+  document.querySelectorAll('[data-hx]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var pr=b.dataset.hx.split('|');removeHelper(pr[0],+pr[1]);};});
+  document.querySelectorAll('[data-hv]').forEach(function(sel){sel.onchange=function(){var pr=sel.dataset.hv.split('|');setHelperVeh(pr[0],+pr[1],sel.value);};});
+  document.querySelectorAll('[data-hh]').forEach(function(inp){inp.onchange=function(){var pr=inp.dataset.hh.split('|');setHelperHours(pr[0],+pr[1],inp.value);};
+    inp.onclick=function(e){e.stopPropagation();};inp.onkeydown=function(e){if(e.key==='Enter'){inp.blur();}};});
   var ae=$('#addemp');if(ae)ae.onclick=function(){STATE.shifts.push({veh:'',who:(FEED.staff||[''])[0],runs:[]});DIRTY=true;render();};
 }
 
@@ -403,7 +520,7 @@ async function doSave(forceBase){
   if(SAVING)return;SAVING=true;$('#save').disabled=true;
   try{
     var base=(forceBase!=null)?forceBase:VERSION;
-    var r=await fetch('/api/roster/'+DATE,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({roster:STATE,baseVersion:base})});
+    var r=await fetch('/api/roster-review/'+DATE,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({roster:STATE,baseVersion:base})});
     var j=await r.json();
     if(j.ok){VERSION=j.version;DIRTY=false;CONFLICT=null;$('#saved').textContent='✓ Saved v'+VERSION;setTimeout(function(){$('#saved').textContent='';},2500);toast('Saved '+DATE);render();}
     else if(j.error==='conflict'){ CONFLICT=j.currentVersion; render(); toast('A newer version exists — your changes are kept; choose below.'); }
