@@ -112,10 +112,12 @@ label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;l
 <script>
 var FEED=null, DATE=null, DOW=null, ROT=null, STATE=null, VERSION=0, SAVING=false, DIRTY=false, CONFLICT=null;
 var SUGG={};  // runId -> {who, veh, reason, conf, src} : one-click recommendation for an unassigned run
-// LEARN_CONF holds ONLY deliberate human decisions for this day (runKey -> {who, veh}). Untouched automatic
-// allocations are never added here, so the model can't reinforce its own guesses. Seeded on load from the
-// saved plan's prior confirmations, updated as Wes accepts/assigns/moves/changes, serialised back on save.
-var LEARN_CONF={};
+// Deliberate human decisions for this day, kept as TWO INDEPENDENT memories so the two kinds of learning
+// never contaminate each other:
+//   CONF_RUN = runKey -> who   (run OWNERSHIP: who does this run — from accept/assign/move/employee-change)
+//   CONF_VEH = who   -> veh    (vehicle PREFERENCE: which truck a person drives — from vehicle changes only)
+// Untouched automatic allocations are never added to either, so the model can't reinforce its own guesses.
+var CONF_RUN={}, CONF_VEH={};
 var DEMO=/[?&]demo\b/.test(location.search||'');
 var $=function(s){return document.querySelector(s);};
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -263,7 +265,7 @@ async function boot(){
   dp.value=DATE; dp.min=dates[0]||''; dp.max=dates[dates.length-1]||'';
   dp.onchange=function(){ DATE=dp.value; loadDay(); };
   $('#save').onclick=function(){ doSave(); };
-  $('#reset').onclick=async function(){ if(DIRTY && !confirm('Clear your changes and reset to the suggested roster?\n\nAnything you have moved or reassigned will be lost.')) return; STATE=suggested(); STATE.shifts=STATE.shifts||[]; STATE.tray=STATE.tray||[]; STATE.shared=STATE.shared||{}; LEARN_CONF={}; buildSuggestions(); try{ await applyLearning(); }catch(e){} DIRTY=false; CONFLICT=null; render(); toast('Reset to the suggested roster'); };
+  $('#reset').onclick=async function(){ if(DIRTY && !confirm('Clear your changes and reset to the suggested roster?\n\nAnything you have moved or reassigned will be lost.')) return; STATE=suggested(); STATE.shifts=STATE.shifts||[]; STATE.tray=STATE.tray||[]; STATE.shared=STATE.shared||{}; CONF_RUN={}; CONF_VEH={}; buildSuggestions(); try{ await applyLearning(); }catch(e){} DIRTY=false; CONFLICT=null; render(); toast('Reset to the suggested roster'); };
   loadDay();
 }
 
@@ -347,7 +349,8 @@ async function loadDay(){
   DIRTY=false; CONFLICT=null;
   // Seed deliberate-decision memory from the saved plan's prior confirmations ONLY. A fresh (unsaved) day
   // starts with nothing confirmed, so its automatic allocations never count as evidence until Wes acts.
-  LEARN_CONF={}; (STATE.learn||[]).forEach(function(e){ if(e&&e.runKey&&e.who) LEARN_CONF[e.runKey]={who:e.who,veh:e.veh||''}; });
+  CONF_RUN={}; (STATE.learn||[]).forEach(function(e){ if(e&&e.runKey&&e.who) CONF_RUN[e.runKey]=e.who; });
+  CONF_VEH={}; (STATE.learnVeh||[]).forEach(function(e){ if(e&&e.who&&e.veh) CONF_VEH[e.who]=e.veh; });
   buildSuggestions();                 // history-based recommendations for unassigned runs
   if(!fromSaved){ try{ await applyLearning(); }catch(e){} }  // blend in what Wes has repeatedly confirmed
   await loadMowing();   // Blake's committed mowing staff/vehicles for this week (read-only)
@@ -366,25 +369,30 @@ function addDaysISO(iso,n){ var d=new Date(iso+'T00:00:00'); d.setDate(d.getDate
 // repeated becomes a stronger signal than one-off Deputy history: 3+ times ⇒ preallocate; 2 ⇒ a strong
 // suggestion. One manual change never overrides the 26-week history — only a repeated, reliable pattern does.
 async function applyLearning(){
+  // Four DISTINCT past working dates of the same weekday+rotation (fortnightly ⇒ 14/28/42/56 days ago). Each
+  // date is fetched once, and each (runKey,who) / (who,veh) is counted at most once per date — so re-saving
+  // or re-editing the SAME day never inflates the count; only the same choice on SEPARATE weeks adds up.
   var dates=[14,28,42,56].map(function(n){return addDaysISO(DATE,-n);});
   var results=await Promise.all(dates.map(function(pd){
     return fetch('/api/roster-review/'+pd,{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
   }));
-  var tally={};  // runKey -> who -> count(distinct past days)
-  results.forEach(function(j){ var learn=j&&j.roster&&j.roster.learn; if(!Array.isArray(learn))return;
-    var seen={};
-    learn.forEach(function(e){ if(!e||!e.runKey||!e.who)return; var k=e.runKey+'\u0001'+e.who; if(seen[k])return; seen[k]=1;
-      (tally[e.runKey]=tally[e.runKey]||{}); tally[e.runKey][e.who]=(tally[e.runKey][e.who]||0)+1;
-      if(e.veh){ (tally['_veh']=tally['_veh']||{})[e.runKey+'\u0001'+e.who]=e.veh; } });
+  var own={};    // runKey -> who -> #distinct dates   (run OWNERSHIP)
+  var vpref={};  // who   -> veh -> #distinct dates   (vehicle PREFERENCE, learned independently)
+  results.forEach(function(j){ if(!j||!j.roster) return; var rs=j.roster;
+    if(Array.isArray(rs.learn)){ var s1={}; rs.learn.forEach(function(e){ if(!e||!e.runKey||!e.who)return; var k=e.runKey+'\u0001'+e.who; if(s1[k])return; s1[k]=1;
+      (own[e.runKey]=own[e.runKey]||{}); own[e.runKey][e.who]=(own[e.runKey][e.who]||0)+1; }); }
+    if(Array.isArray(rs.learnVeh)){ var s2={}; rs.learnVeh.forEach(function(e){ if(!e||!e.who||!e.veh)return; var k=e.who+'\u0001'+e.veh; if(s2[k])return; s2[k]=1;
+      (vpref[e.who]=vpref[e.who]||{}); vpref[e.who][e.veh]=(vpref[e.who][e.veh]||0)+1; }); }
   });
+  function topVeh(who){ var m=vpref[who]; if(!m)return ''; return Object.keys(m).sort(function(a,b){return m[b]-m[a];})[0]; }
   var due=dueRuns();
   STATE.tray.slice().forEach(function(id){
     var r=due.find(function(x){return x.id===id;}); if(!r||!r.runKey)return;
-    var who=tally[r.runKey]; if(!who)return;
-    var best=Object.keys(who).sort(function(a,b){return who[b]-who[a];})[0]; var n=who[best];
-    var veh=(tally['_veh']||{})[r.runKey+'\u0001'+best]||'';
-    if(n>=3){ assignRunTo(id,best,veh); }                                  // reliably repeated ⇒ preallocate
-    else if(n>=2){ SUGG[id]={who:best,veh:veh,reason:'Wes rostered this '+n+'× recently',conf:'learned',src:'learned'}; }  // 2× ⇒ strong suggestion (overrides history)
+    var whoC=own[r.runKey]; if(!whoC)return;
+    var best=Object.keys(whoC).sort(function(a,b){return whoC[b]-whoC[a];})[0]; var n=whoC[best];
+    var veh=topVeh(best);                                                   // the person's own learned vehicle, if any
+    if(n>=3){ assignRunTo(id,best,veh); }                                   // same person on 3+ separate weeks ⇒ preallocate
+    else if(n>=2){ SUGG[id]={who:best,veh:veh,reason:'Wes rostered this on '+n+' separate weeks',conf:'learned',src:'learned'}; }
   });
 }
 // Assign a tray run to an employee (create their card if needed). Seats the suggested vehicle only if the
@@ -399,11 +407,14 @@ function assignRunTo(id,who,veh){
 }
 // ---- Deliberate-decision tracking (feeds learning). Called ONLY from human actions, never from the
 // automatic template or learning-preallocation, so untouched auto allocations are never recorded. ----
-function confirmRun(id){ var r=runById(id); if(!r||!r.runKey) return; var li=leadShiftOf(id);
-  if(li<0||!STATE.shifts[li].who){ delete LEARN_CONF[r.runKey]; return; }      // deliberately unassigned
-  LEARN_CONF[r.runKey]={who:STATE.shifts[li].who, veh:STATE.shifts[li].veh||''}; }
-function unconfirmRun(id){ var r=runById(id); if(r&&r.runKey) delete LEARN_CONF[r.runKey]; }
-function confirmCard(si){ var s=STATE.shifts[si]; if(!s) return; (s.runs||[]).forEach(function(id){ confirmRun(id); }); }
+// Run OWNERSHIP only (who does this run). Does NOT record any vehicle — that is learned separately.
+function confirmRunOwner(id){ var r=runById(id); if(!r||!r.runKey) return; var li=leadShiftOf(id);
+  if(li<0||!STATE.shifts[li].who){ delete CONF_RUN[r.runKey]; return; }        // deliberately unassigned
+  CONF_RUN[r.runKey]=STATE.shifts[li].who; }
+function unconfirmRunOwner(id){ var r=runById(id); if(r&&r.runKey) delete CONF_RUN[r.runKey]; }
+function confirmCardOwner(si){ var s=STATE.shifts[si]; if(!s) return; (s.runs||[]).forEach(function(id){ confirmRunOwner(id); }); }
+// Vehicle PREFERENCE only (which truck this person drives). Does NOT touch run ownership.
+function confirmVehPref(who,veh){ if(who&&veh) CONF_VEH[who]=veh; }
 // Reconcile a SAVED plan with the latest due runs: keep allocations, drop gone runs, send new work to Unassigned.
 function reconcile(){
   STATE.shifts=STATE.shifts||[]; STATE.tray=STATE.tray||[];
@@ -557,15 +568,15 @@ function openMenu(x,y,items){closeMenu();MENU=document.createElement('div');MENU
 document.addEventListener('click',function(e){if(MENU&&!MENU.contains(e.target)&&!/rmv|data-mv|data-asg/.test(e.target.className+' '+(e.target.getAttribute&&(e.target.getAttribute('data-mv')||e.target.getAttribute('data-asg'))||'')))closeMenu();});
 
 function act(a){var p=a.split(':');
-  if(p[0]==='acc'){var accid=p.slice(1).join(':');var sg=SUGG[accid];if(sg&&sg.who){assignRunTo(accid,sg.who,sg.veh);confirmRun(accid);toast('Assigned to '+first(sg.who));}DIRTY=true;render();return;}
-  if(p[0]==='mvShift'){var si=+p[1],id=p[2],to=+p[3];var s=STATE.shifts[si];s.runs=s.runs.filter(function(x){return x!==id;});STATE.shifts[to].runs.push(id);confirmRun(id);}
-  else if(p[0]==='mvTray'){var si2=+p[1],id2=p[2];STATE.shifts[si2].runs=STATE.shifts[si2].runs.filter(function(x){return x!==id2;});if(STATE.tray.indexOf(id2)<0)STATE.tray.push(id2);unconfirmRun(id2);}
-  else if(p[0]==='asg'){var id3=p[1],to3=+p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id3;});STATE.shifts[to3].runs.push(id3);confirmRun(id3);}
-  else if(p[0]==='addrun'){var si3=+p[1],id4=p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id4;});STATE.shifts[si3].runs.push(id4);confirmRun(id4);}
+  if(p[0]==='acc'){var accid=p.slice(1).join(':');var sg=SUGG[accid];if(sg&&sg.who){assignRunTo(accid,sg.who,sg.veh);confirmRunOwner(accid);toast('Assigned to '+first(sg.who));}DIRTY=true;render();return;}
+  if(p[0]==='mvShift'){var si=+p[1],id=p[2],to=+p[3];var s=STATE.shifts[si];s.runs=s.runs.filter(function(x){return x!==id;});STATE.shifts[to].runs.push(id);confirmRunOwner(id);}
+  else if(p[0]==='mvTray'){var si2=+p[1],id2=p[2];STATE.shifts[si2].runs=STATE.shifts[si2].runs.filter(function(x){return x!==id2;});if(STATE.tray.indexOf(id2)<0)STATE.tray.push(id2);unconfirmRunOwner(id2);}
+  else if(p[0]==='asg'){var id3=p[1],to3=+p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id3;});STATE.shifts[to3].runs.push(id3);confirmRunOwner(id3);}
+  else if(p[0]==='addrun'){var si3=+p[1],id4=p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id4;});STATE.shifts[si3].runs.push(id4);confirmRunOwner(id4);}
   else if(p[0]==='asgNew'){var anid=p[1],awho=p.slice(2).join(':');STATE.tray=STATE.tray.filter(function(x){return x!==anid;});
-    var ex=STATE.shifts.findIndex(function(s){return s.who===awho;}); if(ex>=0){STATE.shifts[ex].runs.push(anid);} else {STATE.shifts.push({veh:'',who:awho,runs:[anid]});} confirmRun(anid);}
+    var ex=STATE.shifts.findIndex(function(s){return s.who===awho;}); if(ex>=0){STATE.shifts[ex].runs.push(anid);} else {STATE.shifts.push({veh:'',who:awho,runs:[anid]});} confirmRunOwner(anid);}
   else if(p[0]==='mvNew'){var mnsi=+p[1],mnid=p[2],mnwho=p.slice(3).join(':');STATE.shifts[mnsi].runs=STATE.shifts[mnsi].runs.filter(function(x){return x!==mnid;});
-    var mex=STATE.shifts.findIndex(function(s){return s.who===mnwho;}); if(mex>=0){STATE.shifts[mex].runs.push(mnid);} else {STATE.shifts.push({veh:'',who:mnwho,runs:[mnid]});} confirmRun(mnid);}
+    var mex=STATE.shifts.findIndex(function(s){return s.who===mnwho;}); if(mex>=0){STATE.shifts[mex].runs.push(mnid);} else {STATE.shifts.push({veh:'',who:mnwho,runs:[mnid]});} confirmRunOwner(mnid);}
   else if(p[0]==='addhelp'){var hsi=+p[1],hid=p[2],emp=p.slice(3).join(':');var lead=STATE.shifts[hsi];var m=sharedMap();var list=m[hid]=m[hid]||[];
     if(emp && emp!==(lead&&lead.who) && !list.some(function(h){return h.emp===emp;})){
       var lv=(lead&&lead.veh)||'';
@@ -587,21 +598,23 @@ function makeLead(id,hi){ var m=sharedMap(); var list=m[id]||[]; var h=list[hi];
   list.splice(hi,1);
   if(oldLead && oldLead.who && oldLead.who!==h.emp && !list.some(function(x){return x.emp===oldLead.who;})) list.push({emp:oldLead.who,veh:oldLead.veh||'',hours:null});
   if(!list.length) delete m[id]; else m[id]=list;
-  confirmRun(id);   // Wes deliberately changed who leads this run
+  confirmRunOwner(id);   // Wes deliberately changed who leads this run
   DIRTY=true; render();
 }
 function removeHelper(id,hi){ var m=sharedMap(); var list=m[id]||[]; list.splice(hi,1); if(!list.length) delete m[id]; else m[id]=list; DIRTY=true; render(); }
 function setHelperVeh(id,hi,v){ var m=sharedMap(); if(!(m[id]&&m[id][hi])) return; var h=m[id][hi];
   if(v && !vehHasRoom(v,h.emp)){ toast(v+' already has 2 people — max 2 per vehicle. Pick another vehicle for '+first(h.emp)+'.'); render(); return; }
-  h.veh=v||''; DIRTY=true; render(); }
+  h.veh=v||''; confirmVehPref(h.emp,v); DIRTY=true; render(); }
 function setHelperHours(id,hi,val){ var m=sharedMap(); if(!(m[id]&&m[id][hi])) return; val=(val==null?'':String(val)).trim();
   var num=parseFloat(val); m[id][hi].hours=(val===''||isNaN(num)||num<=0)?null:num; DIRTY=true; render(); }
 function wire(){
-  document.querySelectorAll('.who').forEach(function(sel){sel.onchange=function(){var i=+sel.dataset.who;STATE.shifts[i].who=sel.value;confirmCard(i);DIRTY=true;render();};});
+  // Changing the EMPLOYEE confirms who owns that card's runs (ownership), independent of any vehicle.
+  document.querySelectorAll('.who').forEach(function(sel){sel.onchange=function(){var i=+sel.dataset.who;STATE.shifts[i].who=sel.value;confirmCardOwner(i);DIRTY=true;render();};});
+  // Changing the VEHICLE teaches only this person's vehicle preference — it does NOT confirm run ownership.
   document.querySelectorAll('.vehsel').forEach(function(sel){sel.onchange=function(){var i=+sel.dataset.veh,v=sel.value,who=STATE.shifts[i].who;
     if(v && !vehHasRoom(v,who)){ toast(v+' already has 2 people — max 2 per vehicle. Pick another vehicle.'); render(); return; }
-    STATE.shifts[i].veh=v;confirmCard(i);DIRTY=true;render();};});
-  document.querySelectorAll('.rx').forEach(function(b){b.onclick=function(){var si=+b.dataset.rm;STATE.shifts[si].runs.forEach(function(id){unconfirmRun(id);if(STATE.tray.indexOf(id)<0)STATE.tray.push(id);});STATE.shifts.splice(si,1);DIRTY=true;render();};});
+    STATE.shifts[i].veh=v;confirmVehPref(who,v);DIRTY=true;render();};});
+  document.querySelectorAll('.rx').forEach(function(b){b.onclick=function(){var si=+b.dataset.rm;STATE.shifts[si].runs.forEach(function(id){unconfirmRunOwner(id);if(STATE.tray.indexOf(id)<0)STATE.tray.push(id);});STATE.shifts.splice(si,1);DIRTY=true;render();};});
   document.querySelectorAll('[data-mv]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var pr=b.dataset.mv.split('|'),si=+pr[0],id=pr[1];
     var items=[{hd:'Move run to…'}];STATE.shifts.forEach(function(s,i){if(i!==si)items.push({act:'mvShift:'+si+':'+id+':'+i,label:first(s.who)+(s.veh?' ('+s.veh+')':'')});});items.push({act:'mvTray:'+si+':'+id,label:'↓ Unassigned'});
     var had={}; STATE.shifts.forEach(function(s){if(s.who)had[s.who]=1;}); var fresh=(FEED.staff||[]).filter(function(n){return !had[n];});
@@ -633,11 +646,13 @@ function wire(){
 
 // Serialise ONLY the deliberate human decisions. Automatic allocations Wes left untouched are NOT here, so
 // saving a day you only glanced at adds no new "evidence" — the model learns from real choices, not itself.
-function buildLearn(){ return Object.keys(LEARN_CONF).map(function(k){ return {runKey:k, who:LEARN_CONF[k].who, veh:LEARN_CONF[k].veh||''}; }); }
+function buildLearn(){ return Object.keys(CONF_RUN).map(function(k){ return {runKey:k, who:CONF_RUN[k]}; }); }
+function buildLearnVeh(){ return Object.keys(CONF_VEH).map(function(w){ return {who:w, veh:CONF_VEH[w]}; }); }
 async function doSave(forceBase){
   if(SAVING)return;SAVING=true;$('#save').disabled=true;
   try{
-    STATE.learn=buildLearn();   // embed confirmations for the learning loop
+    STATE.learn=buildLearn();        // run-ownership confirmations
+    STATE.learnVeh=buildLearnVeh();  // vehicle-preference confirmations (independent)
     var base=(forceBase!=null)?forceBase:VERSION;
     var r=await fetch('/api/roster-review/'+DATE,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({roster:STATE,baseVersion:base})});
     var j=await r.json();
