@@ -739,18 +739,25 @@ function crewConflicts(d,sc){
 function rebalanceSuggestion(d,sc){
   if(VEH().length<2)return null;
   const base=VEH().map(v=>assessVeh(d,v,sc));
-  // Only suggest shifting a job to the other truck when a day runs OVER the 10h/person allowance.
-  // An 8–10h day is a normal full day — no rebalance nag.
-  if(!base.some(a=>a.overAllow))return null;
-  const baseOt=Math.max.apply(null,base.map(a=>a.ot||0));
-  let best=null;
+  // Score a day for the rebalancer: total driving + how balanced the two trucks finish + a big weight on
+  // keeping everyone within the 10h allowance. Lower is better. This looks for a genuinely more efficient
+  // day (less driving, better balance, better use of staff) whether or not anyone is near 10h — the 10h
+  // threshold controls WARNINGS, not whether we can suggest improvements.
+  const score=arr=>{ let drive=0,over=0; const fins=[]; arr.forEach(a=>{ drive+=(a.driveMin||0); if(a.overAllow)over++; if(a.finishMin!=null&&a.order.length)fins.push(a.finishMin); });
+    const spread=fins.length>1?(Math.max.apply(null,fins)-Math.min.apply(null,fins)):0;   // finish-time gap between trucks (balance)
+    return over*1e5 + drive + spread*0.4; };
+  const baseScore=score(base), baseDrive=base.reduce((s,a)=>s+(a.driveMin||0),0), baseOt=Math.max.apply(null,base.map(a=>a.ot||0).concat([0]));
+  let best=null, bestScore=baseScore-6;   // require a meaningful gain, not a 1–2 min shuffle
   VEH().forEach(v=>{ const other=VEH().find(x=>x!==v); const jobs=jobsForVeh(d,v,sc);
     jobs.forEach(j=>{ if(j.geo===false)return;
       const sc2=JSON.parse(JSON.stringify(sc)); sc2.alloc=sc2.alloc||{}; sc2.alloc[allocKey(j)]=other; if(sc2.order){VEH().forEach(x=>delete sc2.order[x]);}
       const r=VEH().map(x=>assessVeh(d,x,sc2));
-      if(r.some(a=>a.flags.apptViol.length||a.flags.impossible.length||a.flags.specShort.length))return;
-      const ot=Math.max.apply(null,r.map(a=>a.ot||0));
-      if(ot<baseOt-5&&(!best||ot<best.ot)) best={job:j,from:v,to:other,ot,saved:baseOt-ot};
+      // Never CREATE a problem: appointment clash, impossible timing, specialist/driver gap, over-seat.
+      // (Existing conflicts are still flagged elsewhere — this only governs what moves we propose.)
+      if(r.some(a=>a.flags.apptViol.length||a.flags.impossible.length||a.flags.specShort.length||a.flags.driverGap.length||a.flags.overSeat))return;
+      const s=score(r);
+      if(s<bestScore){ bestScore=s; const cDrive=r.reduce((m,a)=>m+(a.driveMin||0),0), cOt=Math.max.apply(null,r.map(a=>a.ot||0).concat([0]));
+        best={job:j,from:v,to:other,score:s,easedOver:r.filter(a=>a.overAllow).length<base.filter(a=>a.overAllow).length,savedDrive:Math.max(0,Math.round(baseDrive-cDrive)),saved:Math.max(0,Math.round(baseOt-cOt))}; }
     });
   });
   return best;
@@ -1244,7 +1251,7 @@ function suggestPlan(){
   const bFin=Math.max.apply(null,before.vehs.filter(a=>a.finishMin!=null).map(a=>a.finishMin).concat([0]));
   const aFin=Math.max.apply(null,after.vehs.filter(a=>a.finishMin!=null).map(a=>a.finishMin).concat([0]));
   let msg='I found a tidier plan:\n\n';
-  if(reb)msg+='• Move '+reb.job.address+' from '+reb.from+' to '+reb.to+' (saves ~'+fmtDur(reb.saved)+' overtime)\n';
+  if(reb){ const why = reb.easedOver ? 'keeps everyone within the 10h allowance' : reb.savedDrive>0 ? 'saves ~'+fmtDur(reb.savedDrive)+' driving' : 'better balances the two trucks'; msg+='• Move '+reb.job.address+' from '+reb.from+' to '+reb.to+' ('+why+')\n'; }
   msg+='• Re-order stops for less driving\n\nLatest finish: '+(bFin?fmtClock(bFin):'—')+' → '+(aFin?fmtClock(aFin):'—')+'\n\nApply this suggestion?';
   confirmDlg('✨ Suggested plan',msg,'Apply',()=>{scenario=sc2;render();toast('Applied — Save to keep it');},'Keep mine',()=>{});
 }
