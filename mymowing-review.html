@@ -373,11 +373,23 @@ let DEPUTY_STAFF=[
   {id:466,name:'Ryan',aliases:['Ryan Hobbs'],active:true},
   {id:494,name:'Hugh',aliases:['Hugh Sellar','Hughie'],active:true}
 ];
-// Pull the auto-refreshed Deputy directory (published read-only by the directory job). If it isn't
-// available yet, we keep the built-in snapshot — we NEVER fall back to free-text names.
-async function loadDeputy(){ if(DEMO)return; try{ const r=await fetch(PLANS_API+'/api/employees',{credentials:'include'}); const j=await r.json();
-  if(j&&j.ok!==false&&Array.isArray(j.employees)&&j.employees.length){ DEPUTY_STAFF=j.employees.filter(e=>e&&e.id!=null&&e.name).map(e=>({id:e.id,name:e.name,aliases:e.aliases||[],active:e.active!==false})); DEPUTY_SRC='live'; }
-}catch(e){ /* keep the snapshot */ } }
+// Pull the auto-refreshed Deputy directory (published read-only by the directory job). On success we
+// cache it (names + ids only) so that if Deputy/the feed is briefly unavailable we keep the LAST GOOD
+// full directory rather than dropping back to the tiny built-in core list. We NEVER fall back to
+// free-text names. The built-in core list is only ever used if no live pull has succeeded yet.
+let DEPUTY_UPDATED=null;         // ISO time the loaded directory was generated (shown in Manage staff)
+const DEPUTY_CACHE_KEY='deputyDir2';
+function _applyDeputy(list){ DEPUTY_STAFF=list.filter(e=>e&&e.id!=null&&e.name).map(e=>({id:e.id,name:e.name,aliases:e.aliases||[],active:e.active!==false})); }
+async function loadDeputy(){ if(DEMO)return;
+  // start from any cached good directory so an offline session still has the full list
+  try{ const c=JSON.parse(localStorage.getItem(DEPUTY_CACHE_KEY)||'null'); if(c&&Array.isArray(c.employees)&&c.employees.length){ _applyDeputy(c.employees); DEPUTY_SRC='cached'; DEPUTY_UPDATED=c.generatedAt||null; } }catch(e){}
+  try{ const r=await fetch(PLANS_API+'/api/employees',{credentials:'include'}); const j=await r.json();
+    if(j&&j.ok!==false&&Array.isArray(j.employees)&&j.employees.length){
+      _applyDeputy(j.employees); DEPUTY_SRC='live'; DEPUTY_UPDATED=j.generatedAt||new Date().toISOString();
+      try{ localStorage.setItem(DEPUTY_CACHE_KEY,JSON.stringify({generatedAt:DEPUTY_UPDATED,employees:DEPUTY_STAFF})); }catch(e){}
+    }
+  }catch(e){ /* keep cached or built-in snapshot */ } }
+function fmtDirUpdated(iso){ try{ return new Date(iso).toLocaleString('en-AU',{timeZone:'Australia/Sydney',day:'numeric',month:'short',hour:'numeric',minute:'2-digit',hour12:true}); }catch(e){ return iso; } }
 function deputyById(id){ return DEPUTY_STAFF.find(e=>e.id===id)||null; }
 function deputyFind(nm){ nm=(nm||'').toLowerCase().trim(); return DEPUTY_STAFF.find(e=> e.name.toLowerCase()===nm || (e.aliases||[]).some(a=>a.toLowerCase()===nm) )||null; }
 // Attach Deputy IDs to any saved staff that don't have one yet — reconcile, never delete.
@@ -977,7 +989,11 @@ function openStaffManager(){
   const picker = add.length
     ? '<select id=deputyPick style="flex:1;padding:7px;border:1px solid #ccc;border-radius:6px;font:inherit">'+add.map(e=>'<option value="'+e.id+'">'+esc(e.name)+(e.aliases&&e.aliases.length?' ('+esc(e.aliases[0])+')':'')+'</option>').join('')+'</select><button class=btn id=addStaffBtn style="flex:none;padding:7px 14px">Add</button>'
     : '<div class="small muted">Everyone from the Deputy directory is already on the list.</div>';
-  $('dlgB').innerHTML='<div class="small muted" style="margin-bottom:6px">Staff come from our <b>Deputy directory</b> (shared with myBins) '+(DEPUTY_SRC==='live'?'— auto-updated from Deputy':'— using the built-in list; auto-updates once the directory sync runs')+'. Pick who works and set their skills — Specialist, Driver (utes), 🚛 Bertha (authorised to drive the tip truck). Changes are shared and saved for everyone.</div>'+
+  const srcLine = DEPUTY_SRC==='live' ? '— auto-updated from Deputy'
+                : DEPUTY_SRC==='cached' ? '— last retrieved copy (Deputy not reachable right now)'
+                : '— using the built-in core list; the full directory loads once the daily sync has run';
+  const upd = DEPUTY_UPDATED ? ' <span class="small muted">· directory updated '+fmtDirUpdated(DEPUTY_UPDATED)+'</span>' : '';
+  $('dlgB').innerHTML='<div class="small muted" style="margin-bottom:6px">Staff come from our <b>Deputy directory</b> (shared with myBins) '+srcLine+'.'+upd+' Pick who works and set their skills — Specialist, Driver (utes), 🚛 Bertha (authorised to drive the tip truck). Changes are shared and saved for everyone.</div>'+
     '<div id=staffRows>'+staffRowsHTML()+'</div>'+
     '<div style="display:flex;gap:6px;margin-top:10px;align-items:center"><span class="small muted" style="flex:none">Add from Deputy:</span>'+picker+'</div>';
   const Y=$('dlgYes'),N=$('dlgNo'); Y.hidden=true; N.textContent='Done'; N.onclick=()=>{$('dlg').close();}; $('dlg').showModal();
