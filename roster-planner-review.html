@@ -461,10 +461,8 @@ function render(){
     '</div>';
   }).join('');
   $('#cards').innerHTML=html;
-  // add-employee button at end of cards grid
-  if(FEED.template&&FEED.template[tmplKey()]){
-    $('#cards').insertAdjacentHTML('beforeend','<div class="card" style="display:flex;align-items:center;justify-content:center;border-style:dashed"><button class="btn ghost" id="addemp">+ add employee</button></div>');
-  }
+  // add-employee button at end of cards grid — ALWAYS available (even with no learned roster / zero shifts)
+  $('#cards').insertAdjacentHTML('beforeend','<div class="card" style="display:flex;align-items:center;justify-content:center;border-style:dashed"><button class="btn ghost" id="addemp">+ add employee</button></div>');
   wire();
 }
 function trayHtml(due,runCount){
@@ -489,6 +487,10 @@ function act(a){var p=a.split(':');
   else if(p[0]==='mvTray'){var si2=+p[1],id2=p[2];STATE.shifts[si2].runs=STATE.shifts[si2].runs.filter(function(x){return x!==id2;});if(STATE.tray.indexOf(id2)<0)STATE.tray.push(id2);}
   else if(p[0]==='asg'){var id3=p[1],to3=+p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id3;});STATE.shifts[to3].runs.push(id3);}
   else if(p[0]==='addrun'){var si3=+p[1],id4=p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id4;});STATE.shifts[si3].runs.push(id4);}
+  else if(p[0]==='asgNew'){var anid=p[1],awho=p.slice(2).join(':');STATE.tray=STATE.tray.filter(function(x){return x!==anid;});
+    var ex=STATE.shifts.findIndex(function(s){return s.who===awho;}); if(ex>=0){STATE.shifts[ex].runs.push(anid);} else {STATE.shifts.push({veh:'',who:awho,runs:[anid]});}}
+  else if(p[0]==='mvNew'){var mnsi=+p[1],mnid=p[2],mnwho=p.slice(3).join(':');STATE.shifts[mnsi].runs=STATE.shifts[mnsi].runs.filter(function(x){return x!==mnid;});
+    var mex=STATE.shifts.findIndex(function(s){return s.who===mnwho;}); if(mex>=0){STATE.shifts[mex].runs.push(mnid);} else {STATE.shifts.push({veh:'',who:mnwho,runs:[mnid]});}}
   else if(p[0]==='addhelp'){var hsi=+p[1],hid=p[2],emp=p.slice(3).join(':');var lead=STATE.shifts[hsi];var m=sharedMap();var list=m[hid]=m[hid]||[];
     if(emp && emp!==(lead&&lead.who) && !list.some(function(h){return h.emp===emp;})){
       var lv=(lead&&lead.veh)||'';
@@ -526,9 +528,15 @@ function wire(){
   document.querySelectorAll('.rx').forEach(function(b){b.onclick=function(){var si=+b.dataset.rm;STATE.shifts[si].runs.forEach(function(id){if(STATE.tray.indexOf(id)<0)STATE.tray.push(id);});STATE.shifts.splice(si,1);DIRTY=true;render();};});
   document.querySelectorAll('[data-mv]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var pr=b.dataset.mv.split('|'),si=+pr[0],id=pr[1];
     var items=[{hd:'Move run to…'}];STATE.shifts.forEach(function(s,i){if(i!==si)items.push({act:'mvShift:'+si+':'+id+':'+i,label:first(s.who)+(s.veh?' ('+s.veh+')':'')});});items.push({act:'mvTray:'+si+':'+id,label:'↓ Unassigned'});
+    var had={}; STATE.shifts.forEach(function(s){if(s.who)had[s.who]=1;}); var fresh=(FEED.staff||[]).filter(function(n){return !had[n];});
+    if(fresh.length){ items.push({hd:'New card for…'}); fresh.forEach(function(n){items.push({act:'mvNew:'+si+':'+id+':'+n,label:'＋ '+n});}); }
     openMenu(e.clientX,e.clientY,items);};});
   document.querySelectorAll('[data-asg]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var id=b.dataset.asg;
-    var items=[{hd:'Assign to…'}];STATE.shifts.forEach(function(s,i){items.push({act:'asg:'+id+':'+i,label:first(s.who)+(s.veh?' ('+s.veh+')':'')});});openMenu(e.clientX,e.clientY,items);};});
+    var items=[{hd:'Assign to…'}];STATE.shifts.forEach(function(s,i){items.push({act:'asg:'+id+':'+i,label:first(s.who)+(s.veh?' ('+s.veh+')':'')});});
+    // Always let Wes assign straight to an employee even with no cards yet — picking one creates their card.
+    var had={}; STATE.shifts.forEach(function(s){if(s.who)had[s.who]=1;}); var fresh=(FEED.staff||[]).filter(function(n){return !had[n];});
+    if(fresh.length){ items.push({hd:STATE.shifts.length?'New card for…':'Assign to employee'}); fresh.forEach(function(n){items.push({act:'asgNew:'+id+':'+n,label:'＋ '+n});}); }
+    openMenu(e.clientX,e.clientY,items);};});
   document.querySelectorAll('[data-add]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var si=+b.dataset.add;
     if(!STATE.tray.length){openMenu(e.clientX,e.clientY,[{hd:'No unassigned runs'}]);return;}
     var items=[{hd:'Add run'}];STATE.tray.forEach(function(id){var r=runById(id);items.push({act:'addrun:'+si+':'+id,label:(r.short||r.name)});});openMenu(e.clientX,e.clientY,items);};});
