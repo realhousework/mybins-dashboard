@@ -814,11 +814,18 @@ function simulate(d,v,sc,ordered){
   let st='g',reasons=[];
   if(!crew.length){st='r';reasons.push('No crew on this truck — it can’t run its '+r1(res.onSiteH)+'h of work.');}
   if(res.flags.overSeat){st='r';reasons.push('Too many people on '+v+' — '+conc+' at once but only '+seats+' seats.');}
-  if(res.flags.impossible.length){st='r';reasons.push(res.flags.impossible.length+' job(s) have nobody there to do them.');}
+  if(res.flags.impossible.length){ st='r'; const crewNm=crew.map(c=>c.emp).join(' & ')||'nobody';
+    res.flags.impossible.forEach(j=>{ const stp=res.stops.find(s=>s.job===j); const at=stp?stp.serviceStart:null; const ap=normAppt(j.appt); const where=esc(String(j.address||'this job').split(',')[0]);
+      let why;
+      if(ap&&ap.type==='hard'&&ap.start!=null&&ap.start>crewEnd+1) why='its '+apptLabel(ap)+' appointment is after '+crewNm+' finish'+(crew.length?' at '+fmtClock(crewEnd):'');
+      else if(!crew.length) why='no one is on '+v;
+      else why='the run only reaches it '+(at!=null?'~'+fmtClock(at):'late')+', after '+crewNm+' finish at '+fmtClock(crewEnd);
+      reasons.push('Can’t fit <b>'+where+'</b> on '+v+' — '+why+'.'); }); }
   if(needSpecDay&&!haveSpec){st='r';reasons.push('Hedge/garden work here, but no specialist (Blake or Julen) on this truck.');}
   if(res.flags.specShort.length&&haveSpec){st='r';reasons.push(res.flags.specShort.length+' specialist job(s) happen after the specialist has left.');}
   if(res.flags.apptViol.length){st='r';res.flags.apptViol.forEach(x=>reasons.push('Can’t reach '+esc(x.job.address)+' by its '+apptLabel(x.appt)+' time (~'+fmtDur(x.by)+' late).'));}
-  if(res.flags.driverGap.length){st='r';reasons.push('A crew change leaves the truck with no driver.');}
+  if(res.flags.driverGap.length){ st='r'; const nonDrivers=crew.filter(c=>!c.driver).map(c=>c.emp); const who=nonDrivers.length?nonDrivers.join(' & '):'the only crew on board';
+    reasons.push('On '+v+', '+res.flags.driverGap.length+' job(s) are reached while '+who+' '+(nonDrivers.length>1?'aren’t':'isn’t')+' a licensed driver — put someone who can drive '+v+' on with them, or adjust their hours so a driver is always on board.'); }
   if(res.flags.unroutable.length){ if(st==='g')st='a'; reasons.push(res.flags.unroutable.length+' job(s) have no map location — driving can’t be worked out for them.'); }
   else if(!res.driveComplete){ if(st==='g')st='a'; reasons.push('A road leg is missing, so the finish time is only a rough guess.'); }
   // Over the 10-hour planning allowance (per person) → a gentle amber review note, not a block and not
@@ -1302,7 +1309,7 @@ function renderEmployees(date,day){
   const assess={}; day.vehs.forEach(a=>assess[a.v]=a);
   const AV=activeVEH(date);
   const vehSel=(emp,cur)=>'<div class=seg>'+AV.map(vv=>'<button class="'+vehClass(vv)+' '+(cur===vv?'on '+vehClass(vv):'')+'" data-crew="'+esc(emp)+'" data-v="'+esc(vv)+'" title="'+(vv===BB?'Big Bertha':vv)+'">'+(vv===BB?'🚛 Bertha':vv)+'</button>').join('')+'<button class="no '+(cur==='none'?'on no':'')+'" data-crew="'+esc(emp)+'" data-v=none title="Keep on the day but no vehicle yet">No vehicle</button></div>';
-  let h='<div class=sechead><span>👷 Team — one card per person</span><button class=linkbtn id=mgStaff>Manage staff</button></div>';
+  let h='<div class=sechead><span>👷 Team — one card per person</span></div>';
   const names=staffNames();
   const ordered=STAFF_ORDER.filter(n=>names.includes(n)).concat(names.filter(n=>!STAFF_ORDER.includes(n)));
   const working=ordered.filter(e=>crewVehOf(scenario,e)!=='off');
@@ -1357,13 +1364,17 @@ function renderEmployees(date,day){
     h+='</div>';
   });
   h+='</div></div>';
+  // "Not on the day" roster — Manage staff lives here, right where people are added/removed from the day.
+  h+='<div class=benchhd style="display:flex;align-items:center;justify-content:space-between"><span>Not on the day'+(bench.length?' ('+bench.length+')':'')+'</span><button class=linkbtn id=mgStaff>Manage staff</button></div>';
   if(bench.length){
-    h+='<div class=benchhd>Not on the day</div><div class="card" style="padding:10px 14px">';
+    h+='<div class="card" style="padding:10px 14px">';
     bench.forEach(emp=>{ const spec=isSpec(emp);
       h+='<div class=crewrow><div class="ava off '+(spec?'spec':'')+'">'+ini(emp)+'</div><div class=cname>'+esc(emp)+(spec?' <span class=t>specialist</span>':'')+'</div>'+
         '<div class=seg>'+AV.map(vv=>'<button class="'+vehClass(vv)+'" data-crew="'+esc(emp)+'" data-v="'+esc(vv)+'">'+(vv===BB?'🚛 Bertha':vv)+'</button>').join('')+'</div></div>';
     });
     h+='</div>';
+  } else {
+    h+='<div class="small muted" style="padding:2px 2px 4px">Everyone on the roster is on the day. Use <b>Manage staff</b> to add someone from the directory or change roles.</div>';
   }
   if(addVehList(date).length){ h+='<div class="small muted" style="margin-top:10px">Need another vehicle? '+addVehList(date).map(function(v){return '<button class=linkbtn data-addveh="'+esc(v)+'" style="margin-left:4px">+ '+(v===BB?'🚛 Big Bertha':v)+'</button>';}).join(' ')+'</div>'; }
   $('vehs').innerHTML=h;
@@ -1565,7 +1576,7 @@ function copyWA(){
 
 /* =================== UI helpers =================== */
 let _toastT; function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show'),2300);}
-function showDlg(h,b){$('dlgH').textContent=h;$('dlgB').textContent=b;$('dlgYes').hidden=true;$('dlgNo').textContent='Close';$('dlg').showModal();}
+function showDlg(h,b){$('dlgH').textContent=h;const B=$('dlgB');B.textContent=b;B.style.whiteSpace='pre-wrap';const Y=$('dlgYes'),N=$('dlgNo');Y.hidden=true;N.textContent='Close';N.onclick=()=>$('dlg').close();$('dlg').showModal();}
 // Share a job to another vehicle: pick a crewed vehicle; the job's work splits across the vehicles (counted
 // once overall) and each vehicle drives to the address with its own route.
 function openShareMenu(key){
@@ -1646,18 +1657,30 @@ document.addEventListener('click',e=>{
   const rp=e.target.closest('[data-rmprop]'); if(rp){removeProposed(rp.dataset.rmprop);return;}
   const ov=e.target.closest('[data-optveh]'); if(ov){
     const v=ov.dataset.optveh;
-    const before=assessVeh(curDay,v,scenario);
-    const beforeKeys=effectiveOrder(curDay,v,scenario).map(jobKey);
+    const shortA=j=>String(j.address||'(stop)').split(',')[0];
+    // Baseline = the CURRENT (possibly hand-arranged) order. We genuinely re-optimise and compare by real
+    // driving (and the feasibility score), not by whether the key sequence happens to differ.
+    const curOrder=effectiveOrder(curDay,v,scenario);
+    const before=simulate(curDay,v,scenario,curOrder);
     const o=optimiseOrder(curDay,v,scenario);
-    const newKeys=o.order.map(jobKey);
-    const est=!before.driveComplete || !o.sim.driveComplete || !!(dayMeta[curDay]||{}).estimated;
-    if(JSON.stringify(beforeKeys)===JSON.stringify(newKeys)){ showDlg('🧭 '+v+' — already optimal','The stops are already in the most efficient practical order'+(est?' (based on estimated driving — live road times aren’t available for this day)':'')+'. Driving ≈ '+fmtDur(before.driveMin||0)+', finish ≈ '+(before.finishMin!=null?fmtClock(before.finishMin):'—')+'.'); return; }
-    scenario.order=scenario.order||{}; scenario.order[v]=newKeys; render();
-    const bD=before.driveMin||0, aD=o.sim.driveMin||0, saved=bD-aD;
+    const after=o.sim;
+    const est=!before.driveComplete || !after.driveComplete || !!(dayMeta[curDay]||{}).estimated;
+    const bD=before.driveMin||0, aD=after.driveMin||0;
+    const betterDrive = aD < bD-0.5;
+    const betterScore = scoreOf(after) < scoreOf(before)-1;   // fixes an appt/driver problem even if drive is equal
+    const orderList=arr=>arr.map((j,i)=>(i+1)+'. '+shortA(j)).join('  →  ');
+    if(!betterDrive && !betterScore){
+      showDlg('🧭 '+v+' — already optimal',
+        'I checked other orderings and this one is already the shortest practical drive'+(est?' (estimated from distances)':'')+'.\n\n'+
+        'Stops:\n'+orderList(curOrder)+'\n\nDriving ≈ '+fmtDur(bD)+' · finish ≈ '+(before.finishMin!=null?fmtClock(before.finishMin):'—')+'.');
+      return;
+    }
+    scenario.order=scenario.order||{}; scenario.order[v]=o.order.map(jobKey); render();
     let msg='Re-ordered the stops for the shortest practical drive, keeping any fixed appointment times.\n\n';
-    msg+='Driving:  '+fmtDur(bD)+'  →  '+fmtDur(aD)+(saved>0?'   (saves ~'+fmtDur(saved)+')':(saved<0?'':''))+'\n';
-    if(before.finishMin!=null&&o.sim.finishMin!=null) msg+='Finish:   '+fmtClock(before.finishMin)+'  →  '+fmtClock(o.sim.finishMin)+'\n';
-    if(est) msg+='\nNote: driving times are estimated from distances — live road data isn’t available for this day.';
+    msg+='BEFORE:\n'+orderList(curOrder)+'\n\nAFTER:\n'+orderList(o.order)+'\n\n';
+    msg+='Driving:  '+fmtDur(bD)+'  →  '+fmtDur(aD)+(bD-aD>0?'   (saves ~'+fmtDur(bD-aD)+')':'')+'\n';
+    if(before.finishMin!=null&&after.finishMin!=null) msg+='Finish:   '+fmtClock(before.finishMin)+'  →  '+fmtClock(after.finishMin);
+    if(est) msg+='\n\nNote: driving times are estimated from distances — live road data isn’t available for this day.';
     showDlg('🧭 '+v+' — route optimised',msg);
     return;
   }
