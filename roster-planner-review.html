@@ -56,6 +56,12 @@ label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;l
 .unassigned{background:#fff8ec;border:1px solid #f0e2c4;border-radius:12px;padding:13px 15px;margin-top:14px}
 .unassigned h3{margin:0 0 4px;font-size:14px;color:#7a5e12}
 .unassigned .job{border-top-color:#f0e2c4}
+.sgline{display:flex;align-items:center;gap:8px;margin:-2px 0 6px 6px;padding-left:8px;border-left:2px solid #d9c38a}
+.sg{font-size:12px;color:#5f5330}
+.sg-hist{color:#5f5330}
+.sg-learn{color:#1d6b3a;font-weight:600}
+.sgacc{background:#1d6b3a;color:#fff;border:none;padding:2px 10px;border-radius:6px;font-size:12px;cursor:pointer}
+.sgacc:hover{background:#16562e}
 .menu{position:fixed;z-index:60;background:#fff;border:1px solid #e3eae5;border-radius:10px;padding:5px;box-shadow:0 12px 34px rgba(0,0,0,.14);min-width:180px;max-height:320px;overflow:auto}
 .menu div{padding:8px 11px;border-radius:7px;cursor:pointer;font-size:13.5px}
 .menu div:hover{background:#e7f4ec;color:#1a5a34}
@@ -105,6 +111,7 @@ label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;l
 </div>
 <script>
 var FEED=null, DATE=null, DOW=null, ROT=null, STATE=null, VERSION=0, SAVING=false, DIRTY=false, CONFLICT=null;
+var SUGG={};  // runId -> {who, veh, reason, conf, src} : one-click recommendation for an unassigned run
 var DEMO=/[?&]demo\b/.test(location.search||'');
 var $=function(s){return document.querySelector(s);};
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -252,7 +259,7 @@ async function boot(){
   dp.value=DATE; dp.min=dates[0]||''; dp.max=dates[dates.length-1]||'';
   dp.onchange=function(){ DATE=dp.value; loadDay(); };
   $('#save').onclick=function(){ doSave(); };
-  $('#reset').onclick=function(){ if(DIRTY && !confirm('Clear your changes and reset to the suggested roster?\n\nAnything you have moved or reassigned will be lost.')) return; STATE=suggested(); DIRTY=false; CONFLICT=null; render(); toast('Reset to the suggested roster'); };
+  $('#reset').onclick=async function(){ if(DIRTY && !confirm('Clear your changes and reset to the suggested roster?\n\nAnything you have moved or reassigned will be lost.')) return; STATE=suggested(); STATE.shifts=STATE.shifts||[]; STATE.tray=STATE.tray||[]; STATE.shared=STATE.shared||{}; buildSuggestions(); try{ await applyLearning(); }catch(e){} DIRTY=false; CONFLICT=null; render(); toast('Reset to the suggested roster'); };
   loadDay();
 }
 
@@ -334,8 +341,54 @@ async function loadDay(){
   migrateShared();   // upgrade any legacy double-assigned runs into lead+helper, prune orphans
   STATE._fromSaved=fromSaved;
   DIRTY=false; CONFLICT=null;
+  buildSuggestions();                 // history-based recommendations for unassigned runs
+  if(!fromSaved){ try{ await applyLearning(); }catch(e){} }  // blend in what Wes has repeatedly confirmed
   await loadMowing();   // Blake's committed mowing staff/vehicles for this week (read-only)
   render();
+}
+// Build the per-run recommendation map from the feed's history-derived suggestions. These are hints for
+// runs the model is reasonably — but not certainly — sure about; they stay in Unassigned until Wes accepts.
+function buildSuggestions(){ SUGG={};
+  var t=FEED.template&&FEED.template[tmplKey()]; var list=(t&&t.suggestions)||[];
+  list.forEach(function(s){ if(s&&s.runId&&s.who) SUGG[s.runId]={who:s.who,veh:s.veh||'',reason:s.reason||'',conf:s.conf||'medium',src:'history'}; });
+}
+function addDaysISO(iso,n){ var d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// LEARN FROM WES: look back at the same weekday+rotation (fortnightly ⇒ 14/28/42/56 days ago). For each
+// saved plan, read its embedded run→employee confirmations (STATE.learn). A (run, person) pairing Wes has
+// repeated becomes a stronger signal than one-off Deputy history: 3+ times ⇒ preallocate; 2 ⇒ a strong
+// suggestion. One manual change never overrides the 26-week history — only a repeated, reliable pattern does.
+async function applyLearning(){
+  var dates=[14,28,42,56].map(function(n){return addDaysISO(DATE,-n);});
+  var results=await Promise.all(dates.map(function(pd){
+    return fetch('/api/roster-review/'+pd,{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  }));
+  var tally={};  // runKey -> who -> count(distinct past days)
+  results.forEach(function(j){ var learn=j&&j.roster&&j.roster.learn; if(!Array.isArray(learn))return;
+    var seen={};
+    learn.forEach(function(e){ if(!e||!e.runKey||!e.who)return; var k=e.runKey+'\u0001'+e.who; if(seen[k])return; seen[k]=1;
+      (tally[e.runKey]=tally[e.runKey]||{}); tally[e.runKey][e.who]=(tally[e.runKey][e.who]||0)+1;
+      if(e.veh){ (tally['_veh']=tally['_veh']||{})[e.runKey+'\u0001'+e.who]=e.veh; } });
+  });
+  var due=dueRuns();
+  STATE.tray.slice().forEach(function(id){
+    var r=due.find(function(x){return x.id===id;}); if(!r||!r.runKey)return;
+    var who=tally[r.runKey]; if(!who)return;
+    var best=Object.keys(who).sort(function(a,b){return who[b]-who[a];})[0]; var n=who[best];
+    var veh=(tally['_veh']||{})[r.runKey+'\u0001'+best]||'';
+    if(n>=3){ assignRunTo(id,best,veh); }                                  // reliably repeated ⇒ preallocate
+    else if(n>=2){ SUGG[id]={who:best,veh:veh,reason:'Wes rostered this '+n+'× recently',conf:'learned',src:'learned'}; }  // 2× ⇒ strong suggestion (overrides history)
+  });
+}
+// Assign a tray run to an employee (create their card if needed). Seats the suggested vehicle only if the
+// new card has none and the vehicle still has room. Used by learning-preallocation and one-click Accept.
+function assignRunTo(id,who,veh){
+  STATE.tray=STATE.tray.filter(function(x){return x!==id;});
+  var ix=STATE.shifts.findIndex(function(s){return s.who===who;});
+  if(ix<0){ STATE.shifts.push({veh:(veh&&vehHasRoom(veh,who))?veh:'',who:who,runs:[id]}); }
+  else { if(STATE.shifts[ix].runs.indexOf(id)<0) STATE.shifts[ix].runs.push(id);
+         if(!STATE.shifts[ix].veh && veh && vehHasRoom(veh,who)) STATE.shifts[ix].veh=veh; }
+  delete SUGG[id];
 }
 // Reconcile a SAVED plan with the latest due runs: keep allocations, drop gone runs, send new work to Unassigned.
 function reconcile(){
@@ -379,7 +432,8 @@ function render(){
   // top summary
   var assigned=0; STATE.shifts.forEach(function(s){assigned+=s.runs.length;});
   var nShared=Object.keys(sharedMap()).filter(function(id){return (sharedMap()[id]||[]).length;}).length;
-  $('#summary').innerHTML='<span><b>'+STATE.shifts.length+'</b> shifts</span><span><b>'+due.length+'</b> runs due</span><span><b>'+STATE.tray.length+'</b> unassigned</span>'+(nShared?'<span><b>'+nShared+'</b> shared run'+(nShared>1?'s':'')+'</span>':'')+(VERSION?'<span>saved v'+VERSION+'</span>':'<span>not yet saved</span>');
+  var nSugg=STATE.tray.filter(function(id){return SUGG[id]&&SUGG[id].who;}).length;
+  $('#summary').innerHTML='<span><b>'+STATE.shifts.length+'</b> shifts</span><span><b>'+due.length+'</b> runs due</span><span><b>'+assigned+'</b> allocated</span>'+(nSugg?'<span><b>'+nSugg+'</b> suggested</span>':'')+'<span><b>'+(STATE.tray.length-nSugg)+'</b> unassigned</span>'+(nShared?'<span><b>'+nShared+'</b> shared run'+(nShared>1?'s':'')+'</span>':'')+(VERSION?'<span>saved v'+VERSION+'</span>':'<span>not yet saved</span>');
 
   // exceptions banner (real data only)
   var pw=pwToday(); var eb='';
@@ -468,9 +522,15 @@ function render(){
 function trayHtml(due,runCount){
   if(!STATE.tray.length) return '<div class="unassigned"><h3>Unassigned runs</h3><div style="color:#8a7a4a;font-size:12.5px">Everything due today is assigned. Runs you remove from a shift appear here.</div></div>';
   var rows=STATE.tray.map(function(id){ var r=runById(id); if(!r) return '';
-    return '<div class="job"><span class="rt rt-'+r.type+'">'+r.type+'</span><span class="rn">'+esc(r.short||r.name)+'</span>'+(r.bins?'<span class="rb">'+r.bins+'</span>':'')+'<button class="rmv" data-asg="'+id+'">assign ▸</button></div>';
+    var sg=SUGG[id]; var chip='';
+    if(sg&&sg.who){ var cls=(sg.conf==='learned')?'sg-learn':'sg-hist';
+      chip='<div class="sgline"><span class="sg '+cls+'">likely '+esc(first(sg.who))+(sg.veh?' · '+esc(sg.veh):'')+(sg.reason?' — '+esc(sg.reason):'')+'</span>'+
+           '<button class="btn sm sgacc" data-acc="'+id+'">Accept</button></div>'; }
+    return '<div class="job"><span class="rt rt-'+r.type+'">'+r.type+'</span><span class="rn">'+esc(r.short||r.name)+'</span>'+(r.bins?'<span class="rb">'+r.bins+'</span>':'')+'<button class="rmv" data-asg="'+id+'">assign ▸</button></div>'+chip;
   }).join('');
-  return '<div class="unassigned"><h3>Unassigned runs <span style="font-weight:600;color:#8a7a4a;font-size:12px">· due in Zenkit but not in the usual roster</span></h3>'+rows+'</div>';
+  var nSg=STATE.tray.filter(function(id){return SUGG[id]&&SUGG[id].who;}).length;
+  var hint=nSg?('<div style="color:#6b6350;font-size:12px;margin:2px 0 8px">'+nSg+' of these have a suggested employee from past rostering — tap <b>Accept</b> to use it, or assign anyone yourself.</div>'):'';
+  return '<div class="unassigned"><h3>Unassigned runs <span style="font-weight:600;color:#8a7a4a;font-size:12px">· due in Zenkit but not in the usual roster</span></h3>'+hint+rows+'</div>';
 }
 
 var MENU=null;
@@ -483,6 +543,7 @@ function openMenu(x,y,items){closeMenu();MENU=document.createElement('div');MENU
 document.addEventListener('click',function(e){if(MENU&&!MENU.contains(e.target)&&!/rmv|data-mv|data-asg/.test(e.target.className+' '+(e.target.getAttribute&&(e.target.getAttribute('data-mv')||e.target.getAttribute('data-asg'))||'')))closeMenu();});
 
 function act(a){var p=a.split(':');
+  if(p[0]==='acc'){var accid=p.slice(1).join(':');var sg=SUGG[accid];if(sg&&sg.who){assignRunTo(accid,sg.who,sg.veh);toast('Assigned to '+first(sg.who));}DIRTY=true;render();return;}
   if(p[0]==='mvShift'){var si=+p[1],id=p[2],to=+p[3];var s=STATE.shifts[si];s.runs=s.runs.filter(function(x){return x!==id;});STATE.shifts[to].runs.push(id);}
   else if(p[0]==='mvTray'){var si2=+p[1],id2=p[2];STATE.shifts[si2].runs=STATE.shifts[si2].runs.filter(function(x){return x!==id2;});if(STATE.tray.indexOf(id2)<0)STATE.tray.push(id2);}
   else if(p[0]==='asg'){var id3=p[1],to3=+p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id3;});STATE.shifts[to3].runs.push(id3);}
@@ -531,6 +592,7 @@ function wire(){
     var had={}; STATE.shifts.forEach(function(s){if(s.who)had[s.who]=1;}); var fresh=(FEED.staff||[]).filter(function(n){return !had[n];});
     if(fresh.length){ items.push({hd:'New card for…'}); fresh.forEach(function(n){items.push({act:'mvNew:'+si+':'+id+':'+n,label:'＋ '+n});}); }
     openMenu(e.clientX,e.clientY,items);};});
+  document.querySelectorAll('[data-acc]').forEach(function(b){b.onclick=function(e){e.stopPropagation();act('acc:'+b.dataset.acc);};});
   document.querySelectorAll('[data-asg]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var id=b.dataset.asg;
     var items=[{hd:'Assign to…'}];STATE.shifts.forEach(function(s,i){items.push({act:'asg:'+id+':'+i,label:first(s.who)+(s.veh?' ('+s.veh+')':'')});});
     // Always let Wes assign straight to an employee even with no cards yet — picking one creates their card.
@@ -554,9 +616,15 @@ function wire(){
   var ae=$('#addemp');if(ae)ae.onclick=function(){STATE.shifts.push({veh:'',who:(FEED.staff||[''])[0],runs:[]});DIRTY=true;render();};
 }
 
+// Record each confirmed run→employee (with vehicle) so future same-weekday plans can learn Wes's real
+// choices. This is the ONLY place learning data is written, and only from a roster Wes actively saves.
+function buildLearn(){ var out=[]; (STATE.shifts||[]).forEach(function(s){ if(!s.who)return;
+  (s.runs||[]).forEach(function(id){ var r=runById(id); if(r&&r.runKey) out.push({runKey:r.runKey,who:s.who,veh:s.veh||''}); }); });
+  return out; }
 async function doSave(forceBase){
   if(SAVING)return;SAVING=true;$('#save').disabled=true;
   try{
+    STATE.learn=buildLearn();   // embed confirmations for the learning loop
     var base=(forceBase!=null)?forceBase:VERSION;
     var r=await fetch('/api/roster-review/'+DATE,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({roster:STATE,baseVersion:base})});
     var j=await r.json();
