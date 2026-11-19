@@ -139,6 +139,7 @@ dialog .df{padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;bord
   </div>
   <div class=weekhint id=weekHint></div>
   <button class="btn blue ghost" id=openFind style="width:100%;margin-bottom:4px">🔍 Find space for a new job</button>
+  <button class="btn ghost" id=openActivity style="width:100%;margin-bottom:4px">🗒️ Activity log — who changed what</button>
   <div class=weekgrid id=weekgrid></div>
   <button class=linkbtn id=reportWeek style="margin:10px 0 0">🐞 Report a problem</button>
   <div class=small muted style="margin-top:8px" id=weekfoot></div>
@@ -208,6 +209,7 @@ let DATA=null, curDay=null, scenario=null;
 let MOWING=null, PROJ=null, DEMO=false, LOADERR=false, LOADERR_MSG='';
 let dayMeta={}, planVersion=0, planSavedSig=null, planManifest=null, hoursOpen={};
 let VIEW='week', weekAnchor=null;
+let BASELINE_PLAN=null; // the plan as last loaded/saved for the open day — diffed against on save for the Activity Log
 let PROPOSED={}, pendingAlloc=null, findInput={skill:'Basic',freq:0,days:[],time:'any'};
 
 /* =================== PORTED ENGINE =================== */
@@ -215,7 +217,10 @@ const VEH=()=>(DATA.config&&DATA.config.vehicles)||['HOPPER','MOE'];
 const MAXH=()=>(DATA.config&&DATA.config.maxHours)||10;
 const BREAKM=()=>((DATA.config&&DATA.config.breakMins)||30);
 const BREAK=()=>BREAKM()/60;
-const SEATS=v=>{const s=DATA.config&&DATA.config.seats;return (s&&s[v])||(DATA.config&&DATA.config.maxCrew)||3;};
+// Strict rule: a maximum of TWO people per vehicle at once, for every vehicle (HOPPER, MOE, ALPHA,
+// DELTA, Big Bertha). Two sharing a vehicle are one crew; a third is never allowed.
+const MAX_PER_VEH=2;
+const SEATS=v=>MAX_PER_VEH;
 const parseHM=s=>{const m=/(\d{1,2}):(\d{2})/.exec(s||'');return m?(+m[1])*60+(+m[2]):null;};
 const CFGSTART=()=>parseHM((DATA.config&&DATA.config.startTime)||'07:00')||420;
 function fmtClock(mins){let h=Math.floor(mins/60),m=Math.round(mins%60);if(m===60){h++;m=0;}const ap=(h%24)>=12?'pm':'am';let hh=(h%24)%12;if(hh===0)hh=12;return hh+':'+String(m).padStart(2,'0')+ap;}
@@ -275,12 +280,34 @@ function bbRelevant(d){ return tipReqJobs(d).length>0 || vehCrew(BB)>0 || vehJob
 let EXTRAVEH={}; // curDay -> [optional vehicles Blake manually added this session]
 const EMPTY_TRAY=['ALPHA','DELTA']; // empty-tray utes, shared across myMowing/myBins
 function isOptVeh(v){ return v===BB || EMPTY_TRAY.indexOf(v)>=0; }
+// The FULL vehicle universe for the UI: the base mowing trucks (HOPPER/MOE from config) PLUS the
+// optional vehicles — Big Bertha (tip truck) and the ALPHA/DELTA empty-tray utes (shared with myBins).
+// Auto-rostering / rebalancing / Find still use VEH() (base trucks only) so an empty-tray ute or the
+// tip truck is never auto-rostered as a mowing crew; the UI (crew, cards, Add Vehicle) uses ALLVEH().
+const OPT_VEH=[BB].concat(EMPTY_TRAY);
+function ALLVEH(){ const out=VEH().slice(); OPT_VEH.forEach(v=>{ if(out.indexOf(v)<0)out.push(v); }); return out; }
+// --- Big Bertha driver eligibility ---------------------------------------------------------------
+// Only authorised drivers may DRIVE the tip truck. Others can be on the Bertha crew as helpers, but a
+// non-authorised person can never be selected as the driver. Eligibility is configurable per person
+// (staff record .bbDriver); until set, the default authorised drivers are Blake and Wes.
+const DEFAULT_BB_DRIVERS=['Blake','Wes'];
+function canDriveBB(emp){ const s=staffRec(emp); if(s&&typeof s.bbDriver==='boolean') return s.bbDriver; return DEFAULT_BB_DRIVERS.indexOf(emp)>=0; }
+// Crew currently on Big Bertha in a scenario, and which of them are authorised to drive it.
+function bbCrew(sc){ return ((sc&&sc.helpers&&sc.helpers[BB])||[]).map(h=>h.emp); }
+function bbAuthCrew(sc){ return bbCrew(sc).filter(canDriveBB); }
+// The selected driver, only valid if still on the crew AND authorised; else none.
+function bbDriverOf(sc){ const d=sc&&sc.bbDriver; return (d && bbAuthCrew(sc).indexOf(d)>=0)?d:null; }
 function vehInUse(d,v){ return vehCrew(v)>0 || vehJobs(d,v)>0 || (v===BB && tipReqJobs(d).length>0); }
 // crew/assign controls: base trucks always, plus optional vehicles in use or manually added.
-function activeVEH(d){ const added=EXTRAVEH[d]||[]; return VEH().filter(v=> !isOptVeh(v) || vehInUse(d,v) || added.indexOf(v)>=0 ); }
-// vehicle CARDS: only vehicles with crew or jobs (empty cards hidden).
-function cardVEH(d){ return VEH().filter(v=> vehInUse(d,v) ); }
-function addVehList(d){ return VEH().filter(v=> activeVEH(d).indexOf(v)<0 ); }
+function activeVEH(d){ const added=EXTRAVEH[d]||[]; return ALLVEH().filter(v=> !isOptVeh(v) || vehInUse(d,v) || added.indexOf(v)>=0 ); }
+// vehicle CARDS: only vehicles with crew or jobs (empty cards hidden) — applies to every vehicle.
+function cardVEH(d){ return ALLVEH().filter(v=> vehInUse(d,v) ); }
+// Vehicles ACTIVE in a GIVEN scenario: the base trucks always, plus any optional vehicle (ALPHA/DELTA/
+// Big Bertha) that Blake has actually put crew or jobs on in THIS plan. Never pulls in an unused vehicle.
+// Used by Suggest-a-better-plan so it optimises around exactly the vehicles in play, no more, no fewer.
+function activeVEHsc(d,sc){ return ALLVEH().filter(v=> !isOptVeh(v) || ((sc&&sc.helpers&&sc.helpers[v])||[]).length>0 || jobsForVeh(d,v,sc).length>0 ); }
+// Add Vehicle offers any available vehicle not already active (i.e. the optional utes/tip truck not yet in use).
+function addVehList(d){ return ALLVEH().filter(v=> activeVEH(d).indexOf(v)<0 ); }
 function addVehicle(v){ EXTRAVEH[curDay]=EXTRAVEH[curDay]||[]; if(EXTRAVEH[curDay].indexOf(v)<0)EXTRAVEH[curDay].push(v); render(); }
 function vehClass(v){ return v==='HOPPER'?'H':v==='MOE'?'M':'B'; }
 async function loadTip(){ if(DEMO)return; try{ const r=await Store.get(TIPREQ_KEY); if(r&&r.plan&&r.plan._tipreq)TIPREQ=r.plan._tipreq; TIPREQ_VER=(r&&r.version)||0; }catch(e){} }
@@ -332,11 +359,50 @@ function seedStaff(){
   Object.keys(known).forEach(n=>{ if(!out.some(s=>s.name===n)) out.push({name:n,specialist:!!known[n].specialist,driver:known[n].driver!==false,active:true,start:'07:00',end:'15:30'}); });
   return out;
 }
+/* ============ DEPUTY EMPLOYEE DIRECTORY (snapshot — read-only) ============
+   Everyone added to myMowing must come from our real Deputy directory, by unique Deputy ID. This
+   snapshot covers the ACTIVE workforce of BOTH businesses (we share staff with myBins), refreshed by
+   the read-only roster probe. Deputy's short/nicknames are listed as aliases so an existing saved name
+   reconciles to the right ID (e.g. Donald = Jacob 464; Hugh Sellar 494 and Julen 504 are different
+   people). No free-text names are ever created. */
+let DEPUTY_SRC='snapshot'; // 'live' once the auto-refreshed Deputy directory loads; else this built-in list
+// The PUBLISHED app shell is public, so it embeds only the core myMowing team (first names already in the
+// live planner). The COMPLETE directory — including shared myBins staff by full name — loads only through
+// the authenticated /api/employees endpoint, so no extra personnel are exposed on the public page.
+let DEPUTY_STAFF=[
+  {id:502,name:'Blake',aliases:[],active:true},
+  {id:504,name:'Julen',aliases:[],active:true},
+  {id:443,name:'Wes',aliases:['Wesley Mullette','Wesley'],active:true},
+  {id:498,name:'Ben',aliases:['Ben Copley'],active:true},
+  {id:466,name:'Ryan',aliases:['Ryan Hobbs'],active:true},
+  {id:494,name:'Hugh',aliases:['Hugh Sellar','Hughie'],active:true}
+];
+// Pull the auto-refreshed Deputy directory (published read-only by the directory job). On success we
+// cache it (names + ids only) so that if Deputy/the feed is briefly unavailable we keep the LAST GOOD
+// full directory rather than dropping back to the tiny built-in core list. We NEVER fall back to
+// free-text names. The built-in core list is only ever used if no live pull has succeeded yet.
+let DEPUTY_UPDATED=null;         // ISO time the loaded directory was generated (shown in Manage staff)
+const DEPUTY_CACHE_KEY='deputyDir2';
+function _applyDeputy(list){ DEPUTY_STAFF=list.filter(e=>e&&e.id!=null&&e.name).map(e=>({id:e.id,name:e.name,aliases:e.aliases||[],active:e.active!==false})); }
+async function loadDeputy(){ if(DEMO)return;
+  // start from any cached good directory so an offline session still has the full list
+  try{ const c=JSON.parse(localStorage.getItem(DEPUTY_CACHE_KEY)||'null'); if(c&&Array.isArray(c.employees)&&c.employees.length){ _applyDeputy(c.employees); DEPUTY_SRC='cached'; DEPUTY_UPDATED=c.generatedAt||null; } }catch(e){}
+  try{ const r=await fetch(PLANS_API+'/api/employees',{credentials:'include'}); const j=await r.json();
+    if(j&&j.ok!==false&&Array.isArray(j.employees)&&j.employees.length){
+      _applyDeputy(j.employees); DEPUTY_SRC='live'; DEPUTY_UPDATED=j.generatedAt||new Date().toISOString();
+      try{ localStorage.setItem(DEPUTY_CACHE_KEY,JSON.stringify({generatedAt:DEPUTY_UPDATED,employees:DEPUTY_STAFF})); }catch(e){}
+    }
+  }catch(e){ /* keep cached or built-in snapshot */ } }
+function fmtDirUpdated(iso){ try{ return new Date(iso).toLocaleString('en-AU',{timeZone:'Australia/Sydney',day:'numeric',month:'short',hour:'numeric',minute:'2-digit',hour12:true}); }catch(e){ return iso; } }
+function deputyById(id){ return DEPUTY_STAFF.find(e=>e.id===id)||null; }
+function deputyFind(nm){ nm=(nm||'').toLowerCase().trim(); return DEPUTY_STAFF.find(e=> e.name.toLowerCase()===nm || (e.aliases||[]).some(a=>a.toLowerCase()===nm) )||null; }
+// Attach Deputy IDs to any saved staff that don't have one yet — reconcile, never delete.
+function reconcileStaffIds(){ (STAFF||[]).forEach(s=>{ if(s.id==null){ const d=deputyFind(s.name); if(d){ s.id=d.id; } } }); }
 function staffRec(name){ return STAFF.find(s=>s.name===name)||null; }
 function staffNames(){ return STAFF.filter(s=>s.active!==false).map(s=>s.name); }
 function isSpec(e){ const s=staffRec(e); return s?!!s.specialist:!!(MOWING.staff&&MOWING.staff[e]&&MOWING.staff[e].specialist); }
 function isDriver(e){ const s=staffRec(e); return s?s.driver!==false:!(MOWING.staff&&MOWING.staff[e]&&MOWING.staff[e].driver===false); }
-async function loadStaff(){ if(DEMO){STAFF=seedStaff();return;} try{ const r=await Store.get(STAFF_KEY); if(r&&r.plan&&Array.isArray(r.plan.staff)&&r.plan.staff.length){STAFF=r.plan.staff;} else {STAFF=seedStaff();} STAFF_VER=(r&&r.version)||0; }catch(e){STAFF=seedStaff();} }
+async function loadStaff(){ if(DEMO){STAFF=seedStaff();reconcileStaffIds();return;} try{ const r=await Store.get(STAFF_KEY); if(r&&r.plan&&Array.isArray(r.plan.staff)&&r.plan.staff.length){STAFF=r.plan.staff;} else {STAFF=seedStaff();} STAFF_VER=(r&&r.version)||0; }catch(e){STAFF=seedStaff();} reconcileStaffIds(); }
 async function saveStaff(){ REQ_CACHE={}; try{ let r=await Store.put(STAFF_KEY,{staff:STAFF},STAFF_VER); if(r&&r.ok===false&&r.error==='conflict'){await loadStaff();r=await Store.put(STAFF_KEY,{staff:STAFF},STAFF_VER);} if(r&&r.version)STAFF_VER=r.version; }catch(e){} }
 
 /* ============ REQUIRED STAFFING FROM WORKLOAD ============
@@ -386,7 +452,7 @@ function bbRequirement(d){
   const seats=SEATS(BB)||3, pool=staffNames();
   let last=null;
   for(let k=1;k<=Math.min(seats,pool.length||1);k++){
-    const sc={alloc:{},helpers:{}}; VEH().forEach(v=>sc.helpers[v]=[]);
+    const sc={alloc:{},helpers:{}}; ALLVEH().forEach(v=>sc.helpers[v]=[]);
     tips.forEach(j=>{ sc.alloc[allocKey(j)]=BB; });
     pool.slice(0,k).forEach(n=>{ const s=staffRec(n); sc.helpers[BB].push({emp:n,start:(s&&s.start)||'07:00',end:(s&&s.end)||'15:30',part:false}); });
     const r=assessVeh(d,BB,sc);
@@ -423,12 +489,14 @@ function requiredStaffing(d){
   // Big Bertha (tip truck): only adds to the day's requirement when there are tip-truck jobs.
   const bb=bbRequirement(d);
   if(bb){ out.bigBertha=bb; out.employees+=bb.staff; out.trucks+=1; out.estHours=Math.max(out.estHours,bb.estHours); out.feasible=out.feasible&&bb.feasible; out.jobs+=tipReqJobs(d).length; }
+  // A workload that even the suggested crew can't fit inside the 10-hour allowance → flag for review (gently).
+  out.overAllowance = out.estHours > MAXH()+1e-6;
   REQ_CACHE[d]=out; return out;
 }
 // How many people has Blake actually assigned in a given saved/working scenario?
-function assignedCount(sc){ let n=0; VEH().forEach(v=>{ n+=((sc&&sc.helpers&&sc.helpers[v])||[]).length; }); return n; }
-function assignedTrucks(sc){ return VEH().filter(v=>((sc&&sc.helpers&&sc.helpers[v])||[]).length>0).length; }
-function assignedSpecs(sc){ const names=new Set(); VEH().forEach(v=>((sc&&sc.helpers&&sc.helpers[v])||[]).forEach(h=>{if(isSpec(h.emp))names.add(h.emp);})); return names.size; }
+function assignedCount(sc){ let n=0; ALLVEH().forEach(v=>{ n+=((sc&&sc.helpers&&sc.helpers[v])||[]).length; }); return n; }
+function assignedTrucks(sc){ return ALLVEH().filter(v=>((sc&&sc.helpers&&sc.helpers[v])||[]).length>0).length; }
+function assignedSpecs(sc){ const names=new Set(); ALLVEH().forEach(v=>((sc&&sc.helpers&&sc.helpers[v])||[]).forEach(h=>{if(isSpec(h.emp))names.add(h.emp);})); return names.size; }
 // Deputy-free: the roster is whatever Blake has built in the app (scenario.helpers). No Deputy reads.
 function availOn(d){return {};}
 function rosterOn(d){return [];}            // no external roster — staffing is entirely in-app
@@ -463,7 +531,7 @@ function rotLabel(d){const w=Math.round((mondayOf(d)-ROT_ANCHOR_MON)/(7*86400000
 /* scenario: { alloc:{allocKey->veh}, helpers:{veh->[{emp,start,end,part}]}, order:{veh->[jobKey]} } */
 function defaultScenario(d){
   const sc={alloc:{},helpers:{},order:{},status:'draft'};
-  VEH().forEach(v=>{sc.helpers[v]=[];});
+  ALLVEH().forEach(v=>{sc.helpers[v]=[];});
   return sc; // NOTHING allocated and NOBODY rostered — Blake builds the crew and allocates the jobs
 }
 function regionVehMap(d,sc){ // for the Auto-allocate SUGGESTION only — mowing trucks only (never Big Bertha)
@@ -477,13 +545,15 @@ function regionVehMap(d,sc){ // for the Auto-allocate SUGGESTION only — mowing
   return map;
 }
 function vehOfJob(sc,j){ return (sc.alloc&&sc.alloc[allocKey(j)])||null; }   // null = Unallocated
-function crewVehOf(sc,emp){for(const v of VEH()){if(((sc.helpers&&sc.helpers[v])||[]).some(h=>h.emp===emp))return v;}return 'off';}
-function crewEntry(sc,emp){for(const v of VEH()){const e=((sc.helpers&&sc.helpers[v])||[]).find(h=>h.emp===emp);if(e)return e;}return null;}
+function crewVehOf(sc,emp){for(const v of ALLVEH()){if(((sc.helpers&&sc.helpers[v])||[]).some(h=>h.emp===emp))return v;}return 'off';}
+function crewEntry(sc,emp){for(const v of ALLVEH()){const e=((sc.helpers&&sc.helpers[v])||[]).find(h=>h.emp===emp);if(e)return e;}return null;}
 function pad2(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
 function fullHours(d,emp){const s=staffRec(emp);return{start:(s&&s.start)||'07:00',end:(s&&s.end)||'15:30'};}
 function setCrewVeh(emp,v){
+  // Enforce the strict maximum of two people per vehicle.
+  if(v!=='off'){ const crew=((scenario.helpers&&scenario.helpers[v])||[]).filter(h=>h.emp!==emp); const distinct=[...new Set(crew.map(h=>h.emp))]; if(distinct.length>=MAX_PER_VEH){ toast('Only '+MAX_PER_VEH+' people per vehicle — '+(v===BB?'Big Bertha':v)+' already has '+distinct.join(' & ')+'.'); return; } }
   const ent=crewEntry(scenario,emp);
-  VEH().forEach(x=>{if(scenario.helpers[x])scenario.helpers[x]=scenario.helpers[x].filter(h=>h.emp!==emp);});
+  ALLVEH().forEach(x=>{if(scenario.helpers[x])scenario.helpers[x]=scenario.helpers[x].filter(h=>h.emp!==emp);});
   if(v==='off')return;
   let e;
   if(ent){e={emp,start:ent.start,end:ent.end,part:ent.part};}
@@ -538,7 +608,7 @@ function simulate(d,v,sc,ordered){
   const crew=crewIntervals(d,v,sc);
   const res={v,crew,crewNames:crew.map(c=>c.emp),stops:[],order:ordered.slice(),
     flags:{apptViol:[],specShort:[],transport:[],driverGap:[],unroutable:[],outside:[],impossible:[],overSeat:false,missingGeo:false},status:'g',reasons:[]};
-  if(!ordered.length){res.status=crew.length?'g':'n';res.startMin=null;res.finishMin=null;res.driveMin=0;res.driveH=0;res.onSiteH=0;res.win={endMin:CFGSTART()+MAXH()*60};res.ot=0;res.buffer=0;res.k=crew.length;
+  if(!ordered.length){res.status=crew.length?'g':'n';res.startMin=null;res.finishMin=null;res.driveMin=0;res.driveH=0;res.onSiteH=0;res.win={endMin:CFGSTART()+MAXH()*60};res.ot=0;res.buffer=0;res.k=crew.length;res.empHours=[];res.maxEmpHours=0;res.overAllow=false;
     if(crew.length){const conc=maxConcurrent(crew),seats=SEATS(v);if(conc>seats){res.flags.overSeat=true;res.status='r';res.reasons.push('Too many people on '+v+' — '+conc+' at once but only '+seats+' seats.');}}
     return res;}
   const routable=ordered.filter(j=>jobIdx(d,j.id)>0);
@@ -579,6 +649,12 @@ function simulate(d,v,sc,ordered){
   res.onSiteClockH=onSiteClock/60; res.onSiteH=onSitePerson/60; res.k=crew.length;
   res.ot=Math.max(0,Math.round(res.finishMin-crewEnd));
   res.buffer=Math.max(0,Math.round(crewEnd-res.finishMin));
+  // Per-employee hours: each person's OWN working span, so a part-day helper only counts their window,
+  // not the whole truck's day. A full-day person is counted to when the truck actually finishes.
+  // Our crews comfortably work up to 10h; over that we flag (gently, amber) for review — never block.
+  res.empHours=crew.map(c=>{ const end=c.part?c.end:Math.max(c.start,res.finishMin); return {emp:c.emp,h:Math.max(0,(end-c.start)/60)}; });
+  res.maxEmpHours=res.empHours.length?Math.max.apply(null,res.empHours.map(e=>e.h)):0;
+  res.overAllow=res.maxEmpHours>MAXH()+1e-6;
   if(legMissing||unroutable.length)res.flags.missingGeo=true;
   crew.forEach(c=>{ if(!c.custom)return;
     if(c.end<res.finishMin-1&&c.end>crewStart+1){ res.flags.transport.push({emp:c.emp,kind:'leaves',at:c.end}); }
@@ -601,8 +677,9 @@ function simulate(d,v,sc,ordered){
   if(res.flags.driverGap.length){st='r';reasons.push('A crew change leaves the truck with no driver.');}
   if(res.flags.unroutable.length){ if(st==='g')st='a'; reasons.push(res.flags.unroutable.length+' job(s) have no map location — driving can’t be worked out for them.'); }
   else if(!res.driveComplete){ if(st==='g')st='a'; reasons.push('A road leg is missing, so the finish time is only a rough guess.'); }
-  if(res.ot>0){ if(st!=='r'){st='r';} reasons.push('Runs to '+fmtClock(res.finishMin)+' — '+fmtDur(res.ot)+' past the crew’s '+fmtClock(crewEnd)+' finish'+(res.fitsInSeats===false?'. Even a full cab can’t finish — move some jobs to the other truck.':(minNeed&&res.k&&minNeed>res.k?'. Needs '+minNeed+' people (has '+res.k+').':'.'))); }
-  else if(res.buffer<30&&res.driveComplete&&st==='g'){ st='a'; reasons.push('Tight — finishes '+fmtClock(res.finishMin)+', only '+fmtDur(res.buffer)+' spare.'); }
+  // Over the 10-hour planning allowance (per person) → a gentle amber review note, not a block and not
+  // an "overloaded" verdict. An 8–10h day is a normal full day and gets no warning here.
+  if(res.overAllow){ if(st==='g')st='a'; reasons.push('Over our usual '+MAXH()+'-hour planning allowance ('+r1(res.maxEmpHours)+'h) — review workload.'); }
   if(res.missingEst>0&&st!=='r'){ if(st==='g')st='a'; reasons.push(res.missingEst+' job(s) have no time estimate, so the workload is understated.'); }
   res.status=st; res.reasons=reasons;
   return res;
@@ -638,21 +715,25 @@ function assessVeh(d,v,sc){const ordered=effectiveOrder(d,v,sc);const r=simulate
 const RANK={r:3,a:2,g:1,n:0};
 function assessDay(d,sc){
   sc=sc||defaultScenario(d);
-  const vehs=VEH().map(v=>assessVeh(d,v,sc));
+  // Assess the base trucks always, plus any optional vehicle (ALPHA/DELTA/Big Bertha) that has crew or
+  // jobs IN THIS scenario — so an in-use ute/tip truck gets its own status card, empty ones stay hidden.
+  const vehs=ALLVEH().filter(v=> !isOptVeh(v) || ((sc.helpers&&sc.helpers[v])||[]).length>0 || jobsForVeh(d,v,sc).length>0 ).map(v=>assessVeh(d,v,sc));
   const active=activeJobs(d);
   const unalloc=unallocated(d,sc);
   const conflicts=crewConflicts(d,sc);
   if(conflicts.length){ conflicts.forEach(cf=>{ vehs.forEach(a=>{ if(cf.vehs.indexOf(a.v)>=0){ a.status='r'; a.reasons.unshift(esc(cf.emp)+' is on both trucks at the same time.'); } }); }); }
   // Tip-truck requirement: a job marked "tip truck required" must sit on Big Bertha.
   vehs.forEach(a=>{ if(a.v!==BB){ const bad=jobsForVeh(d,a.v,sc).filter(needsBigBertha); if(bad.length){ a.status='r'; a.reasons.unshift(bad.length+' job'+(bad.length>1?'s':'')+' need'+(bad.length>1?'':'s')+' the tip truck (Big Bertha): '+bad.map(j=>esc((j.address||'').split(',')[0])).join(', ')+'.'); } } });
+  // Big Bertha must have an AUTHORISED driver on board whenever it's in use (crew or jobs on it).
+  vehs.forEach(a=>{ if(a.v===BB){ const inUse=jobsForVeh(d,BB,sc).length>0 || bbCrew(sc).length>0; if(inUse && !bbDriverOf(sc)){ a.status='r'; const auth=bbAuthCrew(sc); a.reasons.unshift(auth.length ? 'Big Bertha needs an authorised driver assigned — pick '+auth.join(' or ')+'.' : 'Big Bertha has no authorised driver on the crew — only '+DEFAULT_BB_DRIVERS.join(' or ')+' can drive it (add one, or authorise a driver in Manage staff).'); } } });
   let status=active.length?'g':'n';
   vehs.forEach(a=>{if(a.status!=='n'&&RANK[a.status]>RANK[status])status=a.status;});
   if(unalloc.length)status='r';   // a day with unallocated jobs is never green
-  return {date:d,vehs,active,unalloc,status,conflicts,onSiteH:active.reduce((s,j)=>s+(j.est||0),0)/60,_sc:sc};
+  return {date:d,vehs,active,unalloc,status,conflicts,overAllowance:vehs.some(a=>a.overAllow),onSiteH:active.reduce((s,j)=>s+(j.est||0),0)/60,_sc:sc};
 }
 function crewConflicts(d,sc){
   const byEmp={};
-  VEH().forEach(v=>{ crewIntervals(d,v,sc).forEach(c=>{ (byEmp[c.emp]=byEmp[c.emp]||[]).push({v,start:c.start,end:c.end}); }); });
+  ALLVEH().forEach(v=>{ crewIntervals(d,v,sc).forEach(c=>{ (byEmp[c.emp]=byEmp[c.emp]||[]).push({v,start:c.start,end:c.end}); }); });
   const out=[];
   Object.keys(byEmp).forEach(e=>{ const iv=byEmp[e]; const vehs=[];
     for(let i=0;i<iv.length;i++)for(let j=i+1;j<iv.length;j++){ if(iv[i].v!==iv[j].v && iv[i].start<iv[j].end && iv[j].start<iv[i].end){ if(vehs.indexOf(iv[i].v)<0)vehs.push(iv[i].v); if(vehs.indexOf(iv[j].v)<0)vehs.push(iv[j].v); } }
@@ -660,18 +741,42 @@ function crewConflicts(d,sc){
   return out;
 }
 function rebalanceSuggestion(d,sc){
-  if(VEH().length<2)return null;
-  const base=VEH().map(v=>assessVeh(d,v,sc));
-  const baseOt=Math.max.apply(null,base.map(a=>a.ot||0));
-  if(baseOt<=5)return null;
-  let best=null;
-  VEH().forEach(v=>{ const other=VEH().find(x=>x!==v); const jobs=jobsForVeh(d,v,sc);
+  // Consider every vehicle ACTIVE in this plan (HOPPER/MOE plus any ALPHA/DELTA/Big Bertha Blake has
+  // allocated), not just the two base trucks. Never brings an unused vehicle into the day.
+  const act=activeVEHsc(d,sc);
+  // Jobs are shuffled only between the active MOWING vehicles. Big Bertha is scored (its driving counts)
+  // and its route is optimised elsewhere, but regular jobs are never moved onto/off it — it keeps its
+  // tip-truck rules (tip-only jobs, authorised driver). So the driver restriction can't be broken here.
+  const hasCrew=v=>((sc&&sc.helpers&&sc.helpers[v])||[]).length>0;
+  const sources=act.filter(v=>v!==BB);                 // move work OFF any mowing vehicle (incl an unstaffed one)
+  const dests=act.filter(v=>v!==BB && hasCrew(v));     // ...but only ONTO a vehicle that actually has crew to do it.
+  // A base truck (HOPPER/MOE) with no crew is never a valid destination just because it's a base truck.
+  if(!dests.length)return null;
+  const base=act.map(v=>assessVeh(d,v,sc));
+  // Score a day for the rebalancer: total driving + how balanced the trucks finish + a big weight on
+  // keeping everyone within the 10h allowance. Lower is better. This looks for a genuinely more efficient
+  // day (less driving, better balance, better use of staff) whether or not anyone is near 10h — the 10h
+  // threshold controls WARNINGS, not whether we can suggest improvements.
+  const score=arr=>{ let drive=0,over=0; const fins=[]; arr.forEach(a=>{ drive+=(a.driveMin||0); if(a.overAllow)over++; if(a.finishMin!=null&&a.order.length)fins.push(a.finishMin); });
+    const spread=fins.length>1?(Math.max.apply(null,fins)-Math.min.apply(null,fins)):0;   // finish-time gap across trucks (balance)
+    return over*1e5 + drive + spread*0.4; };
+  const baseScore=score(base), baseDrive=base.reduce((s,a)=>s+(a.driveMin||0),0), baseOt=Math.max.apply(null,base.map(a=>a.ot||0).concat([0]));
+  let best=null, bestScore=baseScore-6;   // require a meaningful gain, not a 1–2 min shuffle
+  sources.forEach(v=>{ const jobs=jobsForVeh(d,v,sc).filter(j=>!needsBigBertha(j));   // tip jobs stay on Big Bertha
     jobs.forEach(j=>{ if(j.geo===false)return;
-      const sc2=JSON.parse(JSON.stringify(sc)); sc2.alloc=sc2.alloc||{}; sc2.alloc[allocKey(j)]=other; if(sc2.order){VEH().forEach(x=>delete sc2.order[x]);}
-      const r=VEH().map(x=>assessVeh(d,x,sc2));
-      if(r.some(a=>a.flags.apptViol.length||a.flags.impossible.length||a.flags.specShort.length))return;
-      const ot=Math.max.apply(null,r.map(a=>a.ot||0));
-      if(ot<baseOt-5&&(!best||ot<best.ot)) best={job:j,from:v,to:other,ot,saved:baseOt-ot};
+      dests.forEach(dest=>{ if(dest===v)return;
+        const sc2=JSON.parse(JSON.stringify(sc)); sc2.alloc=sc2.alloc||{}; sc2.alloc[allocKey(j)]=dest; if(sc2.order){act.forEach(x=>delete sc2.order[x]);}
+        const r=act.map(x=>assessVeh(d,x,sc2));
+        // Belt-and-suspenders: never leave jobs on a vehicle that has nobody to do them.
+        if(r.some(a=>a.order.length>0 && a.k===0))return;
+        // Never CREATE a problem: appointment clash, impossible timing, specialist/driver gap, over-seat
+        // (the two-person seat limit and part-day hours are already baked into each vehicle's assessment).
+        // Existing conflicts are still flagged elsewhere — this only governs which moves we propose.
+        if(r.some(a=>a.flags.apptViol.length||a.flags.impossible.length||a.flags.specShort.length||a.flags.driverGap.length||a.flags.overSeat))return;
+        const s=score(r);
+        if(s<bestScore){ bestScore=s; const cDrive=r.reduce((m,a)=>m+(a.driveMin||0),0), cOt=Math.max.apply(null,r.map(a=>a.ot||0).concat([0]));
+          best={job:j,from:v,to:dest,score:s,easedOver:r.filter(a=>a.overAllow).length<base.filter(a=>a.overAllow).length,savedDrive:Math.max(0,Math.round(baseDrive-cDrive)),saved:Math.max(0,Math.round(baseOt-cOt))}; }
+      });
     });
   });
   return best;
@@ -713,8 +818,9 @@ function buildDay(date){
 let PLANS_API=null; // '' = same-origin live API (served behind Cloudflare Access); null = local-only preview/demo
 const Store={
   async me(){ if(DEMO)return{ok:true,email:'DEMO'}; if(PLANS_API===null)return{ok:true,email:'preview (device)'}; try{const r=await fetch(PLANS_API+'/api/me',{credentials:'include'}); if(!r.ok)return{ok:false,status:r.status}; return await r.json();}catch(e){return{ok:false};} },
+  // LIVE namespace — the production planner reads & writes the live plans + activity tables.
   async get(date){ if(PLANS_API===null){const s=localStorage.getItem('plan:'+date);return s?JSON.parse(s):{plan:null,version:0};} const r=await fetch(PLANS_API+'/api/plan/'+date,{credentials:'include'});return await r.json(); },
-  async put(date,plan,baseVersion){ if(PLANS_API===null){const v=(baseVersion||0)+1;const rec={plan,version:v,updatedBy:'you (device)',updatedAt:new Date().toISOString()};localStorage.setItem('plan:'+date,JSON.stringify(rec));return Object.assign({ok:true,date},rec);} const r=await fetch(PLANS_API+'/api/plan/'+date,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan,baseVersion})});return await r.json(); }
+  async put(date,plan,baseVersion,labels){ if(PLANS_API===null){const v=(baseVersion||0)+1;const rec={plan,version:v,updatedBy:'you (device)',updatedAt:new Date().toISOString()};localStorage.setItem('plan:'+date,JSON.stringify(rec));return Object.assign({ok:true,date},rec);} const r=await fetch(PLANS_API+'/api/plan/'+date,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan,baseVersion,labels:labels||{}})});return await r.json(); }
 };
 function planSig(sc){return JSON.stringify({a:sc.alloc,h:sc.helpers,o:sc.order,s:sc.status||'draft'});}
 
@@ -728,10 +834,31 @@ function setDate(date){
     else { scenario=defaultScenario(date); planVersion=0; planManifest=null; }
     if(pendingAlloc&&pendingAlloc.date===date){ scenario.alloc=scenario.alloc||{}; scenario.alloc[pendingAlloc.key]=pendingAlloc.veh; pendingAlloc=null; }
     planSavedSig= rec&&rec.plan?planSig(scenario):null;
+    BASELINE_PLAN=JSON.parse(JSON.stringify(scenario)); // snapshot to diff against for the Activity Log
     render();
   });
 }
-function migrate(p){ const sc={alloc:p.alloc||{},helpers:p.helpers||{},order:p.order||{},status:p.status||'draft'}; VEH().forEach(v=>{sc.helpers[v]=sc.helpers[v]||[];}); return sc; }
+// Human-readable change list between two scenarios for the Activity Log (addresses from the open day).
+function diffPlans(oldSc,newSc,d){
+  if(!oldSc) return [];
+  const out=[]; const nm=v=>(v===BB?'Big Bertha':v);
+  const jmap={}; jobsOn(d).forEach(j=>{ jmap[allocKey(j)]=((j.address||'').split(',')[0])||allocKey(j); });
+  const names={}; ALLVEH().forEach(v=>{ ((oldSc.helpers&&oldSc.helpers[v])||[]).forEach(h=>names[h.emp]=1); ((newSc.helpers&&newSc.helpers[v])||[]).forEach(h=>names[h.emp]=1); });
+  Object.keys(names).forEach(e=>{ const oV=crewVehOf(oldSc,e), nV=crewVehOf(newSc,e);
+    if(oV==='off'&&nV!=='off') out.push('Added '+e+' to '+nm(nV));
+    else if(oV!=='off'&&nV==='off') out.push('Removed '+e+' from '+nm(oV));
+    else if(oV!==nV) out.push('Moved '+e+' from '+nm(oV)+' to '+nm(nV));
+    else if(nV!=='off'){ const oE=crewEntry(oldSc,e)||{}, nE=crewEntry(newSc,e)||{}; if(oE.start!==nE.start||oE.end!==nE.end||!!oE.part!==!!nE.part) out.push('Changed '+e+'’s hours to '+(nE.start||'?')+'–'+(nE.end||'?')); }
+  });
+  if((oldSc.bbDriver||null)!==(newSc.bbDriver||null)) out.push(newSc.bbDriver?('Set Big Bertha driver to '+newSc.bbDriver):'Cleared the Big Bertha driver');
+  const keys={}; Object.keys(oldSc.alloc||{}).forEach(k=>keys[k]=1); Object.keys(newSc.alloc||{}).forEach(k=>keys[k]=1);
+  Object.keys(keys).forEach(k=>{ const oV=(oldSc.alloc||{})[k]||null, nV=(newSc.alloc||{})[k]||null; if(oV===nV)return; const addr=jmap[k]||'a job';
+    if(!oV&&nV) out.push('Allocated '+addr+' to '+nm(nV));
+    else if(oV&&!nV) out.push('Took '+addr+' off '+nm(oV));
+    else out.push('Moved '+addr+' from '+nm(oV)+' to '+nm(nV)); });
+  return out;
+}
+function migrate(p){ const sc={alloc:p.alloc||{},helpers:p.helpers||{},order:p.order||{},status:p.status||'draft',bbDriver:p.bbDriver||null}; ALLVEH().forEach(v=>{sc.helpers[v]=sc.helpers[v]||[];}); return sc; }
 /* ============ ROUTING / MAPBOX HEALTH ============
    Make missing geocodes and missing driving times visible. A stop with no location contributes its
    on-site time but NO driving — so finish times look earlier than reality. We never present that as
@@ -797,14 +924,15 @@ function renderStaffReq(date){
   if(!req.jobs){box.innerHTML='';return;}
   const need='needs ~<b>'+req.employees+'</b> staff, <b>'+req.trucks+'</b> truck'+(req.trucks>1?'s':'')+(req.specialists?', <b>'+req.specialists+'</b> specialist'+(req.specialists>1?'s':''):'')+(req.estHours?', ~<b>'+r1(req.estHours)+'h</b>/truck':'');
   let bg,bd,msg;
-  if(!req.feasible){ bg='#fdecea';bd='#e2b4ab'; msg='Heavy day — even a full crew runs long. This day '+need+'.'; }
-  else if(assigned===0){ bg='#fff6e5';bd='#e8cf8f'; msg='No staff assigned yet — this day '+need+'. Pick who works below.'; }
+  if(assigned===0){ bg='#fff6e5';bd='#e8cf8f'; msg='No staff assigned yet — this day '+need+'. Pick who works below.'; }
   else if(assigned<req.employees){ bg='#fff6e5';bd='#e8cf8f'; msg='You’ve assigned <b>'+assigned+'</b> of the ~'+req.employees+' this day needs ('+need+').'; }
   else { bg='#eef7f0';bd='#bfe0cd'; msg='You’ve assigned <b>'+assigned+'</b> — meets the ~'+req.employees+' needed. This day '+need+'.'; }
+  // Over the 10-hour planning allowance → a gentle amber note. Not "heavy"/"overloaded", and never a block.
+  const allow = req.overAllowance ? '<div style="margin-top:6px;color:#8a6d1a">⏱ Over our usual '+MAXH()+'-hour planning allowance — review workload.</div>' : '';
   const unc=uncertainOn(date).length;
   const prov= unc?'<div style="margin-top:6px;color:#8a6d1a">⚑ <b>Provisional</b> — '+unc+' job'+(unc>1?'s':'')+' couldn’t be confirmed as done or still‑due (see “Done / not due” below). The staffing may change once resolved.</div>':'';
   const bb=req.bigBertha?'<div style="margin-top:6px;color:#7a5a1e">🚛 Includes <b>Big Bertha</b> (tip truck) for '+tipReqJobs(date).length+' job'+(tipReqJobs(date).length>1?'s':'')+' — needs <b>'+req.bigBertha.staff+'</b> on it, ~'+r1(req.bigBertha.estHours)+'h.</div>':'';
-  box.innerHTML='<div style="background:'+bg+';border:1px solid '+bd+';border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:13px">👷 '+msg+bb+prov+'</div>';
+  box.innerHTML='<div style="background:'+bg+';border:1px solid '+bd+';border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:13px">👷 '+msg+bb+prov+allow+'</div>';
 }
 function renderVerdict(day,meta){
   let cls,ic,head,items=[];
@@ -880,25 +1008,38 @@ function renderProposed(date){
 }
 function removeProposed(id){ const list=PROPOSED[curDay]||[]; const j=list.find(x=>x.id===id); PROPOSED[curDay]=list.filter(x=>x.id!==id); if(j&&scenario.alloc)delete scenario.alloc[allocKey(j)]; render(); }
 const STAFF_ORDER=['Blake','Julen','Ben','Ryan','Hugh'];
+function bbElig(s){ return (typeof s.bbDriver==='boolean')?s.bbDriver:(DEFAULT_BB_DRIVERS.indexOf(s.name)>=0); }
 function staffRowsHTML(){
   const btn=(name,attr,on,label,col)=>'<button data-staff="'+esc(name)+'" data-attr="'+attr+'" style="padding:3px 9px;border-radius:6px;cursor:pointer;border:1px solid '+(on?col:'#ccc')+';background:'+(on?col+'22':'#fff')+';color:'+(on?col:'#777')+'">'+label+'</button>';
-  return STAFF.map(s=>'<div style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid #eee">'+
-      '<b style="flex:1">'+esc(s.name)+'</b>'+
+  return STAFF.map(s=>'<div style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid #eee;flex-wrap:wrap">'+
+      '<b style="flex:1;min-width:110px">'+esc(s.name)+(s.id?'':' <span class=small style="color:#b4452b" title="not matched to a Deputy ID">⚠ no ID</span>')+'</b>'+
       btn(s.name,'specialist',!!s.specialist,'Specialist','#7a53b3')+
       btn(s.name,'driver',s.driver!==false,'Driver','#2e8b57')+
+      btn(s.name,'bbDriver',bbElig(s),'🚛 Bertha','#8a6a2e')+
       btn(s.name,'active',s.active!==false,s.active!==false?'Active':'Inactive','#b4452b')+
     '</div>').join('');
 }
+// Deputy employees not already on the roster (by ID), for the Add dropdown.
+function deputyAddable(){ const have=new Set((STAFF||[]).map(s=>s.id).filter(x=>x!=null)); return DEPUTY_STAFF.filter(e=>e.active!==false && !have.has(e.id)); }
 function openStaffManager(){
   $('dlgH').textContent='Manage staff';
-  $('dlgB').innerHTML='<div class="small muted" style="margin-bottom:6px">Our own staff list — skills and driving ability. No Deputy. Changes are shared and saved for everyone.</div>'+
+  const add=deputyAddable();
+  const picker = add.length
+    ? '<select id=deputyPick style="flex:1;padding:7px;border:1px solid #ccc;border-radius:6px;font:inherit">'+add.map(e=>'<option value="'+e.id+'">'+esc(e.name)+(e.aliases&&e.aliases.length?' ('+esc(e.aliases[0])+')':'')+'</option>').join('')+'</select><button class=btn id=addStaffBtn style="flex:none;padding:7px 14px">Add</button>'
+    : '<div class="small muted">Everyone from the Deputy directory is already on the list.</div>';
+  const srcLine = DEPUTY_SRC==='live' ? '— auto-updated from Deputy'
+                : DEPUTY_SRC==='cached' ? '— last retrieved copy (Deputy not reachable right now)'
+                : '— using the built-in core list; the full directory loads once the daily sync has run';
+  const upd = DEPUTY_UPDATED ? ' <span class="small muted">· directory updated '+fmtDirUpdated(DEPUTY_UPDATED)+'</span>' : '';
+  $('dlgB').innerHTML='<div class="small muted" style="margin-bottom:6px">Staff come from our <b>Deputy directory</b> (shared with myBins) '+srcLine+'.'+upd+' Pick who works and set their skills — Specialist, Driver (utes), 🚛 Bertha (authorised to drive the tip truck). Changes are shared and saved for everyone.</div>'+
     '<div id=staffRows>'+staffRowsHTML()+'</div>'+
-    '<div style="display:flex;gap:6px;margin-top:10px"><input id=newStaffName placeholder="Add a name" style="flex:1;padding:7px;border:1px solid #ccc;border-radius:6px"><button class=btn id=addStaffBtn style="flex:none;padding:7px 14px">Add</button></div>';
+    '<div style="display:flex;gap:6px;margin-top:10px;align-items:center"><span class="small muted" style="flex:none">Add from Deputy:</span>'+picker+'</div>';
   const Y=$('dlgYes'),N=$('dlgNo'); Y.hidden=true; N.textContent='Done'; N.onclick=()=>{$('dlg').close();}; $('dlg').showModal();
 }
 function refreshStaffDlg(){ const r=$('staffRows'); if(r)r.innerHTML=staffRowsHTML(); }
-function toggleStaffAttr(name,attr){ const s=staffRec(name); if(!s)return; if(attr==='specialist')s.specialist=!s.specialist; else if(attr==='driver')s.driver=(s.driver===false); else if(attr==='active')s.active=(s.active===false); REQ_CACHE={}; saveStaff(); refreshStaffDlg(); if(typeof VIEW!=='undefined'&&VIEW==='day')render(); }
-function addStaffFromInput(){ const i=$('newStaffName'); const nm=(i&&i.value||'').trim(); if(!nm)return; if(STAFF.some(s=>s.name.toLowerCase()===nm.toLowerCase())){toast('Already on the list');return;} STAFF.push({name:nm,specialist:false,driver:true,active:true,start:'07:00',end:'15:30'}); if(i)i.value=''; REQ_CACHE={}; saveStaff(); refreshStaffDlg(); if(typeof VIEW!=='undefined'&&VIEW==='day')render(); }
+function toggleStaffAttr(name,attr){ const s=staffRec(name); if(!s)return; if(attr==='specialist')s.specialist=!s.specialist; else if(attr==='driver')s.driver=(s.driver===false); else if(attr==='bbDriver')s.bbDriver=!bbElig(s); else if(attr==='active')s.active=(s.active===false); REQ_CACHE={}; saveStaff(); refreshStaffDlg(); if(typeof VIEW!=='undefined'&&VIEW==='day')render(); }
+// Add an employee strictly from the Deputy directory (by ID). No free-text names.
+function addStaffFromDeputy(){ const sel=$('deputyPick'); if(!sel||!sel.value){toast('Pick an employee from Deputy');return;} const e=deputyById(Number(sel.value)); if(!e){toast('Unknown employee');return;} if(STAFF.some(s=>s.id===e.id)){toast('Already on the list');return;} STAFF.push({id:e.id,name:e.name,specialist:false,driver:true,active:true,start:'07:00',end:'15:30'}); REQ_CACHE={}; saveStaff(); openStaffManager(); if(typeof VIEW!=='undefined'&&VIEW==='day')render(); }
 function renderCrew(date){
   const names=staffNames();
   const ordered=STAFF_ORDER.filter(n=>names.includes(n)).concat(names.filter(n=>!STAFF_ORDER.includes(n)));
@@ -931,14 +1072,31 @@ function renderVehicles(date,day){
   const show=cardVEH(date);
   day.vehs.filter(a=>show.indexOf(a.v)>=0).forEach(a=>{
     const vClass=vehClass(a.v); const others=activeVEH(date).filter(x=>x!==a.v);
-    const crew=a.crewNames.length?a.crewNames.join(', '):'<span class=muted>no crew yet</span>';
+    // Employee-led card: each crew member (max 2) headlined with avatar, name, their hours and role.
+    const crewArr=(scenario.helpers&&scenario.helpers[a.v])||[];
+    const crew=crewArr.length
+      ? crewArr.map(ce=>{ const emp=ce.emp,spec=isSpec(emp),isBBd=(a.v===BB&&bbDriverOf(scenario)===emp);
+          return '<div class=crewrow style="padding:5px 0"><div class="ava '+(spec?'spec':'')+'">'+ini(emp)+'</div>'+
+            '<div class=cname>'+esc(emp)+(spec?' <span class=t>specialist</span>':'')+(isBBd?' <span class=t style="background:#f0e6d2;color:#7a5a1e">driver</span>':'')+'</div>'+
+            '<span class=muted style="font-size:13px">'+(ce.part?'part · ':'')+esc(ce.start)+'–'+esc(ce.end)+'</span>'+
+            '<button data-crew="'+esc(emp)+'" data-v=off title="take off this crew" style="border:1px solid #e3e8e4;background:#fff;border-radius:6px;cursor:pointer;color:#8a988f;margin-left:4px">✕</button></div>'; }).join('')
+      : '<div class=crewline><span class=muted>no crew yet — assign people in “Who’s working”.</span></div>';
     const fin=a.finishMin!=null?fmtClock(a.finishMin):'—';
     const drv=a.driveComplete?r1(a.driveH)+'h':(a.driveMin?'~'+fmtDur(a.driveMin):'—');
     const work=r1(a.onSiteH)+'h';
     const vname=a.v===BB?'🚛 Big Bertha <span class=small style="font-weight:400;opacity:.7">tip truck</span>':a.v;
     h+='<div class="veh '+vClass+'" data-veh="'+esc(a.v)+'" ondragover="event.preventDefault();this.classList.add(\'dragover\')" ondragleave="this.classList.remove(\'dragover\')">'+
-      '<h3><span class="light '+a.status+'"></span>'+vname+'</h3><div class=crewline>'+crew+'</div>'+
+      '<h3><span class="light '+a.status+'"></span>'+vname+'</h3>'+crew+
       '<div class=vstat><span><span class=k>Finish</span><b>'+fin+'</b></span><span><span class=k>Driving</span><b>'+drv+'</b></span><span><span class=k>On-site</span><b>'+work+'</b></span></div>';
+    // Big Bertha: an authorised driver must be chosen from the crew. Non-authorised people can be on
+    // the crew as helpers but are never offered as the driver.
+    if(a.v===BB){ const auth=bbAuthCrew(scenario), cur=bbDriverOf(scenario);
+      h+='<div style="font-size:13px;margin:0 0 9px">🚚 <b>Driver:</b> ';
+      if(auth.length){ h+='<select data-bbdriver style="padding:4px 7px;border:1px solid #cfe0d6;border-radius:6px;font:inherit;font-size:13px"><option value="">— choose —</option>'+auth.map(n=>'<option'+(n===cur?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select>'; }
+      if(!cur){ h+=' <span style="color:#b4452b;font-weight:700">'+(auth.length?'⛔ not set':'⛔ no authorised driver on the crew — only '+DEFAULT_BB_DRIVERS.join(' or ')+' can drive Bertha')+'</span>'; }
+      else { h+=' <span style="color:#1a7a43">✓ '+esc(cur)+'</span>'; }
+      h+='</div>';
+    }
     const ord=a.order;
     if(ord.length>=2){ h+='<button class=mvb style="margin:0 0 8px;color:#2e8b57;border-color:#bfe0cd" data-optveh="'+esc(a.v)+'" title="Re-order the stops for the shortest day, keeping appointment times">🧭 Optimise route</button>'; }
     if(!ord.length){ h+='<div class="small muted" style="padding:8px 0">No jobs on this '+(a.v===BB?'truck':'truck')+' yet.</div>'; }
@@ -964,6 +1122,27 @@ function addDays(iso,n){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+
 function weekMonday(iso){const t=new Date(iso+'T12:00:00');const dow=t.getDay();return addDays(iso,(dow===0?-6:1-dow));}
 function weekDates(mon){return [0,1,2,3,4].map(i=>addDays(mon,i));}
 function todayISO(){return (MOWING&&MOWING.today)||new Date().toISOString().slice(0,10);}
+// Activity log — recent recorded changes for the visible week, in Sydney time, newest first.
+async function openActivity(){
+  $('dlgH').textContent='Activity log';
+  $('dlgB').innerHTML='<div class="small muted">Loading…</div>';
+  const Y=$('dlgYes'),N=$('dlgNo'); Y.hidden=true; N.textContent='Close'; N.onclick=()=>{$('dlg').close();}; $('dlg').showModal();
+  if(PLANS_API===null){ $('dlgB').innerHTML='<div class="small muted">The activity log appears once the shared login is set up (not in preview).</div>'; return; }
+  const dates=weekDates(weekAnchor||weekMonday(todayISO())); let data;
+  try{ const r=await fetch(PLANS_API+'/api/activity?from='+dates[0]+'&to='+dates[4],{credentials:'include'}); data=await r.json(); }catch(e){ data={ok:false}; }
+  if(data&&data.error==='not-authorised'){ $('dlgB').innerHTML='<div class="small muted">You’re not authorised to view the activity log. Ask Amos to add you to the activity viewers.</div>'; return; }
+  if(!data||!data.ok){ $('dlgB').innerHTML='<div class="small" style="color:#b4452b">Couldn’t load the activity log.</div>'; return; }
+  const items=data.activity||[];
+  if(!items.length){ $('dlgB').innerHTML='<div class="small muted">No changes recorded for this week yet. Changes show here automatically after someone saves a day.</div>'; return; }
+  const fmt=iso=>{ try{ return new Date(iso).toLocaleString('en-AU',{timeZone:'Australia/Sydney',weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit',hour12:true}); }catch(e){ return iso; } };
+  const who=e=>String(e||'').split('@')[0];
+  $('dlgB').innerHTML='<div style="max-height:60vh;overflow:auto">'+items.map(it=>{
+    const dd=new Date(it.date+'T12:00:00').toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'short'});
+    return '<div style="padding:9px 0;border-bottom:1px solid #eef2ef">'+
+      '<div style="font-size:12px;color:#5b6b60"><b style="color:#17201a">'+esc(dd)+'</b> · '+esc(fmt(it.at))+' · <b>'+esc(who(it.by))+'</b></div>'+
+      '<ul style="margin:4px 0 0;padding-left:18px;font-size:13px">'+(it.changes||[]).map(c=>'<li>'+esc(c)+'</li>').join('')+'</ul></div>';
+  }).join('')+'</div>';
+}
 function showWeek(){ VIEW='week'; $('dayView').hidden=true; $('findView').hidden=true; $('weekView').hidden=false; if(!weekAnchor)weekAnchor=weekMonday(curDay||todayISO()); renderWeek(); }
 function showDay(date){ VIEW='day'; $('weekView').hidden=true; $('findView').hidden=true; $('dayView').hidden=false; setDate(date); }
 function weekShift(n){ const t=todayISO(); const minMon=weekMonday(t); const maxMon=addDays(weekMonday(t),84); const cand=addDays(weekAnchor,n*7); if(cand<minMon||cand>maxMon)return; weekAnchor=cand; renderWeek(); }
@@ -985,6 +1164,27 @@ async function renderWeek(){
   $('weekgrid').innerHTML=html;
   $('weekfoot').innerHTML='Each day shows the staffing it needs from the workload. “Ready” means you’ve assigned enough staff and every job is on a truck. Amber means a day still needs staffing or more people.';
 }
+// Weekly Overview hours: from a SAVED scenario, the hours each employee and each vehicle is needed.
+// Employee hours = the UNION of their intervals across vehicles (never double-counted); vehicle hours
+// = the span its crew is on it. If only a duration is known with no confirmed window, show "Times TBC".
+function _merge(iv){ iv=iv.slice().sort((a,b)=>a.s-b.s); const out=[]; iv.forEach(x=>{ const l=out[out.length-1]; if(l&&x.s<=l.e)l.e=Math.max(l.e,x.e); else out.push({s:x.s,e:x.e}); }); return out; }
+function _hrs(mins){ return Math.round(mins/6)/10; }
+function weekHoursHTML(d,sc){
+  const byEmp={}, byVeh={};
+  ALLVEH().forEach(v=>{ ((sc.helpers&&sc.helpers[v])||[]).forEach(h=>{ if(!h.emp)return; const s=parseHM(h.start), e=parseHM(h.end);
+    (byEmp[h.emp]=byEmp[h.emp]||[]).push({s,e}); (byVeh[v]=byVeh[v]||[]).push({s,e}); }); });
+  const emps=Object.keys(byEmp); if(!emps.length) return '';
+  const empTxt=emps.map(n=>{ const iv=byEmp[n], okT=iv.every(x=>x.s!=null&&x.e!=null&&x.e>x.s);
+    if(!okT) return '<b>'+esc(n)+'</b> <span class=muted>Times&nbsp;TBC</span>';
+    const m=_merge(iv), mins=m.reduce((a,x)=>a+(x.e-x.s),0), s=m[0].s, e=m[m.length-1].e;
+    return '<b>'+esc(n)+'</b> '+_hrs(mins)+'h <span class=muted>('+fmtClock(s)+'–'+fmtClock(e)+')</span>'; }).join(', ');
+  const vehTxt=Object.keys(byVeh).map(v=>{ const iv=byVeh[v], okT=iv.every(x=>x.s!=null&&x.e!=null&&x.e>x.s), nm=(v===BB?'Big Bertha':v);
+    if(!okT) return '<b>'+esc(nm)+'</b> <span class=muted>Times&nbsp;TBC</span>';
+    const s=Math.min.apply(null,iv.map(x=>x.s)), e=Math.max.apply(null,iv.map(x=>x.e));
+    return '<b>'+esc(nm)+'</b> '+_hrs(e-s)+'h <span class=muted>('+fmtClock(s)+'–'+fmtClock(e)+')</span>'; }).join(', ');
+  return '<div style="font-size:12px;color:#3a4a40;margin-top:5px;line-height:1.55;border-top:1px dashed #e3eae5;padding-top:5px">'+
+    '<div>👷 '+empTxt+'</div>'+(vehTxt?'<div>🚚 '+vehTxt+'</div>':'')+'</div>';
+}
 function weekCard(d,rec){
   buildDay(d);
   const hasPlan=!!(rec&&rec.plan);
@@ -996,7 +1196,9 @@ function weekCard(d,rec){
   const req=requiredStaffing(d);
   const assigned=assignedCount(sc);
   const saved=!!(rec&&rec.plan);
-  const reqTxt='needs ~'+req.employees+' staff · '+req.trucks+' truck'+(req.trucks>1?'s':'')+(req.specialists?' · '+req.specialists+' spec':'')+(req.feasible?'':' ⚠ heavy');
+  // Over the 10h/person allowance — from the saved plan if there is one, else the workload estimate.
+  const overAllow = (assigned>0) ? assessDay(d,sc).overAllowance : !!req.overAllowance;
+  const reqTxt='needs ~'+req.employees+' staff · '+req.trucks+' truck'+(req.trucks>1?'s':'')+(req.specialists?' · '+req.specialists+' spec':'')+(overAllow?' · review workload':'');
   let cls,label;
   if(assigned===0){
     // Nobody rostered yet — show the requirement, never "ready"
@@ -1017,14 +1219,14 @@ function weekCard(d,rec){
   if(unc && cls==='g'){ cls='a'; label='Review — '+unc+' unconfirmed'; }
   let tags='';
   if(saved&&assigned>0)tags+='<span class="wtag prov">saved</span>';
-  if(!req.feasible)tags+='<span class="wtag busy">heavy day</span>';
+  if(overAllow)tags+='<span class="wtag busy">review workload</span>';
   if(miss)tags+='<span class="wtag busy">travel incomplete</span>';
   if(unc)tags+='<span class="wtag busy">provisional</span>';
   const estH=req.estHours?' · ~'+r1(req.estHours)+'h/truck':'';
   const sub=reqTxt+estH+(assigned?' · '+assigned+' assigned':'')+(cleared?' · '+cleared+' done':'');
   return '<div class="weekcard '+cls+'" data-day="'+d+'"><div class=dcol><div class=dname>'+dname+'</div><div class=ddate>'+ddate+'</div></div>'+
     '<div class=jcol><div class=jnum>'+jobs+'</div><div class=jlbl>jobs</div></div>'+
-    '<div class=scol><div class="wready '+cls+'">'+label+'</div><div class=wsub>'+sub+'</div>'+(tags?'<div style="margin-top:2px">'+tags+'</div>':'')+'</div>'+
+    '<div class=scol><div class="wready '+cls+'">'+label+'</div><div class=wsub>'+sub+'</div>'+(tags?'<div style="margin-top:2px">'+tags+'</div>':'')+((saved&&assigned>0)?weekHoursHTML(d,sc):'')+'</div>'+
     '<div class=arrow>›</div></div>';
 }
 
@@ -1046,8 +1248,11 @@ document.addEventListener('drop',e=>{ const veh=e.target.closest&&e.target.close
 function manifestNow(){ return activeJobs(curDay).map(allocKey); }
 async function savePlan(){
   const plan=JSON.parse(JSON.stringify(scenario)); plan._manifest=manifestNow(); plan._proposed=PROPOSED[curDay]||[];
-  const res=await Store.put(curDay,plan,planVersion);
-  if(res&&res.ok){ planVersion=res.version; planManifest=plan._manifest; planSavedSig=planSig(scenario); toast('Saved'+(res.updatedBy&&PLANS_API?' — last by '+res.updatedBy:'')); render(); }
+  // Address labels for the jobs on this day (display only). The WORKER decides what actually changed
+  // by comparing the previously saved plan with this one — it does not trust a browser-sent change list.
+  const labels={}; jobsOn(curDay).forEach(j=>{ labels[allocKey(j)]=((j.address||'').split(',')[0])||allocKey(j); });
+  const res=await Store.put(curDay,plan,planVersion,labels);
+  if(res&&res.ok){ planVersion=res.version; planManifest=plan._manifest; planSavedSig=planSig(scenario); BASELINE_PLAN=JSON.parse(JSON.stringify(scenario)); toast('Saved'+(res.updatedBy&&PLANS_API?' — last by '+res.updatedBy:'')); render(); }
   else if(res&&res.error==='conflict'){
     confirmDlg('Someone else saved this day','Another manager saved this day after you opened it. Reload theirs (your unsaved changes are lost), or overwrite with yours.',
       'Reload theirs',()=>setDate(curDay),'Overwrite',async()=>{planVersion=res.currentVersion;await savePlan();});
@@ -1057,15 +1262,17 @@ function suggestPlan(){
   if(unallocated(curDay,scenario).length){ toast('Allocate the remaining jobs first, then I can tidy the plan.'); return; }
   const before=assessDay(curDay,scenario);
   const sc2=JSON.parse(JSON.stringify(scenario));
-  VEH().forEach(v=>{ const o=optimiseOrder(curDay,v,sc2); sc2.order=sc2.order||{}; sc2.order[v]=o.order.map(jobKey); });
+  // Optimise the stop order of EVERY vehicle active in this plan (HOPPER/MOE and any ALPHA/DELTA/Big
+  // Bertha Blake has allocated), not just the base trucks.
+  activeVEHsc(curDay,sc2).forEach(v=>{ const o=optimiseOrder(curDay,v,sc2); sc2.order=sc2.order||{}; sc2.order[v]=o.order.map(jobKey); });
   const reb=rebalanceSuggestion(curDay,sc2);
-  if(reb){ sc2.alloc[allocKey(reb.job)]=reb.to; VEH().forEach(v=>{ const o=optimiseOrder(curDay,v,sc2); sc2.order[v]=o.order.map(jobKey); }); }
+  if(reb){ sc2.alloc[allocKey(reb.job)]=reb.to; activeVEHsc(curDay,sc2).forEach(v=>{ const o=optimiseOrder(curDay,v,sc2); sc2.order[v]=o.order.map(jobKey); }); }
   if(planSig(sc2)===planSig(scenario)){ toast('Your plan is already the best I can find.'); return; }
   const after=assessDay(curDay,sc2);
   const bFin=Math.max.apply(null,before.vehs.filter(a=>a.finishMin!=null).map(a=>a.finishMin).concat([0]));
   const aFin=Math.max.apply(null,after.vehs.filter(a=>a.finishMin!=null).map(a=>a.finishMin).concat([0]));
   let msg='I found a tidier plan:\n\n';
-  if(reb)msg+='• Move '+reb.job.address+' from '+reb.from+' to '+reb.to+' (saves ~'+fmtDur(reb.saved)+' overtime)\n';
+  if(reb){ const why = reb.easedOver ? 'keeps everyone within the 10h allowance' : reb.savedDrive>0 ? 'saves ~'+fmtDur(reb.savedDrive)+' driving' : 'better balances the two trucks'; msg+='• Move '+reb.job.address+' from '+reb.from+' to '+reb.to+' ('+why+')\n'; }
   msg+='• Re-order stops for less driving\n\nLatest finish: '+(bFin?fmtClock(bFin):'—')+' → '+(aFin?fmtClock(aFin):'—')+'\n\nApply this suggestion?';
   confirmDlg('✨ Suggested plan',msg,'Apply',()=>{scenario=sc2;render();toast('Applied — Save to keep it');},'Keep mine',()=>{});
 }
@@ -1129,7 +1336,7 @@ document.addEventListener('click',e=>{
   const tj=e.target.closest('[data-tojob]'); if(tj){reclassify(tj.dataset.tojob,'job');toast('Moved to jobs — it now counts and can be allocated');return;}
   if(e.target.id==='mgStaff'){openStaffManager();return;}
   const st=e.target.closest('[data-staff]'); if(st){ toggleStaffAttr(st.dataset.staff,st.dataset.attr); return; }
-  if(e.target.id==='addStaffBtn'){ addStaffFromInput(); return; }
+  if(e.target.id==='addStaffBtn'){ addStaffFromDeputy(); return; }
   const tn=e.target.closest('[data-tonote]'); if(tn){reclassify(tn.dataset.tonote,'reminder');toast('Moved to notes — no longer counted as a job');return;}
   const sd=e.target.closest('[data-stilldue]'); if(sd){resolveOcc(sd.dataset.stilldue,'due');toast('Marked still due — added back to the workload');return;}
   const md=e.target.closest('[data-markdone]'); if(md){resolveOcc(md.dataset.markdone,'done');toast('Marked done — moved out of the workload');return;}
@@ -1164,8 +1371,10 @@ function segPick(id,btn){ document.querySelectorAll('#'+id+' button').forEach(b=
 $('wprev').onclick=()=>weekShift(-1); $('wnext').onclick=()=>weekShift(1);
 $('backWeek').onclick=()=>{ weekAnchor=weekMonday(curDay||todayISO()); showWeek(); };
 $('openFind').onclick=showFind; $('findBack').onclick=()=>showWeek(); $('findRun').onclick=findSpace;
+$('openActivity').onclick=openActivity;
 $('reportDay').onclick=reportProblem; $('reportWeek').onclick=reportProblem;
 document.addEventListener('change',e=>{ const t=e.target.closest('[data-hrs]'); if(t){setHours(t.dataset.hrs,t.dataset.se,t.value);render();}
+  const bd=e.target.closest('[data-bbdriver]'); if(bd){ scenario.bbDriver=bd.value||null; render(); return; }
   if(e.target.id==='datePick'&&e.target.value)setDate(e.target.value); });
 $('prev').onclick=()=>shiftDay(-1); $('next').onclick=()=>shiftDay(1);
 $('saveBtn').onclick=savePlan; $('suggestBtn').onclick=suggestPlan; $('waBtn').onclick=copyWA;
@@ -1197,9 +1406,9 @@ function evaluateInsert(date,veh,sc,newJob){
   const newAppt=after.flags.apptViol.length>base.flags.apptViol.length;
   const newImposs=after.flags.impossible.length>base.flags.impossible.length;
   const specShort=needSpec&&!haveSpec;
-  const ot=after.ot||0;
-  const fit=!newAppt&&!newImposs&&!specShort&&ot===0;
-  return {fit,noCrew:false,date,veh,addedDrive:Math.max(0,Math.round((after.driveMin||0)-(base.driveMin||0))),finish:after.finishMin,remaining:after.buffer,prox,skillOk:!specShort,specShort,newAppt,newOt:ot,driveComplete:after.driveComplete};
+  const over=!!after.overAllow;   // would adding the job push someone over the 10h/person allowance?
+  const fit=!newAppt&&!newImposs&&!specShort&&!over;
+  return {fit,noCrew:false,date,veh,addedDrive:Math.max(0,Math.round((after.driveMin||0)-(base.driveMin||0))),finish:after.finishMin,remaining:after.buffer,prox,skillOk:!specShort,specShort,newAppt,newOver:over,afterHours:after.maxEmpHours,driveComplete:after.driveComplete};
 }
 function findCmp(a,b){ if(a.fit!==b.fit)return a.fit?-1:1; if(a.skillOk!==b.skillOk)return a.skillOk?-1:1; const pa=a.prox==null?1e9:a.prox,pb=b.prox==null?1e9:b.prox; if(pa!==pb)return pa-pb; if(a.addedDrive!==b.addedDrive)return a.addedDrive-b.addedDrive; return (b.remaining||0)-(a.remaining||0); }
 let _findJobBase=null;
@@ -1239,10 +1448,10 @@ function renderFindResults(top,info){
   let h='<div class=small muted style="margin:10px 2px">'+(fitN?fitN+' good option'+(fitN>1?'s':'')+' found':'No clean fit — the closest options are shown with warnings')+'. Driving is estimated.</div>';
   top.forEach((o,i)=>{
     const t=new Date(o.date+'T12:00:00'); const dlabel=DOW[t.getDay()]+' '+t.getDate()+' '+t.toLocaleDateString('en-AU',{month:'short'});
-    const cls=o.fit?'':(o.specShort||o.newOt?'bad':'warn');
+    const cls=o.fit?'':(o.specShort?'bad':'warn');
     let warns='';
     if(o.specShort)warns+='<div>⛔ No specialist on '+o.veh+' that day</div>';
-    if(o.newOt)warns+='<div>⛔ Pushes '+o.veh+' '+fmtDur(o.newOt)+' past finish</div>';
+    if(o.newOver)warns+='<div>⏱ Takes '+o.veh+' over the '+MAXH()+'h allowance (~'+r1(o.afterHours)+'h) — review</div>';
     if(o.newAppt)warns+='<div>⛔ Clashes with a timed job</div>';
     let fut='';
     if(info.freq>0&&o.future){ if(o.future.total===0)fut='<div class="fut ok">First visit fits; future dates are beyond the 12-week window.</div>';
@@ -1292,7 +1501,8 @@ async function boot(){
   }
   if(LOADERR){ renderError(); return; }
   await loadClass();   // Blake's saved job/reminder overrides (shared), applied before any count
-  await loadStaff();   // our own staff list (skills, driving, hours) — no Deputy
+  await loadDeputy();  // auto-refreshed Deputy directory (read-only); snapshot fallback if unpublished
+  await loadStaff();   // our staff list, reconciled to Deputy IDs
   await loadOcc();     // per-occurrence still-due / done resolutions (shared)
   await loadTip();     // which jobs need the tip truck (Big Bertha), shared
   const today=MOWING.today||new Date().toISOString().slice(0,10);
