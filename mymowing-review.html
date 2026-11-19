@@ -580,7 +580,7 @@ function rotLabel(d){const w=Math.round((mondayOf(d)-ROT_ANCHOR_MON)/(7*86400000
 
 /* scenario: { alloc:{allocKey->veh}, helpers:{veh->[{emp,start,end,part}]}, order:{veh->[jobKey]} } */
 function defaultScenario(d){
-  const sc={alloc:{},helpers:{},order:{},share:{},hold:{},status:'draft'};
+  const sc={alloc:{},helpers:{},order:{},share:{},hold:{},estOverride:{},status:'draft'};
   ALLVEH().forEach(v=>{sc.helpers[v]=[];});
   return sc; // NOTHING allocated and NOBODY rostered — Blake builds the crew and allocates the jobs
 }
@@ -611,7 +611,12 @@ function vehiclesForJob(sc,j){ const s=shareList(sc,j); if(s)return [...new Set(
 function jobServicedBy(sc,j,v){ const s=shareList(sc,j); if(s)return s.some(x=>x.veh===v); return vehOfJob(sc,j)===v; }
 // Person-minutes this ONE vehicle does on this job. Shared jobs split est across vehicles so nothing multiplies;
 // a vehicle with no explicit split gets an even share of whatever est isn't explicitly claimed.
-function effEst(sc,j,v){ const s=shareList(sc,j); const full=j.est!=null?j.est:0;
+// A job's planning estimate (person-minutes). Blake can set a TEMPORARY estimate for a job that has none in
+// Zenkit (scenario.estOverride) — it's used for planning only and never written back to Zenkit. Returns null
+// when the duration is genuinely unknown (no Zenkit estimate and no override) so "missing" stays visible.
+function jobEst(sc,j){ const o=sc&&sc.estOverride&&sc.estOverride[allocKey(j)]; if(o!=null) return o; return j.est!=null?j.est:null; }
+function hasEst(sc,j){ return jobEst(sc,j)!=null; }
+function effEst(sc,j,v){ const s=shareList(sc,j); const e0=jobEst(sc,j); const full=e0!=null?e0:0;
   if(!s){ return full; }
   const mine=s.find(x=>x.veh===v); if(!mine) return 0;
   if(mine.mins!=null) return mine.mins;
@@ -619,6 +624,7 @@ function effEst(sc,j,v){ const s=shareList(sc,j); const full=j.est!=null?j.est:0
   const open=s.filter(x=>x.mins==null).length;
   return open? Math.max(0,(full-claimed))/open : 0;
 }
+function setEstOverride(sc,key,mins){ sc.estOverride=sc.estOverride||{}; if(mins===''||mins==null){ delete sc.estOverride[key]; } else { sc.estOverride[key]=Math.max(0,+mins); } }
 // Add vehicle v to a job's servicing set (starts a share). Keeps the primary vehicle in the list.
 function shareJobTo(sc,j,v,mins){ const k=allocKey(j); sc.share=sc.share||{};
   let list=sc.share[k];
@@ -638,7 +644,7 @@ function setShareMins(sc,j,v,mins){ const k=allocKey(j); const list=sc.share&&sc
 // unallocated. Used to surface a "remainder" when a crew's minutes are trimmed below the job's estimate,
 // so work minutes are never silently lost.
 function allocatedMins(sc,j){ const vs=vehiclesForJob(sc,j); if(!vs.length)return 0; return vs.reduce((a,v)=>a+effEst(sc,j,v),0); }
-function unallocMins(sc,j){ return Math.max(0, (j.est!=null?j.est:0) - allocatedMins(sc,j)); }
+function unallocMins(sc,j){ return Math.max(0, (jobEst(sc,j)||0) - allocatedMins(sc,j)); }
 
 /* ===== HELD JOBS (employee on the day but with NO vehicle) =====
    scenario.hold = { "<emp>": [ "<allocKey>", ... ] }. A held job is attached to a person, not a vehicle,
@@ -700,6 +706,8 @@ function setCrewVeh(emp,v){
 }
 function setPartDay(emp,on){ const e=crewEntry(scenario,emp); if(!e)return; e.part=on; if(!on){const f=fullHours(curDay,emp);e.start=f.start;e.end=f.end;} }
 function setHours(emp,which,val){ const e=crewEntry(scenario,emp); if(!e)return; if(which==='start')e.start=val; else e.end=val; e.part=true; }
+// Optional HARD "must finish by" cap for a crew member (null = none; planned hours stay flexible).
+function setMustBy(emp,val){ const e=crewEntry(scenario,emp); if(!e)return; e.mustBy=(val===''||val==null)?null:val; }
 
 function crewIntervals(d,v,sc){
   const out=[];
@@ -709,14 +717,15 @@ function crewIntervals(d,v,sc){
     if(sh.start!=null&&sh.end!=null){ if(st<sh.start-1||en>sh.end+1) outside=true; }
     const fullShift=sh.start!=null&&sh.end!=null&&st<=sh.start+1&&en>=sh.end-1;
     const custom=!!h.part || (sh.start!=null&&!fullShift);
-    // 10 hours is our ALLOWANCE, not a hard cutoff. A full-day person's nominal finish (e.g. the default
-    // 3:30pm) is a normal end-of-day, never an availability limit — and going over 10h must be a gentle AMBER
-    // "review workload" note (res.overAllow), NOT an "impossible"/blocked allocation. So a full-day person is
-    // treated as present right through the working day; a 5:15pm finish just trips the amber over-allowance
-    // flag. Only a deliberately shorter PART-DAY shift is a hard cutoff (a real availability restriction).
+    // Planned hours are FLEXIBLE for everyone, full-day OR part-day. A planned finish (the default 3:30pm, or a
+    // part-day 11:00) is a plan, NOT proof the person is unavailable after it — so crew are schedulable right
+    // through the working day. Running past a part-day planned finish is a gentle AMBER note (res.pastPlanned);
+    // going over 10h from their start is the AMBER over-allowance note (res.overAllow); neither blocks the
+    // allocation. The ONLY hard availability cap is an explicit per-person "Must finish by" time (h.mustBy).
     // Genuine red problems — appointment conflicts, double-bookings, specialist/driver gaps — are unaffected.
-    const schedEnd = h.part ? en : Math.max(en, st + 14*60);   // full day available through ~end of the work day
-    out.push({emp:h.emp,start:st,end:schedEnd,nominalEnd:en,part:!!h.part,spec:isSpec(h.emp),driver:isDriver(h.emp),cross:isCrossOU(d,h.emp),custom,outside}); });
+    const mustBy = (h.mustBy!=null && h.mustBy!=='') ? parseHM(h.mustBy) : null;
+    const schedEnd = (mustBy!=null) ? mustBy : (st + 14*60);   // hard cap only if "Must finish by" is set
+    out.push({emp:h.emp,start:st,end:schedEnd,plannedEnd:en,mustBy,part:!!h.part,spec:isSpec(h.emp),driver:isDriver(h.emp),cross:isCrossOU(d,h.emp),custom,outside}); });
   return out.filter(x=>x.end>x.start).sort((a,b)=>a.start-b.start);
 }
 function maxConcurrent(crew){const pts=[];crew.forEach(c=>{pts.push([c.start,1]);pts.push([c.end,-1]);});pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);let cur=0,mx=0;pts.forEach(p=>{cur+=p[1];if(cur>mx)mx=cur;});return mx;}
@@ -802,10 +811,18 @@ function simulate(d,v,sc,ordered){
   // Per-employee hours: each person's OWN working span, so a part-day helper only counts their window,
   // not the whole truck's day. A full-day person is counted to when the truck actually finishes.
   // Our crews comfortably work up to 10h; over that we flag (gently, amber) for review — never block.
-  res.empHours=crew.map(c=>{ const end=c.part?c.end:Math.max(c.start,res.finishMin); return {emp:c.emp,h:Math.max(0,(end-c.start)/60)}; });
+  // Actual hours worked = start → the truck finish, but never past a hard "Must finish by" (c.end is that
+  // cap, or a generous bound otherwise). Works for full-day, flexible part-day, and must-finish-by alike.
+  res.empHours=crew.map(c=>{ const worked=Math.min(c.end, Math.max(c.start,res.finishMin)); return {emp:c.emp,h:Math.max(0,(worked-c.start)/60)}; });
   res.maxEmpHours=res.empHours.length?Math.max.apply(null,res.empHours.map(e=>e.h)):0;
   res.overAllow=res.maxEmpHours>MAXH()+1e-6;
   res.overMin=Math.max(0,(res.maxEmpHours-MAXH())*60);
+  // Part-day people scheduled to work past their PLANNED finish (and with no hard "Must finish by") — an amber
+  // "confirm they can stay" note, never a block.
+  res.pastPlanned=crew.filter(c=>c.part&&c.plannedEnd!=null&&c.mustBy==null&&res.finishMin>c.plannedEnd+1).map(c=>({emp:c.emp,plannedEnd:c.plannedEnd}));
+  // Minutes a part-day person is scheduled past their planned finish — a cost the optimiser/suggester try to
+  // avoid, so part-day people are kept within their planned hours by default (extending is an amber exception).
+  res.pastPlannedMin=crew.reduce((s,c)=>s+((c.part&&c.plannedEnd!=null&&c.mustBy==null)?Math.max(0,Math.min(c.end,Math.max(c.start,res.finishMin))-c.plannedEnd):0),0);
   if(legMissing||unroutable.length)res.flags.missingGeo=true;
   crew.forEach(c=>{ if(!c.custom)return;
     if(c.end<res.finishMin-1&&c.end>crewStart+1){ res.flags.transport.push({emp:c.emp,kind:'leaves',at:c.end}); }
@@ -815,18 +832,20 @@ function simulate(d,v,sc,ordered){
   const conc=maxConcurrent(crew),seats=SEATS(v); if(conc>seats)res.flags.overSeat=true;
   const needSpecDay=routable.concat(unroutable).some(j=>j.skill==='Specialist'||j.skill==='Mixed');
   const haveSpec=crew.some(c=>c.spec);
-  res.missingEst=ordered.filter(j=>j.est==null).length;
+  res.missingEst=ordered.filter(j=>!hasEst(sc,j)).length;
   let minNeed=null; if(res.driveH!=null){for(let kk=1;kk<=seats;kk++){if(res.driveH+res.onSiteH/kk<=res.win.netH){minNeed=kk;break;}}}
   res.minNeed=minNeed; res.seats=seats; res.fitsInSeats=minNeed!=null;
   let st='g',reasons=[];
   if(!crew.length){st='r';reasons.push('No crew on this truck — it can’t run its '+r1(res.onSiteH)+'h of work.');}
   if(res.flags.overSeat){st='r';reasons.push('Too many people on '+v+' — '+conc+' at once but only '+seats+' seats.');}
   if(res.flags.impossible.length){ st='r'; const crewNm=crew.map(c=>c.emp).join(' & ')||'nobody';
+    const hardCap=crew.some(c=>c.mustBy!=null);   // the window is bounded by an explicit "Must finish by"
+    const capLabel=hardCap ? 'the crew must finish by '+fmtClock(crewEnd) : crewNm+' can work until '+fmtClock(crewEnd);
     res.flags.impossible.forEach(j=>{ const stp=res.stops.find(s=>s.job===j); const at=stp?stp.serviceStart:null; const ap=normAppt(j.appt); const where=esc(String(j.address||'this job').split(',')[0]);
       let why;
-      if(ap&&ap.type==='hard'&&ap.start!=null&&ap.start>crewEnd+1) why='its '+apptLabel(ap)+' appointment is after '+crewNm+' finish'+(crew.length?' at '+fmtClock(crewEnd):'');
+      if(ap&&ap.type==='hard'&&ap.start!=null&&ap.start>crewEnd+1) why='its '+apptLabel(ap)+' appointment is after '+capLabel;
       else if(!crew.length) why='no one is on '+v;
-      else why='the run only reaches it '+(at!=null?'~'+fmtClock(at):'late')+', after '+crewNm+' finish at '+fmtClock(crewEnd);
+      else why='the run only reaches it '+(at!=null?'~'+fmtClock(at):'late')+', but '+capLabel;
       reasons.push('Can’t fit <b>'+where+'</b> on '+v+' — '+why+'.'); }); }
   if(needSpecDay&&!haveSpec){st='r';reasons.push('Hedge/garden work here, but no specialist (Blake or Julen) on this truck.');}
   if(res.flags.specShort.length&&haveSpec){st='r';reasons.push(res.flags.specShort.length+' specialist job(s) happen after the specialist has left.');}
@@ -838,7 +857,8 @@ function simulate(d,v,sc,ordered){
   // Over the 10-hour planning allowance (per person) → a gentle amber review note, not a block and not
   // an "overloaded" verdict. An 8–10h day is a normal full day and gets no warning here.
   if(res.overAllow){ if(st==='g')st='a'; reasons.push('Over our usual '+MAXH()+'-hour planning allowance ('+r1(res.maxEmpHours)+'h) — review workload.'); }
-  if(res.missingEst>0&&st!=='r'){ if(st==='g')st='a'; reasons.push(res.missingEst+' job(s) have no time estimate, so the workload is understated.'); }
+  if(res.pastPlanned&&res.pastPlanned.length){ if(st==='g')st='a'; res.pastPlanned.forEach(p=>reasons.push(esc(p.emp)+' is scheduled past their planned '+fmtClock(p.plannedEnd)+' part-day finish (to '+fmtClock(res.finishMin)+') — confirm they can stay, or set a “Must finish by” time.')); }
+  if(res.missingEst>0&&st!=='r'){ if(st==='g')st='a'; reasons.push(res.missingEst+' job(s) have no time estimate, so the workload is understated — tap “set planning time” to add a temporary estimate.'); }
   if(res.flags.needTime.length){ if(st==='g')st='a'; reasons.push(res.flags.needTime.length+' job(s) are marked “set time” but have no recorded time — confirm the time with the customer (routing is otherwise free).'); }
   res.status=st; res.reasons=reasons;
   return res;
@@ -856,6 +876,7 @@ function scoreOf(r){
        + (r.driveMin||0)*1000               // ← primary: minimise driving / doubling-back (clusters geography)
        + (r.softMiss||0)*2000               // vague morning/afternoon pref honoured only if it costs <~2 drive-min
        + (r.overMin||0)*50                  // gently discourage pushing a person past the 10h allowance
+       + (r.pastPlannedMin||0)*40           // strongly prefer finishing a part-day person within their planned hours
        + (r.finishMin||0)*2;                // finish earlier, but only as a tiebreak — never at geography's expense
 }
 function optimiseOrder(d,v,sc,jobs){
@@ -930,9 +951,9 @@ function rebalanceSuggestion(d,sc){
   // keeping everyone within the 10h allowance. Lower is better. This looks for a genuinely more efficient
   // day (less driving, better balance, better use of staff) whether or not anyone is near 10h — the 10h
   // threshold controls WARNINGS, not whether we can suggest improvements.
-  const score=arr=>{ let drive=0,over=0; const fins=[]; arr.forEach(a=>{ drive+=(a.driveMin||0); if(a.overAllow)over++; if(a.finishMin!=null&&a.order.length)fins.push(a.finishMin); });
+  const score=arr=>{ let drive=0,over=0,pastPd=0; const fins=[]; arr.forEach(a=>{ drive+=(a.driveMin||0); if(a.overAllow)over++; pastPd+=(a.pastPlannedMin||0); if(a.finishMin!=null&&a.order.length)fins.push(a.finishMin); });
     const spread=fins.length>1?(Math.max.apply(null,fins)-Math.min.apply(null,fins)):0;   // finish-time gap across trucks (balance)
-    return over*1e5 + drive + spread*0.4; };
+    return over*1e5 + pastPd*40 + drive + spread*0.4; };   // part-day overrun is a strong cost — keep them within planned hours
   const baseScore=score(base), baseDrive=base.reduce((s,a)=>s+(a.driveMin||0),0), baseOt=Math.max.apply(null,base.map(a=>a.ot||0).concat([0]));
   let best=null, bestScore=baseScore-6;   // require a meaningful gain, not a 1–2 min shuffle
   sources.forEach(v=>{ const jobs=jobsForVeh(d,v,sc).filter(j=>!needsBigBertha(j));   // tip jobs stay on Big Bertha
@@ -995,7 +1016,7 @@ const Store={
   async get(date){ if(PLANS_API===null){const s=localStorage.getItem('plan2:'+date);return s?JSON.parse(s):{plan:null,version:0};} const r=await fetch(PLANS_API+'/api/plan-review/'+date,{credentials:'include'});return await r.json(); },
   async put(date,plan,baseVersion,labels){ if(PLANS_API===null){const v=(baseVersion||0)+1;const rec={plan,version:v,updatedBy:'you (device)',updatedAt:new Date().toISOString()};localStorage.setItem('plan2:'+date,JSON.stringify(rec));return Object.assign({ok:true,date},rec);} const r=await fetch(PLANS_API+'/api/plan-review/'+date,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan,baseVersion,labels:labels||{}})});return await r.json(); }
 };
-function planSig(sc){return JSON.stringify({a:sc.alloc,h:sc.helpers,o:sc.order,sh:sc.share||{},hd:sc.hold||{},s:sc.status||'draft'});}
+function planSig(sc){return JSON.stringify({a:sc.alloc,h:sc.helpers,o:sc.order,sh:sc.share||{},hd:sc.hold||{},eo:sc.estOverride||{},s:sc.status||'draft'});}
 
 /* =================== RENDER =================== */
 function setDate(date){
@@ -1031,7 +1052,7 @@ function diffPlans(oldSc,newSc,d){
     else out.push('Moved '+addr+' from '+nm(oV)+' to '+nm(nV)); });
   return out;
 }
-function migrate(p){ const sc={alloc:p.alloc||{},helpers:p.helpers||{},order:p.order||{},share:p.share||{},hold:p.hold||{},status:p.status||'draft',bbDriver:p.bbDriver||null}; ALLVEH().forEach(v=>{sc.helpers[v]=sc.helpers[v]||[];});
+function migrate(p){ const sc={alloc:p.alloc||{},helpers:p.helpers||{},order:p.order||{},share:p.share||{},hold:p.hold||{},estOverride:p.estOverride||{},status:p.status||'draft',bbDriver:p.bbDriver||null}; ALLVEH().forEach(v=>{sc.helpers[v]=sc.helpers[v]||[];});
   // Drop any shared-job entries that point at a vehicle/job no longer present, so a stale share can't
   // resurrect work. A plan saved before sharing existed simply has share={} and loads exactly as before.
   Object.keys(sc.share).forEach(k=>{ const list=(sc.share[k]||[]).filter(x=>x&&x.veh); if(list.length>1){sc.share[k]=list;} else { delete sc.share[k]; if(list[0])sc.alloc[k]=sc.alloc[k]||list[0].veh; } });
@@ -1139,7 +1160,9 @@ function renderPool(date,day){
     const donem=isCompleted(j)?'<span style="color:#2f8f46;font-weight:600;font-size:11px;margin-left:6px">&#10003; done</span>':'';
     const tipTag=needsBigBertha(j)?'<span class=appt style="background:#f0e6d2;color:#7a5a1e">🚛 tip truck</span>':'';
     const assignB=activeVEH(date).map(vv=>'<button class="'+(vv==='HOPPER'?'toH':vv==='MOE'?'toM':'')+'" data-assign="'+esc(vv)+'" data-key="'+esc(allocKey(j))+'">→ '+(vv===BB?'Bertha':vv)+'</button>').join('');
-    h+='<div class=jrow><div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'<span class="sk '+(j.skill||'Unknown')+'">'+(j.skill||'?')+'</span>'+(j.appt?'<span class=appt>⏰'+apptLabel(normAppt(j.appt))+'</span>':'')+est+nomap+donem+tipTag+'</div><div class=jsvc>'+esc(j.service||'')+(j.est!=null?' · '+j.est+' min':' · <span style=color:#b4452b>no time estimate</span>')+'</div></div>'+
+    const je=jobEst(scenario,j); const isTemp=(j.est==null&&je!=null); const noEst=(je==null);
+    const planInput=(noEst||isTemp)?'<div class=shrow><span class=lbl style="min-width:0">Planning time:</span><input class=shmins type=number min=0 step=5 placeholder="min" value="'+(je!=null?je:'')+'" data-estov="'+esc(allocKey(j))+'"> min <span class=small muted>(temporary — not saved to Zenkit)</span></div>':'';
+    h+='<div class=jrow><div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'<span class="sk '+(j.skill||'Unknown')+'">'+(j.skill||'?')+'</span>'+(j.appt?'<span class=appt>⏰'+apptLabel(normAppt(j.appt))+'</span>':'')+est+nomap+donem+tipTag+'</div><div class=jsvc>'+esc(j.service||'')+(je!=null?' · '+je+' min'+(isTemp?' (temp)':''):' · <span style=color:#b4452b>no time estimate</span>')+'</div>'+planInput+'</div>'+
       '<div class=assignbtns>'+assignB+
       '<button class=linkbtn style="font-size:11px;opacity:.65" data-tiptoggle="'+esc(tipKey(j))+'" title="This job needs the tip truck (Big Bertha)">'+(needsBigBertha(j)?'🚛 tip ✓':'🚛 tip?')+'</button>'+
       '<button class=linkbtn style="font-size:11px;opacity:.65" data-tonote="'+esc(classKey(j))+'" title="This is a note/reminder, not a job">not a job?</button>'+
@@ -1338,9 +1361,15 @@ function renderEmployees(date,day){
     h+='<div class=hoursctl><span class=lbl>Hours</span><div class=seg>'+
        '<button class="'+(!(ent&&ent.part)?'on H':'')+'" data-full="'+esc(emp)+'">Full day</button>'+
        '<button class="'+((ent&&ent.part)?'on H':'')+'" data-part="'+esc(emp)+'">Part day</button></div>';
-    if(ent&&ent.part) h+='<input type=time value="'+esc(ent.start)+'" data-hrs="'+esc(emp)+'" data-se=start> – <input type=time value="'+esc(ent.end)+'" data-hrs="'+esc(emp)+'" data-se=end>';
+    if(ent&&ent.part) h+='<input type=time value="'+esc(ent.start)+'" data-hrs="'+esc(emp)+'" data-se=start> – <input type=time value="'+esc(ent.end)+'" data-hrs="'+esc(emp)+'" data-se=end> <span class=small muted>planned</span>';
     else if(ent) h+='<span class=muted>from '+esc(ent.start)+' · up to '+MAXH()+'h</span>';
     h+='</div>';
+    // Must finish by — the only HARD availability cap. Planned hours above are flexible (amber if over).
+    if(ent){ const mb=ent.mustBy;
+      h+='<div class=hoursctl style="margin-top:4px"><span class=lbl>Must finish by</span>'+
+         (mb? '<input type=time value="'+esc(mb)+'" data-mustby="'+esc(emp)+'"><button class=linkbtn data-mustbyclear="'+esc(emp)+'" style="margin-left:6px">clear</button> <span class=small style="color:#b4452b;font-weight:700">hard limit</span>'
+            : '<button class=linkbtn data-mustbyset="'+esc(emp)+'">+ add a hard finish time</button> <span class=small muted>only if they genuinely must leave</span>')+'</div>';
+    }
     if(v==='none'){
       h+='<div class=novehwarn>⚠ Needs a vehicle — pick one above to put '+esc(emp)+'’s jobs on a truck.</div>';
       const held=holdOf(scenario,emp)||[];
@@ -1390,9 +1419,11 @@ function jobRowHTML(date,j,i,v,n,others,a){
   const estDot=(j._status==='estimated')?'<span class=estdot>projected</span>':''; const nomap=!j.geo?'<span class=nomap>no map location</span>':''; const newTag=j._proposed?'<span class=appt style="background:#eae0ff;color:#6b2fb3">NEW</span>':'';
   const tipTag=needsBigBertha(j)?'<span class=appt style="background:#f0e6d2;color:#7a5a1e">🚛 tip truck</span>':'';
   const shared=isShared(scenario,j); const mine=effEst(scenario,j,v); const rem=unallocMins(scenario,j);
+  const je=jobEst(scenario,j); const isTemp=(j.est==null && je!=null); const noEst=(je==null);
   let h='<div class=jrow draggable=true data-key="'+esc(allocKey(j))+'" ondragstart="dragStart(event)"><div class=jnum>'+(i+1)+'</div>'+
-    '<div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'<span class="sk '+(j.skill||'Unknown')+'">'+(j.skill||'?')+'</span>'+(j.appt?'<span class=appt>⏰'+apptLabel(normAppt(j.appt))+'</span>':'')+(shared?'<span class=shbadge>⇄ shared</span>':'')+(rem>0?'<span class=rembadge>'+Math.round(rem)+' min unallocated</span>':'')+estDot+nomap+newTag+tipTag+'</div>'+
-    '<div class=jsvc>'+esc(j.service||'')+(j.est!=null?' · '+j.est+' min total':' · <span style=color:#b4452b>no time</span>')+(shared?' · <b>'+Math.round(mine)+' min here</b>':'')+'</div>';
+    '<div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'<span class="sk '+(j.skill||'Unknown')+'">'+(j.skill||'?')+'</span>'+(j.appt?'<span class=appt>⏰'+apptLabel(normAppt(j.appt))+'</span>':'')+(shared?'<span class=shbadge>⇄ shared</span>':'')+(rem>0?'<span class=rembadge>'+Math.round(rem)+' min unallocated</span>':'')+(noEst?'<span class=rembadge style="color:#b4452b;background:#fbeeea;border-color:#e9d7d2">no time estimate</span>':'')+estDot+nomap+newTag+tipTag+'</div>'+
+    '<div class=jsvc>'+esc(j.service||'')+(je!=null?' · '+je+' min total'+(isTemp?' (temp)':''):'')+(shared?' · <b>'+Math.round(mine)+' min here</b>':'')+'</div>';
+  if(noEst||isTemp) h+='<div class=shrow><span class=lbl style="min-width:0">Planning time:</span><input class=shmins type=number min=0 step=5 placeholder="min" value="'+(je!=null?je:'')+'" data-estov="'+esc(allocKey(j))+'"> min <span class=small muted>(temporary — not saved to Zenkit)</span></div>';
   if(shared){
     const vlist=vehiclesForJob(scenario,j);
     h+='<div class=shrow><span class=lbl style="min-width:0">Split:</span>'+vlist.map(vv=>{ const m=effEst(scenario,j,vv); return '<span class=shpair>'+esc(vv===BB?'Bertha':vv)+' <input class=shmins type=number min=0 step=5 value="'+Math.round(m)+'" data-shmins="'+esc(allocKey(j))+'|'+esc(vv)+'"> min <button class="unassignb" style="padding:1px 7px" data-unshare="'+esc(allocKey(j))+'|'+esc(vv)+'" title="remove '+esc(vv)+' from this job">✕</button></span>'; }).join('')+'</div>';
@@ -1639,6 +1670,8 @@ document.addEventListener('click',e=>{
   const sa=e.target.closest('[data-shareadd]'); if(sa){ const p=sa.dataset.shareadd.split('|'); const j=activeJobs(curDay).find(x=>allocKey(x)===p[0]); if(j){ shareJobTo(scenario,j,p[1],null); $('dlg').close(); render(); toast('Shared with '+p[1]+' — split the minutes on the job row'); } return; }
   const us=e.target.closest('[data-unshare]'); if(us){ const p=us.dataset.unshare.split('|'); const j=activeJobs(curDay).find(x=>allocKey(x)===p[0]); if(j){ unshareJobFrom(scenario,j,p[1]); render(); toast('Removed '+p[1]+' from that job'); } return; }
   const uj=e.target.closest('[data-unassignjob]'); if(uj){ const p=uj.dataset.unassignjob.split('|'); const j=activeJobs(curDay).find(x=>allocKey(x)===p[0]); if(j){ const wasShared=isShared(scenario,j); unassignJobFromVeh(scenario,j,p[1]); render(); toast(wasShared?('Took that job off '+p[1]):'Job returned to “Jobs to allocate”'); } return; }
+  const mbs=e.target.closest('[data-mustbyset]'); if(mbs){ const emp=mbs.dataset.mustbyset; const ent=crewEntry(scenario,emp)||{}; setMustBy(emp, ent.end||'15:00'); render(); return; }
+  const mbc=e.target.closest('[data-mustbyclear]'); if(mbc){ setMustBy(mbc.dataset.mustbyclear, null); render(); toast('Hard finish time removed'); return; }
   const uh=e.target.closest('[data-unassignhold]'); if(uh){ const p=uh.dataset.unassignhold.split('|'); const j=activeJobs(curDay).find(x=>allocKey(x)===p[1]); if(j){ unallocateJob(scenario,j); render(); toast('Job returned to “Jobs to allocate”'); } return; }
   const re=e.target.closest('[data-removeemp]'); if(re){ const emp=re.dataset.removeemp; const rel=employeeExclusiveJobs(scenario,emp).length;
     const doIt=()=>{ removeEmployee(scenario,emp); render(); toast(esc(emp)+' taken off the day'+(rel?' — '+rel+' job'+(rel>1?'s':'')+' back to “Jobs to allocate”':'')); };
@@ -1701,6 +1734,8 @@ $('reportDay').onclick=reportProblem; $('reportWeek').onclick=reportProblem;
 document.addEventListener('change',e=>{ const t=e.target.closest('[data-hrs]'); if(t){setHours(t.dataset.hrs,t.dataset.se,t.value);render();}
   const bd=e.target.closest('[data-bbdriver]'); if(bd){ scenario.bbDriver=bd.value||null; render(); return; }
   const sm=e.target.closest('[data-shmins]'); if(sm){ const p=sm.dataset.shmins.split('|'); const j=activeJobs(curDay).find(x=>allocKey(x)===p[0]); if(j){ setShareMins(scenario,j,p[1],sm.value); render(); } return; }
+  const mb=e.target.closest('[data-mustby]'); if(mb){ setMustBy(mb.dataset.mustby, mb.value); render(); return; }
+  const eo=e.target.closest('[data-estov]'); if(eo){ setEstOverride(scenario, eo.dataset.estov, eo.value); render(); return; }
   if(e.target.id==='datePick'&&e.target.value)setDate(e.target.value); });
 $('prev').onclick=()=>shiftDay(-1); $('next').onclick=()=>shiftDay(1);
 $('saveBtn').onclick=savePlan; $('suggestBtn').onclick=suggestPlan; $('waBtn').onclick=copyWA;
