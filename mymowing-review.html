@@ -709,7 +709,14 @@ function crewIntervals(d,v,sc){
     if(sh.start!=null&&sh.end!=null){ if(st<sh.start-1||en>sh.end+1) outside=true; }
     const fullShift=sh.start!=null&&sh.end!=null&&st<=sh.start+1&&en>=sh.end-1;
     const custom=!!h.part || (sh.start!=null&&!fullShift);
-    out.push({emp:h.emp,start:st,end:en,spec:isSpec(h.emp),driver:isDriver(h.emp),cross:isCrossOU(d,h.emp),custom,outside}); });
+    // 10 hours is our ALLOWANCE, not a hard cutoff. A full-day person's nominal finish (e.g. the default
+    // 3:30pm) is a normal end-of-day, never an availability limit — and going over 10h must be a gentle AMBER
+    // "review workload" note (res.overAllow), NOT an "impossible"/blocked allocation. So a full-day person is
+    // treated as present right through the working day; a 5:15pm finish just trips the amber over-allowance
+    // flag. Only a deliberately shorter PART-DAY shift is a hard cutoff (a real availability restriction).
+    // Genuine red problems — appointment conflicts, double-bookings, specialist/driver gaps — are unaffected.
+    const schedEnd = h.part ? en : Math.max(en, st + 14*60);   // full day available through ~end of the work day
+    out.push({emp:h.emp,start:st,end:schedEnd,nominalEnd:en,part:!!h.part,spec:isSpec(h.emp),driver:isDriver(h.emp),cross:isCrossOU(d,h.emp),custom,outside}); });
   return out.filter(x=>x.end>x.start).sort((a,b)=>a.start-b.start);
 }
 function maxConcurrent(crew){const pts=[];crew.forEach(c=>{pts.push([c.start,1]);pts.push([c.end,-1]);});pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);let cur=0,mx=0;pts.forEach(p=>{cur+=p[1];if(cur>mx)mx=cur;});return mx;}
@@ -1332,7 +1339,7 @@ function renderEmployees(date,day){
        '<button class="'+(!(ent&&ent.part)?'on H':'')+'" data-full="'+esc(emp)+'">Full day</button>'+
        '<button class="'+((ent&&ent.part)?'on H':'')+'" data-part="'+esc(emp)+'">Part day</button></div>';
     if(ent&&ent.part) h+='<input type=time value="'+esc(ent.start)+'" data-hrs="'+esc(emp)+'" data-se=start> – <input type=time value="'+esc(ent.end)+'" data-hrs="'+esc(emp)+'" data-se=end>';
-    else if(ent) h+='<span class=muted>'+esc(ent.start)+'–'+esc(ent.end)+'</span>';
+    else if(ent) h+='<span class=muted>from '+esc(ent.start)+' · up to '+MAXH()+'h</span>';
     h+='</div>';
     if(v==='none'){
       h+='<div class=novehwarn>⚠ Needs a vehicle — pick one above to put '+esc(emp)+'’s jobs on a truck.</div>';
