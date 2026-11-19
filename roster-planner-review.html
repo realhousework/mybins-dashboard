@@ -289,6 +289,25 @@ function vehCrews(){ var map={}; function add(v,e){ if(!v||!e) return; (map[v]=m
   STATE.shifts.forEach(function(s){ if((s.runs||[]).length||s.who) add(s.veh,s.who); });
   var m=sharedMap(); Object.keys(m).forEach(function(id){ (m[id]||[]).forEach(function(h){ add(h.veh,h.emp); }); });
   return map; }
+// HARD LIMIT: at most MAXPAX people may ride one vehicle. People can still SHARE a run — they just
+// have to be on suitable vehicles. crewOnVeh lists who is on a vehicle (excluding one person, e.g.
+// the one we're about to move); vehHasRoom says whether another distinct person can be added.
+var MAXPAX=2;
+function crewOnVeh(veh, exceptEmp){ if(!veh) return [];
+  var set={};
+  STATE.shifts.forEach(function(s){ if(s.veh===veh && s.who && s.who!==exceptEmp) set[s.who]=1; });
+  var m=sharedMap(); Object.keys(m).forEach(function(id){ (m[id]||[]).forEach(function(h){ if(h.veh===veh && h.emp && h.emp!==exceptEmp) set[h.emp]=1; }); });
+  return Object.keys(set); }
+function vehHasRoom(veh, forEmp){ if(!veh) return true; return crewOnVeh(veh, forEmp).length < MAXPAX; }
+// Per-employee workload tally. Each person's own (lead) runs count their bins ONCE; assistance hours
+// are attributed to the assisting employee and summed once per run they help — never double-counted,
+// and a shared run's bins are never multiplied across the crew.
+function employeeWorkload(){ var out={};
+  function row(e){ return out[e]=out[e]||{leadBins:0, leadRuns:0, assistHours:0, assistHoursKnown:true, assistRuns:0}; }
+  STATE.shifts.forEach(function(s){ if(!s.who) return; var o=row(s.who); (s.runs||[]).forEach(function(id){ var r=runById(id); if(r){ o.leadBins+=(r.bins||0); o.leadRuns++; } }); });
+  var m=sharedMap(); Object.keys(m).forEach(function(id){ (m[id]||[]).forEach(function(h){ if(!h.emp) return; var o=row(h.emp); o.assistRuns++;
+    if(h.hours==null||h.hours==='') o.assistHoursKnown=false; else o.assistHours+=Number(h.hours)||0; }); });
+  return out; }
 // Drop helper records for runs that are no longer anywhere in the plan (e.g. removed from Zenkit).
 function pruneShared(){ var m=sharedMap(); var live={}; STATE.shifts.forEach(function(s){(s.runs||[]).forEach(function(id){live[id]=1;});});
   Object.keys(m).forEach(function(id){ if(!live[id]){ delete m[id]; } else { m[id]=(m[id]||[]).filter(function(h){return h&&h.emp;}); if(!m[id].length) delete m[id]; } }); }
@@ -471,7 +490,14 @@ function act(a){var p=a.split(':');
   else if(p[0]==='asg'){var id3=p[1],to3=+p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id3;});STATE.shifts[to3].runs.push(id3);}
   else if(p[0]==='addrun'){var si3=+p[1],id4=p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id4;});STATE.shifts[si3].runs.push(id4);}
   else if(p[0]==='addhelp'){var hsi=+p[1],hid=p[2],emp=p.slice(3).join(':');var lead=STATE.shifts[hsi];var m=sharedMap();var list=m[hid]=m[hid]||[];
-    if(emp && emp!==(lead&&lead.who) && !list.some(function(h){return h.emp===emp;})) list.push({emp:emp,veh:(lead&&lead.veh)||'',hours:null});}
+    if(emp && emp!==(lead&&lead.who) && !list.some(function(h){return h.emp===emp;})){
+      var lv=(lead&&lead.veh)||'';
+      // Seat the helper on the lead's vehicle only if it still has room (max 2 per vehicle). If the
+      // lead's truck is full, add them to the RUN with no vehicle yet and ask Wes to pick a suitable one.
+      var seat=(lv && vehHasRoom(lv,emp))?lv:'';
+      list.push({emp:emp,veh:seat,hours:null});
+      if(!seat) toast(lv?(lv+' already has 2 people — '+first(emp)+' is helping on this run; pick a vehicle for them.'):('Pick a vehicle for '+first(emp)+'.'));
+    }}
   DIRTY=true; render();
 }
 // Swap a helper to be the lead of the run, demoting the current lead to a helper. The run is never lost.
@@ -487,12 +513,16 @@ function makeLead(id,hi){ var m=sharedMap(); var list=m[id]||[]; var h=list[hi];
   DIRTY=true; render();
 }
 function removeHelper(id,hi){ var m=sharedMap(); var list=m[id]||[]; list.splice(hi,1); if(!list.length) delete m[id]; else m[id]=list; DIRTY=true; render(); }
-function setHelperVeh(id,hi,v){ var m=sharedMap(); if(m[id]&&m[id][hi]){ m[id][hi].veh=v||''; DIRTY=true; render(); } }
+function setHelperVeh(id,hi,v){ var m=sharedMap(); if(!(m[id]&&m[id][hi])) return; var h=m[id][hi];
+  if(v && !vehHasRoom(v,h.emp)){ toast(v+' already has 2 people — max 2 per vehicle. Pick another vehicle for '+first(h.emp)+'.'); render(); return; }
+  h.veh=v||''; DIRTY=true; render(); }
 function setHelperHours(id,hi,val){ var m=sharedMap(); if(!(m[id]&&m[id][hi])) return; val=(val==null?'':String(val)).trim();
   var num=parseFloat(val); m[id][hi].hours=(val===''||isNaN(num)||num<=0)?null:num; DIRTY=true; render(); }
 function wire(){
   document.querySelectorAll('.who').forEach(function(sel){sel.onchange=function(){STATE.shifts[+sel.dataset.who].who=sel.value;DIRTY=true;render();};});
-  document.querySelectorAll('.vehsel').forEach(function(sel){sel.onchange=function(){STATE.shifts[+sel.dataset.veh].veh=sel.value;DIRTY=true;render();};});
+  document.querySelectorAll('.vehsel').forEach(function(sel){sel.onchange=function(){var i=+sel.dataset.veh,v=sel.value,who=STATE.shifts[i].who;
+    if(v && !vehHasRoom(v,who)){ toast(v+' already has 2 people — max 2 per vehicle. Pick another vehicle.'); render(); return; }
+    STATE.shifts[i].veh=v;DIRTY=true;render();};});
   document.querySelectorAll('.rx').forEach(function(b){b.onclick=function(){var si=+b.dataset.rm;STATE.shifts[si].runs.forEach(function(id){if(STATE.tray.indexOf(id)<0)STATE.tray.push(id);});STATE.shifts.splice(si,1);DIRTY=true;render();};});
   document.querySelectorAll('[data-mv]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var pr=b.dataset.mv.split('|'),si=+pr[0],id=pr[1];
     var items=[{hd:'Move run to…'}];STATE.shifts.forEach(function(s,i){if(i!==si)items.push({act:'mvShift:'+si+':'+id+':'+i,label:first(s.who)+(s.veh?' ('+s.veh+')':'')});});items.push({act:'mvTray:'+si+':'+id,label:'↓ Unassigned'});
