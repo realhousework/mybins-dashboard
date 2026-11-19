@@ -485,6 +485,8 @@ function requiredStaffing(d){
   // Big Bertha (tip truck): only adds to the day's requirement when there are tip-truck jobs.
   const bb=bbRequirement(d);
   if(bb){ out.bigBertha=bb; out.employees+=bb.staff; out.trucks+=1; out.estHours=Math.max(out.estHours,bb.estHours); out.feasible=out.feasible&&bb.feasible; out.jobs+=tipReqJobs(d).length; }
+  // A workload that even the suggested crew can't fit inside the 10-hour allowance → flag for review (gently).
+  out.overAllowance = out.estHours > MAXH()+1e-6;
   REQ_CACHE[d]=out; return out;
 }
 // How many people has Blake actually assigned in a given saved/working scenario?
@@ -602,7 +604,7 @@ function simulate(d,v,sc,ordered){
   const crew=crewIntervals(d,v,sc);
   const res={v,crew,crewNames:crew.map(c=>c.emp),stops:[],order:ordered.slice(),
     flags:{apptViol:[],specShort:[],transport:[],driverGap:[],unroutable:[],outside:[],impossible:[],overSeat:false,missingGeo:false},status:'g',reasons:[]};
-  if(!ordered.length){res.status=crew.length?'g':'n';res.startMin=null;res.finishMin=null;res.driveMin=0;res.driveH=0;res.onSiteH=0;res.win={endMin:CFGSTART()+MAXH()*60};res.ot=0;res.buffer=0;res.k=crew.length;
+  if(!ordered.length){res.status=crew.length?'g':'n';res.startMin=null;res.finishMin=null;res.driveMin=0;res.driveH=0;res.onSiteH=0;res.win={endMin:CFGSTART()+MAXH()*60};res.ot=0;res.buffer=0;res.k=crew.length;res.empHours=[];res.maxEmpHours=0;res.overAllow=false;
     if(crew.length){const conc=maxConcurrent(crew),seats=SEATS(v);if(conc>seats){res.flags.overSeat=true;res.status='r';res.reasons.push('Too many people on '+v+' — '+conc+' at once but only '+seats+' seats.');}}
     return res;}
   const routable=ordered.filter(j=>jobIdx(d,j.id)>0);
@@ -643,6 +645,12 @@ function simulate(d,v,sc,ordered){
   res.onSiteClockH=onSiteClock/60; res.onSiteH=onSitePerson/60; res.k=crew.length;
   res.ot=Math.max(0,Math.round(res.finishMin-crewEnd));
   res.buffer=Math.max(0,Math.round(crewEnd-res.finishMin));
+  // Per-employee hours: each person's OWN working span, so a part-day helper only counts their window,
+  // not the whole truck's day. A full-day person is counted to when the truck actually finishes.
+  // Our crews comfortably work up to 10h; over that we flag (gently, amber) for review — never block.
+  res.empHours=crew.map(c=>{ const end=c.part?c.end:Math.max(c.start,res.finishMin); return {emp:c.emp,h:Math.max(0,(end-c.start)/60)}; });
+  res.maxEmpHours=res.empHours.length?Math.max.apply(null,res.empHours.map(e=>e.h)):0;
+  res.overAllow=res.maxEmpHours>MAXH()+1e-6;
   if(legMissing||unroutable.length)res.flags.missingGeo=true;
   crew.forEach(c=>{ if(!c.custom)return;
     if(c.end<res.finishMin-1&&c.end>crewStart+1){ res.flags.transport.push({emp:c.emp,kind:'leaves',at:c.end}); }
@@ -665,8 +673,9 @@ function simulate(d,v,sc,ordered){
   if(res.flags.driverGap.length){st='r';reasons.push('A crew change leaves the truck with no driver.');}
   if(res.flags.unroutable.length){ if(st==='g')st='a'; reasons.push(res.flags.unroutable.length+' job(s) have no map location — driving can’t be worked out for them.'); }
   else if(!res.driveComplete){ if(st==='g')st='a'; reasons.push('A road leg is missing, so the finish time is only a rough guess.'); }
-  if(res.ot>0){ if(st!=='r'){st='r';} reasons.push('Runs to '+fmtClock(res.finishMin)+' — '+fmtDur(res.ot)+' past the crew’s '+fmtClock(crewEnd)+' finish'+(res.fitsInSeats===false?'. Even a full cab can’t finish — move some jobs to the other truck.':(minNeed&&res.k&&minNeed>res.k?'. Needs '+minNeed+' people (has '+res.k+').':'.'))); }
-  else if(res.buffer<30&&res.driveComplete&&st==='g'){ st='a'; reasons.push('Tight — finishes '+fmtClock(res.finishMin)+', only '+fmtDur(res.buffer)+' spare.'); }
+  // Over the 10-hour planning allowance (per person) → a gentle amber review note, not a block and not
+  // an "overloaded" verdict. An 8–10h day is a normal full day and gets no warning here.
+  if(res.overAllow){ if(st==='g')st='a'; reasons.push('Over our usual '+MAXH()+'-hour planning allowance ('+r1(res.maxEmpHours)+'h) — review workload.'); }
   if(res.missingEst>0&&st!=='r'){ if(st==='g')st='a'; reasons.push(res.missingEst+' job(s) have no time estimate, so the workload is understated.'); }
   res.status=st; res.reasons=reasons;
   return res;
@@ -716,7 +725,7 @@ function assessDay(d,sc){
   let status=active.length?'g':'n';
   vehs.forEach(a=>{if(a.status!=='n'&&RANK[a.status]>RANK[status])status=a.status;});
   if(unalloc.length)status='r';   // a day with unallocated jobs is never green
-  return {date:d,vehs,active,unalloc,status,conflicts,onSiteH:active.reduce((s,j)=>s+(j.est||0),0)/60,_sc:sc};
+  return {date:d,vehs,active,unalloc,status,conflicts,overAllowance:vehs.some(a=>a.overAllow),onSiteH:active.reduce((s,j)=>s+(j.est||0),0)/60,_sc:sc};
 }
 function crewConflicts(d,sc){
   const byEmp={};
@@ -730,8 +739,10 @@ function crewConflicts(d,sc){
 function rebalanceSuggestion(d,sc){
   if(VEH().length<2)return null;
   const base=VEH().map(v=>assessVeh(d,v,sc));
+  // Only suggest shifting a job to the other truck when a day runs OVER the 10h/person allowance.
+  // An 8–10h day is a normal full day — no rebalance nag.
+  if(!base.some(a=>a.overAllow))return null;
   const baseOt=Math.max.apply(null,base.map(a=>a.ot||0));
-  if(baseOt<=5)return null;
   let best=null;
   VEH().forEach(v=>{ const other=VEH().find(x=>x!==v); const jobs=jobsForVeh(d,v,sc);
     jobs.forEach(j=>{ if(j.geo===false)return;
@@ -887,14 +898,15 @@ function renderStaffReq(date){
   if(!req.jobs){box.innerHTML='';return;}
   const need='needs ~<b>'+req.employees+'</b> staff, <b>'+req.trucks+'</b> truck'+(req.trucks>1?'s':'')+(req.specialists?', <b>'+req.specialists+'</b> specialist'+(req.specialists>1?'s':''):'')+(req.estHours?', ~<b>'+r1(req.estHours)+'h</b>/truck':'');
   let bg,bd,msg;
-  if(!req.feasible){ bg='#fdecea';bd='#e2b4ab'; msg='Heavy day — even a full crew runs long. This day '+need+'.'; }
-  else if(assigned===0){ bg='#fff6e5';bd='#e8cf8f'; msg='No staff assigned yet — this day '+need+'. Pick who works below.'; }
+  if(assigned===0){ bg='#fff6e5';bd='#e8cf8f'; msg='No staff assigned yet — this day '+need+'. Pick who works below.'; }
   else if(assigned<req.employees){ bg='#fff6e5';bd='#e8cf8f'; msg='You’ve assigned <b>'+assigned+'</b> of the ~'+req.employees+' this day needs ('+need+').'; }
   else { bg='#eef7f0';bd='#bfe0cd'; msg='You’ve assigned <b>'+assigned+'</b> — meets the ~'+req.employees+' needed. This day '+need+'.'; }
+  // Over the 10-hour planning allowance → a gentle amber note. Not "heavy"/"overloaded", and never a block.
+  const allow = req.overAllowance ? '<div style="margin-top:6px;color:#8a6d1a">⏱ Over our usual '+MAXH()+'-hour planning allowance — review workload.</div>' : '';
   const unc=uncertainOn(date).length;
   const prov= unc?'<div style="margin-top:6px;color:#8a6d1a">⚑ <b>Provisional</b> — '+unc+' job'+(unc>1?'s':'')+' couldn’t be confirmed as done or still‑due (see “Done / not due” below). The staffing may change once resolved.</div>':'';
   const bb=req.bigBertha?'<div style="margin-top:6px;color:#7a5a1e">🚛 Includes <b>Big Bertha</b> (tip truck) for '+tipReqJobs(date).length+' job'+(tipReqJobs(date).length>1?'s':'')+' — needs <b>'+req.bigBertha.staff+'</b> on it, ~'+r1(req.bigBertha.estHours)+'h.</div>':'';
-  box.innerHTML='<div style="background:'+bg+';border:1px solid '+bd+';border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:13px">👷 '+msg+bb+prov+'</div>';
+  box.innerHTML='<div style="background:'+bg+';border:1px solid '+bd+';border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:13px">👷 '+msg+bb+prov+allow+'</div>';
 }
 function renderVerdict(day,meta){
   let cls,ic,head,items=[];
@@ -1158,7 +1170,9 @@ function weekCard(d,rec){
   const req=requiredStaffing(d);
   const assigned=assignedCount(sc);
   const saved=!!(rec&&rec.plan);
-  const reqTxt='needs ~'+req.employees+' staff · '+req.trucks+' truck'+(req.trucks>1?'s':'')+(req.specialists?' · '+req.specialists+' spec':'')+(req.feasible?'':' ⚠ heavy');
+  // Over the 10h/person allowance — from the saved plan if there is one, else the workload estimate.
+  const overAllow = (assigned>0) ? assessDay(d,sc).overAllowance : !!req.overAllowance;
+  const reqTxt='needs ~'+req.employees+' staff · '+req.trucks+' truck'+(req.trucks>1?'s':'')+(req.specialists?' · '+req.specialists+' spec':'')+(overAllow?' · review workload':'');
   let cls,label;
   if(assigned===0){
     // Nobody rostered yet — show the requirement, never "ready"
@@ -1179,7 +1193,7 @@ function weekCard(d,rec){
   if(unc && cls==='g'){ cls='a'; label='Review — '+unc+' unconfirmed'; }
   let tags='';
   if(saved&&assigned>0)tags+='<span class="wtag prov">saved</span>';
-  if(!req.feasible)tags+='<span class="wtag busy">heavy day</span>';
+  if(overAllow)tags+='<span class="wtag busy">review workload</span>';
   if(miss)tags+='<span class="wtag busy">travel incomplete</span>';
   if(unc)tags+='<span class="wtag busy">provisional</span>';
   const estH=req.estHours?' · ~'+r1(req.estHours)+'h/truck':'';
@@ -1364,9 +1378,9 @@ function evaluateInsert(date,veh,sc,newJob){
   const newAppt=after.flags.apptViol.length>base.flags.apptViol.length;
   const newImposs=after.flags.impossible.length>base.flags.impossible.length;
   const specShort=needSpec&&!haveSpec;
-  const ot=after.ot||0;
-  const fit=!newAppt&&!newImposs&&!specShort&&ot===0;
-  return {fit,noCrew:false,date,veh,addedDrive:Math.max(0,Math.round((after.driveMin||0)-(base.driveMin||0))),finish:after.finishMin,remaining:after.buffer,prox,skillOk:!specShort,specShort,newAppt,newOt:ot,driveComplete:after.driveComplete};
+  const over=!!after.overAllow;   // would adding the job push someone over the 10h/person allowance?
+  const fit=!newAppt&&!newImposs&&!specShort&&!over;
+  return {fit,noCrew:false,date,veh,addedDrive:Math.max(0,Math.round((after.driveMin||0)-(base.driveMin||0))),finish:after.finishMin,remaining:after.buffer,prox,skillOk:!specShort,specShort,newAppt,newOver:over,afterHours:after.maxEmpHours,driveComplete:after.driveComplete};
 }
 function findCmp(a,b){ if(a.fit!==b.fit)return a.fit?-1:1; if(a.skillOk!==b.skillOk)return a.skillOk?-1:1; const pa=a.prox==null?1e9:a.prox,pb=b.prox==null?1e9:b.prox; if(pa!==pb)return pa-pb; if(a.addedDrive!==b.addedDrive)return a.addedDrive-b.addedDrive; return (b.remaining||0)-(a.remaining||0); }
 let _findJobBase=null;
@@ -1406,10 +1420,10 @@ function renderFindResults(top,info){
   let h='<div class=small muted style="margin:10px 2px">'+(fitN?fitN+' good option'+(fitN>1?'s':'')+' found':'No clean fit — the closest options are shown with warnings')+'. Driving is estimated.</div>';
   top.forEach((o,i)=>{
     const t=new Date(o.date+'T12:00:00'); const dlabel=DOW[t.getDay()]+' '+t.getDate()+' '+t.toLocaleDateString('en-AU',{month:'short'});
-    const cls=o.fit?'':(o.specShort||o.newOt?'bad':'warn');
+    const cls=o.fit?'':(o.specShort?'bad':'warn');
     let warns='';
     if(o.specShort)warns+='<div>⛔ No specialist on '+o.veh+' that day</div>';
-    if(o.newOt)warns+='<div>⛔ Pushes '+o.veh+' '+fmtDur(o.newOt)+' past finish</div>';
+    if(o.newOver)warns+='<div>⏱ Takes '+o.veh+' over the '+MAXH()+'h allowance (~'+r1(o.afterHours)+'h) — review</div>';
     if(o.newAppt)warns+='<div>⛔ Clashes with a timed job</div>';
     let fut='';
     if(info.freq>0&&o.future){ if(o.future.total===0)fut='<div class="fut ok">First visit fits; future dates are beyond the 12-week window.</div>';
