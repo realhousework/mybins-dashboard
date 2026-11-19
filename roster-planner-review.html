@@ -244,7 +244,7 @@ function mowConflicts(){
 }
 
 async function boot(){
-  try{var r=await fetch('/binsplan.json',{cache:'no-store'}); FEED=await r.json();}
+  try{var r=await fetch('/binsplan-review.json',{cache:'no-store'}); FEED=await r.json();}
   catch(e){ $('#main').innerHTML='<div class="loading">Could not load the roster feed. Open through the planner login.</div>'; return; }
   $('#asof').textContent=FEED.generatedAt||'';
   var dp=$('#date');
