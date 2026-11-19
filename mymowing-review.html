@@ -302,6 +302,10 @@ function vehInUse(d,v){ return vehCrew(v)>0 || vehJobs(d,v)>0 || (v===BB && tipR
 function activeVEH(d){ const added=EXTRAVEH[d]||[]; return ALLVEH().filter(v=> !isOptVeh(v) || vehInUse(d,v) || added.indexOf(v)>=0 ); }
 // vehicle CARDS: only vehicles with crew or jobs (empty cards hidden) — applies to every vehicle.
 function cardVEH(d){ return ALLVEH().filter(v=> vehInUse(d,v) ); }
+// Vehicles ACTIVE in a GIVEN scenario: the base trucks always, plus any optional vehicle (ALPHA/DELTA/
+// Big Bertha) that Blake has actually put crew or jobs on in THIS plan. Never pulls in an unused vehicle.
+// Used by Suggest-a-better-plan so it optimises around exactly the vehicles in play, no more, no fewer.
+function activeVEHsc(d,sc){ return ALLVEH().filter(v=> !isOptVeh(v) || ((sc&&sc.helpers&&sc.helpers[v])||[]).length>0 || jobsForVeh(d,v,sc).length>0 ); }
 // Add Vehicle offers any available vehicle not already active (i.e. the optional utes/tip truck not yet in use).
 function addVehList(d){ return ALLVEH().filter(v=> activeVEH(d).indexOf(v)<0 ); }
 function addVehicle(v){ EXTRAVEH[curDay]=EXTRAVEH[curDay]||[]; if(EXTRAVEH[curDay].indexOf(v)<0)EXTRAVEH[curDay].push(v); render(); }
@@ -737,27 +741,37 @@ function crewConflicts(d,sc){
   return out;
 }
 function rebalanceSuggestion(d,sc){
-  if(VEH().length<2)return null;
-  const base=VEH().map(v=>assessVeh(d,v,sc));
-  // Score a day for the rebalancer: total driving + how balanced the two trucks finish + a big weight on
+  // Consider every vehicle ACTIVE in this plan (HOPPER/MOE plus any ALPHA/DELTA/Big Bertha Blake has
+  // allocated), not just the two base trucks. Never brings an unused vehicle into the day.
+  const act=activeVEHsc(d,sc);
+  // Jobs are shuffled only between the active MOWING vehicles. Big Bertha is scored (its driving counts)
+  // and its route is optimised elsewhere, but regular jobs are never moved onto/off it — it keeps its
+  // tip-truck rules (tip-only jobs, authorised driver). So the driver restriction can't be broken here.
+  const moveVehs=act.filter(v=>v!==BB);
+  if(moveVehs.length<2)return null;
+  const base=act.map(v=>assessVeh(d,v,sc));
+  // Score a day for the rebalancer: total driving + how balanced the trucks finish + a big weight on
   // keeping everyone within the 10h allowance. Lower is better. This looks for a genuinely more efficient
   // day (less driving, better balance, better use of staff) whether or not anyone is near 10h — the 10h
   // threshold controls WARNINGS, not whether we can suggest improvements.
   const score=arr=>{ let drive=0,over=0; const fins=[]; arr.forEach(a=>{ drive+=(a.driveMin||0); if(a.overAllow)over++; if(a.finishMin!=null&&a.order.length)fins.push(a.finishMin); });
-    const spread=fins.length>1?(Math.max.apply(null,fins)-Math.min.apply(null,fins)):0;   // finish-time gap between trucks (balance)
+    const spread=fins.length>1?(Math.max.apply(null,fins)-Math.min.apply(null,fins)):0;   // finish-time gap across trucks (balance)
     return over*1e5 + drive + spread*0.4; };
   const baseScore=score(base), baseDrive=base.reduce((s,a)=>s+(a.driveMin||0),0), baseOt=Math.max.apply(null,base.map(a=>a.ot||0).concat([0]));
   let best=null, bestScore=baseScore-6;   // require a meaningful gain, not a 1–2 min shuffle
-  VEH().forEach(v=>{ const other=VEH().find(x=>x!==v); const jobs=jobsForVeh(d,v,sc);
+  moveVehs.forEach(v=>{ const jobs=jobsForVeh(d,v,sc).filter(j=>!needsBigBertha(j));   // tip jobs stay on Big Bertha
     jobs.forEach(j=>{ if(j.geo===false)return;
-      const sc2=JSON.parse(JSON.stringify(sc)); sc2.alloc=sc2.alloc||{}; sc2.alloc[allocKey(j)]=other; if(sc2.order){VEH().forEach(x=>delete sc2.order[x]);}
-      const r=VEH().map(x=>assessVeh(d,x,sc2));
-      // Never CREATE a problem: appointment clash, impossible timing, specialist/driver gap, over-seat.
-      // (Existing conflicts are still flagged elsewhere — this only governs what moves we propose.)
-      if(r.some(a=>a.flags.apptViol.length||a.flags.impossible.length||a.flags.specShort.length||a.flags.driverGap.length||a.flags.overSeat))return;
-      const s=score(r);
-      if(s<bestScore){ bestScore=s; const cDrive=r.reduce((m,a)=>m+(a.driveMin||0),0), cOt=Math.max.apply(null,r.map(a=>a.ot||0).concat([0]));
-        best={job:j,from:v,to:other,score:s,easedOver:r.filter(a=>a.overAllow).length<base.filter(a=>a.overAllow).length,savedDrive:Math.max(0,Math.round(baseDrive-cDrive)),saved:Math.max(0,Math.round(baseOt-cOt))}; }
+      moveVehs.forEach(dest=>{ if(dest===v)return;
+        const sc2=JSON.parse(JSON.stringify(sc)); sc2.alloc=sc2.alloc||{}; sc2.alloc[allocKey(j)]=dest; if(sc2.order){act.forEach(x=>delete sc2.order[x]);}
+        const r=act.map(x=>assessVeh(d,x,sc2));
+        // Never CREATE a problem: appointment clash, impossible timing, specialist/driver gap, over-seat
+        // (the two-person seat limit and part-day hours are already baked into each vehicle's assessment).
+        // Existing conflicts are still flagged elsewhere — this only governs which moves we propose.
+        if(r.some(a=>a.flags.apptViol.length||a.flags.impossible.length||a.flags.specShort.length||a.flags.driverGap.length||a.flags.overSeat))return;
+        const s=score(r);
+        if(s<bestScore){ bestScore=s; const cDrive=r.reduce((m,a)=>m+(a.driveMin||0),0), cOt=Math.max.apply(null,r.map(a=>a.ot||0).concat([0]));
+          best={job:j,from:v,to:dest,score:s,easedOver:r.filter(a=>a.overAllow).length<base.filter(a=>a.overAllow).length,savedDrive:Math.max(0,Math.round(baseDrive-cDrive)),saved:Math.max(0,Math.round(baseOt-cOt))}; }
+      });
     });
   });
   return best;
@@ -1243,9 +1257,11 @@ function suggestPlan(){
   if(unallocated(curDay,scenario).length){ toast('Allocate the remaining jobs first, then I can tidy the plan.'); return; }
   const before=assessDay(curDay,scenario);
   const sc2=JSON.parse(JSON.stringify(scenario));
-  VEH().forEach(v=>{ const o=optimiseOrder(curDay,v,sc2); sc2.order=sc2.order||{}; sc2.order[v]=o.order.map(jobKey); });
+  // Optimise the stop order of EVERY vehicle active in this plan (HOPPER/MOE and any ALPHA/DELTA/Big
+  // Bertha Blake has allocated), not just the base trucks.
+  activeVEHsc(curDay,sc2).forEach(v=>{ const o=optimiseOrder(curDay,v,sc2); sc2.order=sc2.order||{}; sc2.order[v]=o.order.map(jobKey); });
   const reb=rebalanceSuggestion(curDay,sc2);
-  if(reb){ sc2.alloc[allocKey(reb.job)]=reb.to; VEH().forEach(v=>{ const o=optimiseOrder(curDay,v,sc2); sc2.order[v]=o.order.map(jobKey); }); }
+  if(reb){ sc2.alloc[allocKey(reb.job)]=reb.to; activeVEHsc(curDay,sc2).forEach(v=>{ const o=optimiseOrder(curDay,v,sc2); sc2.order[v]=o.order.map(jobKey); }); }
   if(planSig(sc2)===planSig(scenario)){ toast('Your plan is already the best I can find.'); return; }
   const after=assessDay(curDay,sc2);
   const bFin=Math.max.apply(null,before.vehs.filter(a=>a.finishMin!=null).map(a=>a.finishMin).concat([0]));
