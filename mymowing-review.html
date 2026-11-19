@@ -747,8 +747,11 @@ function rebalanceSuggestion(d,sc){
   // Jobs are shuffled only between the active MOWING vehicles. Big Bertha is scored (its driving counts)
   // and its route is optimised elsewhere, but regular jobs are never moved onto/off it — it keeps its
   // tip-truck rules (tip-only jobs, authorised driver). So the driver restriction can't be broken here.
-  const moveVehs=act.filter(v=>v!==BB);
-  if(moveVehs.length<2)return null;
+  const hasCrew=v=>((sc&&sc.helpers&&sc.helpers[v])||[]).length>0;
+  const sources=act.filter(v=>v!==BB);                 // move work OFF any mowing vehicle (incl an unstaffed one)
+  const dests=act.filter(v=>v!==BB && hasCrew(v));     // ...but only ONTO a vehicle that actually has crew to do it.
+  // A base truck (HOPPER/MOE) with no crew is never a valid destination just because it's a base truck.
+  if(!dests.length)return null;
   const base=act.map(v=>assessVeh(d,v,sc));
   // Score a day for the rebalancer: total driving + how balanced the trucks finish + a big weight on
   // keeping everyone within the 10h allowance. Lower is better. This looks for a genuinely more efficient
@@ -759,11 +762,13 @@ function rebalanceSuggestion(d,sc){
     return over*1e5 + drive + spread*0.4; };
   const baseScore=score(base), baseDrive=base.reduce((s,a)=>s+(a.driveMin||0),0), baseOt=Math.max.apply(null,base.map(a=>a.ot||0).concat([0]));
   let best=null, bestScore=baseScore-6;   // require a meaningful gain, not a 1–2 min shuffle
-  moveVehs.forEach(v=>{ const jobs=jobsForVeh(d,v,sc).filter(j=>!needsBigBertha(j));   // tip jobs stay on Big Bertha
+  sources.forEach(v=>{ const jobs=jobsForVeh(d,v,sc).filter(j=>!needsBigBertha(j));   // tip jobs stay on Big Bertha
     jobs.forEach(j=>{ if(j.geo===false)return;
-      moveVehs.forEach(dest=>{ if(dest===v)return;
+      dests.forEach(dest=>{ if(dest===v)return;
         const sc2=JSON.parse(JSON.stringify(sc)); sc2.alloc=sc2.alloc||{}; sc2.alloc[allocKey(j)]=dest; if(sc2.order){act.forEach(x=>delete sc2.order[x]);}
         const r=act.map(x=>assessVeh(d,x,sc2));
+        // Belt-and-suspenders: never leave jobs on a vehicle that has nobody to do them.
+        if(r.some(a=>a.order.length>0 && a.k===0))return;
         // Never CREATE a problem: appointment clash, impossible timing, specialist/driver gap, over-seat
         // (the two-person seat limit and part-day hours are already baked into each vehicle's assessment).
         // Existing conflicts are still flagged elsewhere — this only governs which moves we propose.
