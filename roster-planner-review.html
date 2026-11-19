@@ -112,6 +112,10 @@ label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;l
 <script>
 var FEED=null, DATE=null, DOW=null, ROT=null, STATE=null, VERSION=0, SAVING=false, DIRTY=false, CONFLICT=null;
 var SUGG={};  // runId -> {who, veh, reason, conf, src} : one-click recommendation for an unassigned run
+// LEARN_CONF holds ONLY deliberate human decisions for this day (runKey -> {who, veh}). Untouched automatic
+// allocations are never added here, so the model can't reinforce its own guesses. Seeded on load from the
+// saved plan's prior confirmations, updated as Wes accepts/assigns/moves/changes, serialised back on save.
+var LEARN_CONF={};
 var DEMO=/[?&]demo\b/.test(location.search||'');
 var $=function(s){return document.querySelector(s);};
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -259,7 +263,7 @@ async function boot(){
   dp.value=DATE; dp.min=dates[0]||''; dp.max=dates[dates.length-1]||'';
   dp.onchange=function(){ DATE=dp.value; loadDay(); };
   $('#save').onclick=function(){ doSave(); };
-  $('#reset').onclick=async function(){ if(DIRTY && !confirm('Clear your changes and reset to the suggested roster?\n\nAnything you have moved or reassigned will be lost.')) return; STATE=suggested(); STATE.shifts=STATE.shifts||[]; STATE.tray=STATE.tray||[]; STATE.shared=STATE.shared||{}; buildSuggestions(); try{ await applyLearning(); }catch(e){} DIRTY=false; CONFLICT=null; render(); toast('Reset to the suggested roster'); };
+  $('#reset').onclick=async function(){ if(DIRTY && !confirm('Clear your changes and reset to the suggested roster?\n\nAnything you have moved or reassigned will be lost.')) return; STATE=suggested(); STATE.shifts=STATE.shifts||[]; STATE.tray=STATE.tray||[]; STATE.shared=STATE.shared||{}; LEARN_CONF={}; buildSuggestions(); try{ await applyLearning(); }catch(e){} DIRTY=false; CONFLICT=null; render(); toast('Reset to the suggested roster'); };
   loadDay();
 }
 
@@ -341,6 +345,9 @@ async function loadDay(){
   migrateShared();   // upgrade any legacy double-assigned runs into lead+helper, prune orphans
   STATE._fromSaved=fromSaved;
   DIRTY=false; CONFLICT=null;
+  // Seed deliberate-decision memory from the saved plan's prior confirmations ONLY. A fresh (unsaved) day
+  // starts with nothing confirmed, so its automatic allocations never count as evidence until Wes acts.
+  LEARN_CONF={}; (STATE.learn||[]).forEach(function(e){ if(e&&e.runKey&&e.who) LEARN_CONF[e.runKey]={who:e.who,veh:e.veh||''}; });
   buildSuggestions();                 // history-based recommendations for unassigned runs
   if(!fromSaved){ try{ await applyLearning(); }catch(e){} }  // blend in what Wes has repeatedly confirmed
   await loadMowing();   // Blake's committed mowing staff/vehicles for this week (read-only)
@@ -390,6 +397,13 @@ function assignRunTo(id,who,veh){
          if(!STATE.shifts[ix].veh && veh && vehHasRoom(veh,who)) STATE.shifts[ix].veh=veh; }
   delete SUGG[id];
 }
+// ---- Deliberate-decision tracking (feeds learning). Called ONLY from human actions, never from the
+// automatic template or learning-preallocation, so untouched auto allocations are never recorded. ----
+function confirmRun(id){ var r=runById(id); if(!r||!r.runKey) return; var li=leadShiftOf(id);
+  if(li<0||!STATE.shifts[li].who){ delete LEARN_CONF[r.runKey]; return; }      // deliberately unassigned
+  LEARN_CONF[r.runKey]={who:STATE.shifts[li].who, veh:STATE.shifts[li].veh||''}; }
+function unconfirmRun(id){ var r=runById(id); if(r&&r.runKey) delete LEARN_CONF[r.runKey]; }
+function confirmCard(si){ var s=STATE.shifts[si]; if(!s) return; (s.runs||[]).forEach(function(id){ confirmRun(id); }); }
 // Reconcile a SAVED plan with the latest due runs: keep allocations, drop gone runs, send new work to Unassigned.
 function reconcile(){
   STATE.shifts=STATE.shifts||[]; STATE.tray=STATE.tray||[];
@@ -543,15 +557,15 @@ function openMenu(x,y,items){closeMenu();MENU=document.createElement('div');MENU
 document.addEventListener('click',function(e){if(MENU&&!MENU.contains(e.target)&&!/rmv|data-mv|data-asg/.test(e.target.className+' '+(e.target.getAttribute&&(e.target.getAttribute('data-mv')||e.target.getAttribute('data-asg'))||'')))closeMenu();});
 
 function act(a){var p=a.split(':');
-  if(p[0]==='acc'){var accid=p.slice(1).join(':');var sg=SUGG[accid];if(sg&&sg.who){assignRunTo(accid,sg.who,sg.veh);toast('Assigned to '+first(sg.who));}DIRTY=true;render();return;}
-  if(p[0]==='mvShift'){var si=+p[1],id=p[2],to=+p[3];var s=STATE.shifts[si];s.runs=s.runs.filter(function(x){return x!==id;});STATE.shifts[to].runs.push(id);}
-  else if(p[0]==='mvTray'){var si2=+p[1],id2=p[2];STATE.shifts[si2].runs=STATE.shifts[si2].runs.filter(function(x){return x!==id2;});if(STATE.tray.indexOf(id2)<0)STATE.tray.push(id2);}
-  else if(p[0]==='asg'){var id3=p[1],to3=+p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id3;});STATE.shifts[to3].runs.push(id3);}
-  else if(p[0]==='addrun'){var si3=+p[1],id4=p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id4;});STATE.shifts[si3].runs.push(id4);}
+  if(p[0]==='acc'){var accid=p.slice(1).join(':');var sg=SUGG[accid];if(sg&&sg.who){assignRunTo(accid,sg.who,sg.veh);confirmRun(accid);toast('Assigned to '+first(sg.who));}DIRTY=true;render();return;}
+  if(p[0]==='mvShift'){var si=+p[1],id=p[2],to=+p[3];var s=STATE.shifts[si];s.runs=s.runs.filter(function(x){return x!==id;});STATE.shifts[to].runs.push(id);confirmRun(id);}
+  else if(p[0]==='mvTray'){var si2=+p[1],id2=p[2];STATE.shifts[si2].runs=STATE.shifts[si2].runs.filter(function(x){return x!==id2;});if(STATE.tray.indexOf(id2)<0)STATE.tray.push(id2);unconfirmRun(id2);}
+  else if(p[0]==='asg'){var id3=p[1],to3=+p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id3;});STATE.shifts[to3].runs.push(id3);confirmRun(id3);}
+  else if(p[0]==='addrun'){var si3=+p[1],id4=p[2];STATE.tray=STATE.tray.filter(function(x){return x!==id4;});STATE.shifts[si3].runs.push(id4);confirmRun(id4);}
   else if(p[0]==='asgNew'){var anid=p[1],awho=p.slice(2).join(':');STATE.tray=STATE.tray.filter(function(x){return x!==anid;});
-    var ex=STATE.shifts.findIndex(function(s){return s.who===awho;}); if(ex>=0){STATE.shifts[ex].runs.push(anid);} else {STATE.shifts.push({veh:'',who:awho,runs:[anid]});}}
+    var ex=STATE.shifts.findIndex(function(s){return s.who===awho;}); if(ex>=0){STATE.shifts[ex].runs.push(anid);} else {STATE.shifts.push({veh:'',who:awho,runs:[anid]});} confirmRun(anid);}
   else if(p[0]==='mvNew'){var mnsi=+p[1],mnid=p[2],mnwho=p.slice(3).join(':');STATE.shifts[mnsi].runs=STATE.shifts[mnsi].runs.filter(function(x){return x!==mnid;});
-    var mex=STATE.shifts.findIndex(function(s){return s.who===mnwho;}); if(mex>=0){STATE.shifts[mex].runs.push(mnid);} else {STATE.shifts.push({veh:'',who:mnwho,runs:[mnid]});}}
+    var mex=STATE.shifts.findIndex(function(s){return s.who===mnwho;}); if(mex>=0){STATE.shifts[mex].runs.push(mnid);} else {STATE.shifts.push({veh:'',who:mnwho,runs:[mnid]});} confirmRun(mnid);}
   else if(p[0]==='addhelp'){var hsi=+p[1],hid=p[2],emp=p.slice(3).join(':');var lead=STATE.shifts[hsi];var m=sharedMap();var list=m[hid]=m[hid]||[];
     if(emp && emp!==(lead&&lead.who) && !list.some(function(h){return h.emp===emp;})){
       var lv=(lead&&lead.veh)||'';
@@ -573,6 +587,7 @@ function makeLead(id,hi){ var m=sharedMap(); var list=m[id]||[]; var h=list[hi];
   list.splice(hi,1);
   if(oldLead && oldLead.who && oldLead.who!==h.emp && !list.some(function(x){return x.emp===oldLead.who;})) list.push({emp:oldLead.who,veh:oldLead.veh||'',hours:null});
   if(!list.length) delete m[id]; else m[id]=list;
+  confirmRun(id);   // Wes deliberately changed who leads this run
   DIRTY=true; render();
 }
 function removeHelper(id,hi){ var m=sharedMap(); var list=m[id]||[]; list.splice(hi,1); if(!list.length) delete m[id]; else m[id]=list; DIRTY=true; render(); }
@@ -582,11 +597,11 @@ function setHelperVeh(id,hi,v){ var m=sharedMap(); if(!(m[id]&&m[id][hi])) retur
 function setHelperHours(id,hi,val){ var m=sharedMap(); if(!(m[id]&&m[id][hi])) return; val=(val==null?'':String(val)).trim();
   var num=parseFloat(val); m[id][hi].hours=(val===''||isNaN(num)||num<=0)?null:num; DIRTY=true; render(); }
 function wire(){
-  document.querySelectorAll('.who').forEach(function(sel){sel.onchange=function(){STATE.shifts[+sel.dataset.who].who=sel.value;DIRTY=true;render();};});
+  document.querySelectorAll('.who').forEach(function(sel){sel.onchange=function(){var i=+sel.dataset.who;STATE.shifts[i].who=sel.value;confirmCard(i);DIRTY=true;render();};});
   document.querySelectorAll('.vehsel').forEach(function(sel){sel.onchange=function(){var i=+sel.dataset.veh,v=sel.value,who=STATE.shifts[i].who;
     if(v && !vehHasRoom(v,who)){ toast(v+' already has 2 people — max 2 per vehicle. Pick another vehicle.'); render(); return; }
-    STATE.shifts[i].veh=v;DIRTY=true;render();};});
-  document.querySelectorAll('.rx').forEach(function(b){b.onclick=function(){var si=+b.dataset.rm;STATE.shifts[si].runs.forEach(function(id){if(STATE.tray.indexOf(id)<0)STATE.tray.push(id);});STATE.shifts.splice(si,1);DIRTY=true;render();};});
+    STATE.shifts[i].veh=v;confirmCard(i);DIRTY=true;render();};});
+  document.querySelectorAll('.rx').forEach(function(b){b.onclick=function(){var si=+b.dataset.rm;STATE.shifts[si].runs.forEach(function(id){unconfirmRun(id);if(STATE.tray.indexOf(id)<0)STATE.tray.push(id);});STATE.shifts.splice(si,1);DIRTY=true;render();};});
   document.querySelectorAll('[data-mv]').forEach(function(b){b.onclick=function(e){e.stopPropagation();var pr=b.dataset.mv.split('|'),si=+pr[0],id=pr[1];
     var items=[{hd:'Move run to…'}];STATE.shifts.forEach(function(s,i){if(i!==si)items.push({act:'mvShift:'+si+':'+id+':'+i,label:first(s.who)+(s.veh?' ('+s.veh+')':'')});});items.push({act:'mvTray:'+si+':'+id,label:'↓ Unassigned'});
     var had={}; STATE.shifts.forEach(function(s){if(s.who)had[s.who]=1;}); var fresh=(FEED.staff||[]).filter(function(n){return !had[n];});
@@ -616,11 +631,9 @@ function wire(){
   var ae=$('#addemp');if(ae)ae.onclick=function(){STATE.shifts.push({veh:'',who:(FEED.staff||[''])[0],runs:[]});DIRTY=true;render();};
 }
 
-// Record each confirmed run→employee (with vehicle) so future same-weekday plans can learn Wes's real
-// choices. This is the ONLY place learning data is written, and only from a roster Wes actively saves.
-function buildLearn(){ var out=[]; (STATE.shifts||[]).forEach(function(s){ if(!s.who)return;
-  (s.runs||[]).forEach(function(id){ var r=runById(id); if(r&&r.runKey) out.push({runKey:r.runKey,who:s.who,veh:s.veh||''}); }); });
-  return out; }
+// Serialise ONLY the deliberate human decisions. Automatic allocations Wes left untouched are NOT here, so
+// saving a day you only glanced at adds no new "evidence" — the model learns from real choices, not itself.
+function buildLearn(){ return Object.keys(LEARN_CONF).map(function(k){ return {runKey:k, who:LEARN_CONF[k].who, veh:LEARN_CONF[k].veh||''}; }); }
 async function doSave(forceBase){
   if(SAVING)return;SAVING=true;$('#save').disabled=true;
   try{
