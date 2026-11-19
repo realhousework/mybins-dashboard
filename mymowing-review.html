@@ -42,7 +42,7 @@ h1{font-size:20px;margin:0}.logo b{color:#2e8b57}
 .hours{width:100%;margin-top:8px;padding-left:44px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
 .hours .seg button{min-width:0;padding:6px 11px;font-size:12.5px}
 .hours input[type=time]{border:1px solid #cfe0d6;border-radius:8px;padding:6px 8px;font:inherit;font-size:13px}
-.vehgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+.vehgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px;align-items:start}
 .veh{background:#fff;border:2px solid #e3eae5;border-radius:14px;padding:12px 13px}
 .veh.H{border-top:5px solid #2e8b57}.veh.M{border-top:5px solid #2f6fb3}.veh.B{border-top:5px solid #8a6a2e}
 .veh h3{margin:0 0 2px;font-size:17px}.veh .crewline{font-size:13px;color:#5b6b60;min-height:18px;margin-bottom:8px}
@@ -56,19 +56,39 @@ h1{font-size:20px;margin:0}.logo b{color:#2e8b57}
 .jnum{font-size:12px;font-weight:800;color:#8a988f;min-width:16px;padding-top:2px}
 .jmain{flex:1;min-width:0}
 /* ===== Employee-first cards (mirrors the myBins roster planner) ===== */
-.empcard{background:#fff;border:2px solid #e3eae5;border-radius:14px;padding:12px 13px;margin-bottom:12px}
-.empcard.H{border-top:5px solid #2e8b57}.empcard.M{border-top:5px solid #2f6fb3}.empcard.B{border-top:5px solid #8a6a2e}.empcard.off{border-top:5px solid #c3ccc6}
-.emphd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.emphd .cname{font-size:16px}
-.ehrs{font-size:13px;color:#2e6b45;font-weight:700;background:#eef7f0;border:1px solid #cfe9d9;border-radius:999px;padding:2px 10px}
+.empcard{background:#fff;border:1px solid #e3eae5;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column}
+.empcard.H{border-top:5px solid #2e8b57}.empcard.M{border-top:5px solid #2f6fb3}.empcard.B{border-top:5px solid #8a6a2e}.empcard.off{border-top:5px solid #e0a52e}
+.emphd{display:flex;align-items:center;gap:11px;flex-wrap:nowrap}
+.emphd .ava{width:40px;height:40px;font-size:15px}
+.emphd .cname{font-size:17px;flex:1;min-width:0}
+.ehrs{font-size:13.5px;color:#2e6b45;font-weight:800;background:#eef7f0;border:1px solid #cfe9d9;border-radius:999px;padding:4px 12px;white-space:nowrap}
 .ehrs.over{color:#8a6d1a;background:#fdf4e2;border-color:#ecd9a7}
-.cocrew{font-size:13px;color:#5b6b60;margin:6px 0 2px;padding:7px 10px;background:#f4f7f5;border-radius:9px}
-.share{border:1px solid #cfe9d9;background:#eef3f0;color:#2e8b57;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;padding:2px 8px;line-height:1.5}
+.empremove{border:1px solid #e9d7d2;background:#fff;color:#b4452b;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;padding:5px 10px;line-height:1;white-space:nowrap}
+.empremove:hover{background:#fbeeea}
+.ctrlrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ctrlrow .lbl{font-size:12px;font-weight:700;color:#8a988f;min-width:52px}
+.empcard .seg button{padding:8px 14px;font-size:13.5px;min-width:0}
+.empcard .seg button.no{color:#b4452b}
+.empcard .seg button.on.no{background:#e0a52e;color:#fff}
+.hoursctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px;font-size:13.5px}
+.hoursctl input[type=time]{border:1px solid #cfe0d6;border-radius:8px;padding:6px 8px;font:inherit;font-size:13.5px}
+.novehwarn{margin:10px 0 2px;padding:8px 11px;background:#fdf4e2;border:1px solid #ecd9a7;border-radius:9px;color:#8a6d1a;font-size:13px;font-weight:600}
+.cocrew{font-size:13.5px;color:#5b6b60;margin:10px 0 2px;padding:9px 11px;background:#f4f7f5;border-radius:10px}
+.vstat{margin:12px 0 6px}
+.jrow{padding:10px 0}
+.jbtns{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.jbtns .ob{min-width:30px}
+.share{border:1px solid #cfe9d9;background:#eef3f0;color:#2e8b57;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;padding:4px 10px;line-height:1.3}
 .share:hover{background:#e0efe6}
+.unassignb{border:1px solid #e9d7d2;background:#fff;color:#b4452b;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;padding:4px 9px;line-height:1.3}
+.unassignb:hover{background:#fbeeea}
 .shbadge{font-size:11px;font-weight:700;color:#2f6fb3;background:#e7f0fb;border:1px solid #cfe0f3;border-radius:999px;padding:1px 7px;margin-left:5px}
-.shmins{width:52px;border:1px solid #cfe0d6;border-radius:6px;padding:2px 5px;font:inherit;font-size:12px}
-.shrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:3px 0 0 24px;font-size:12px;color:#5b6b60}
-.benchhd{font-size:12px;font-weight:800;color:#8a988f;text-transform:uppercase;letter-spacing:.03em;margin:6px 0 4px}
+.rembadge{font-size:11px;font-weight:700;color:#8a6d1a;background:#fdf4e2;border:1px solid #ecd9a7;border-radius:999px;padding:1px 7px;margin-left:5px}
+.shmins{width:58px;border:1px solid #cfe0d6;border-radius:7px;padding:4px 6px;font:inherit;font-size:13px}
+.shrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 0 26px;font-size:13px;color:#5b6b60}
+.shrow .shpair{display:flex;align-items:center;gap:4px;background:#f4f7f5;border-radius:8px;padding:3px 7px}
+.benchhd{font-size:12px;font-weight:800;color:#8a988f;text-transform:uppercase;letter-spacing:.03em;margin:14px 0 6px}
+.holdjob{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px dashed #ecd9a7;font-size:13.5px}
 .jaddr{font-weight:700;font-size:14px}.jsvc{font-size:12px;color:#5b6b60}
 .sk{display:inline-block;font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;margin-left:5px}
 .sk.Specialist{background:#efe3fb;color:#6b2fb3}.sk.Mixed{background:#e3eefb;color:#2f6fb3}.sk.Basic{background:#e7f4ec;color:#1a7a43}.sk.Unknown{background:#eef2ef;color:#8a988f}
@@ -136,7 +156,7 @@ dialog .df{padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;bord
 .opt .warns{font-size:12.5px;color:#8a2f1a;margin:4px 0}.opt .warns div{margin:1px 0}
 .opt .fut{font-size:12.5px;margin:4px 0}.opt .fut.ok{color:#1a7a43}.opt .fut.bad{color:#b4452b}
 .findnav{display:flex;gap:10px;margin:8px 0}
-@media(max-width:700px){.vehgrid{grid-template-columns:1fr}.datebar .today{min-width:150px;font-size:17px}.weekcard .jcol{min-width:48px}.weekcard .dcol{min-width:78px}}
+@media(max-width:760px){.vehgrid{grid-template-columns:1fr}.datebar .today{min-width:150px;font-size:17px}.weekcard .jcol{min-width:48px}.weekcard .dcol{min-width:78px}}
 </style></head><body><div class=wrap>
 <div class=topbar>
   <h1 class=logo>my<b>Mowing</b> · Daily Plan</h1>
@@ -176,7 +196,7 @@ dialog .df{padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;bord
 <div id=cleared></div>
 <div id=reminders></div>
 <div id=crewCard></div>
-<div class=vehgrid id=vehs></div>
+<div id=vehs></div>
 <div class=actions>
   <button class="btn" id=saveBtn>💾 Save plan</button>
   <button class="btn blue ghost" id=suggestBtn>✨ Suggest a better plan</button>
@@ -560,7 +580,7 @@ function rotLabel(d){const w=Math.round((mondayOf(d)-ROT_ANCHOR_MON)/(7*86400000
 
 /* scenario: { alloc:{allocKey->veh}, helpers:{veh->[{emp,start,end,part}]}, order:{veh->[jobKey]} } */
 function defaultScenario(d){
-  const sc={alloc:{},helpers:{},order:{},share:{},status:'draft'};
+  const sc={alloc:{},helpers:{},order:{},share:{},hold:{},status:'draft'};
   ALLVEH().forEach(v=>{sc.helpers[v]=[];});
   return sc; // NOTHING allocated and NOBODY rostered — Blake builds the crew and allocates the jobs
 }
@@ -614,20 +634,69 @@ function unshareJobFrom(sc,j,v){ const k=allocKey(j); const list=sc.share&&sc.sh
   else { sc.alloc[k]=sc.share[k][0].veh; }
 }
 function setShareMins(sc,j,v,mins){ const k=allocKey(j); const list=sc.share&&sc.share[k]; if(!list)return; const e=list.find(x=>x.veh===v); if(e)e.mins=(mins===''||mins==null)?null:Math.max(0,+mins); }
-function crewVehOf(sc,emp){for(const v of ALLVEH()){if(((sc.helpers&&sc.helpers[v])||[]).some(h=>h.emp===emp))return v;}return 'off';}
-function crewEntry(sc,emp){for(const v of ALLVEH()){const e=((sc.helpers&&sc.helpers[v])||[]).find(h=>h.emp===emp);if(e)return e;}return null;}
+// How many person-minutes of a job are actually allocated across all its vehicles, and how many remain
+// unallocated. Used to surface a "remainder" when a crew's minutes are trimmed below the job's estimate,
+// so work minutes are never silently lost.
+function allocatedMins(sc,j){ const vs=vehiclesForJob(sc,j); if(!vs.length)return 0; return vs.reduce((a,v)=>a+effEst(sc,j,v),0); }
+function unallocMins(sc,j){ return Math.max(0, (j.est!=null?j.est:0) - allocatedMins(sc,j)); }
+
+/* ===== HELD JOBS (employee on the day but with NO vehicle) =====
+   scenario.hold = { "<emp>": [ "<allocKey>", ... ] }. A held job is attached to a person, not a vehicle,
+   so it isn't routed and isn't in the Unallocated pool — it waits on that person's card until they get a
+   vehicle. No job or minute is lost. */
+function holdOf(sc,emp){ return (sc.hold&&sc.hold[emp])||null; }
+function heldKeys(sc){ const s=new Set(); if(sc.hold)Object.keys(sc.hold).forEach(e=>(sc.hold[e]||[]).forEach(k=>s.add(k))); return s; }
+function empHolding(sc,j){ if(!sc.hold)return null; const k=allocKey(j); for(const e of Object.keys(sc.hold)){ if((sc.hold[e]||[]).includes(k))return e; } return null; }
+
+// Put a job fully back to Unallocated (strip it off every vehicle and any share, and any hold).
+function unallocateJob(sc,j){ const k=allocKey(j); if(sc.share)delete sc.share[k]; if(sc.alloc)delete sc.alloc[k];
+  if(sc.hold)Object.keys(sc.hold).forEach(e=>{ sc.hold[e]=(sc.hold[e]||[]).filter(x=>x!==k); if(!sc.hold[e].length)delete sc.hold[e]; }); }
+
+// Remove a job from ONE vehicle only. If it was shared, the other vehicles keep their allocations; if that
+// was its only vehicle, the whole job returns to Unallocated.
+function unassignJobFromVeh(sc,j,v){ const list=shareList(sc,j);
+  if(list){ unshareJobFrom(sc,j,v); if(vehOfJob(sc,j)===v && !shareList(sc,j)){ /* collapsed onto v */ delete sc.alloc[allocKey(j)]; } return; }
+  if(vehOfJob(sc,j)===v){ delete sc.alloc[allocKey(j)]; } }
+
+// Remove an employee from the day entirely. Their vehicle: if someone else is still on it, the jobs stay
+// with that person; if they were the only crew, this vehicle's exclusive jobs go back to Unallocated and
+// its share of any shared job is released (the other vehicles keep theirs). Held jobs go back to Unallocated.
+function employeeExclusiveJobs(sc,emp){ const v=crewVehOf(sc,emp); if(v==='off'||v==='none')return holdOf(sc,emp)||[];
+  const others=((sc.helpers&&sc.helpers[v])||[]).filter(h=>h.emp!==emp); if(others.length)return []; // vehicle still crewed
+  return jobsForVeh(curDay,v,sc); }
+function removeEmployee(sc,emp){ const v=crewVehOf(sc,emp);
+  if(v==='none'){ (holdOf(sc,emp)||[]).slice().forEach(k=>{ const j=activeJobs(curDay).find(x=>allocKey(x)===k); if(j)unallocateJob(sc,j); }); if(sc.hold)delete sc.hold[emp]; }
+  else if(v!=='off'){ const others=((sc.helpers&&sc.helpers[v])||[]).filter(h=>h.emp!==emp);
+    if(!others.length){ jobsForVeh(curDay,v,sc).slice().forEach(j=>{ if(isShared(sc,j))unshareJobFrom(sc,j,v); else delete sc.alloc[allocKey(j)]; }); } }
+  ALLVEH().forEach(x=>{ if(sc.helpers&&sc.helpers[x])sc.helpers[x]=sc.helpers[x].filter(h=>h.emp!==emp); });
+}
+// Take an employee OFF their vehicle but keep them on the day, holding their jobs (needs a vehicle next).
+function setNoVehicle(sc,emp){ const v=crewVehOf(sc,emp); if(v==='none')return; const ent=crewEntry(sc,emp)||{};
+  let held=[];
+  if(v!=='off'){ const others=((sc.helpers&&sc.helpers[v])||[]).filter(h=>h.emp!==emp);
+    if(!others.length){ held=jobsForVeh(curDay,v,sc).map(j=>{ if(isShared(sc,j))unshareJobFrom(sc,j,v); else delete sc.alloc[allocKey(j)]; return allocKey(j); }); } }
+  ALLVEH().forEach(x=>{ if(sc.helpers&&sc.helpers[x])sc.helpers[x]=sc.helpers[x].filter(h=>h.emp!==emp); });
+  sc.helpers['none']=sc.helpers['none']||[]; sc.helpers['none']=sc.helpers['none'].filter(h=>h.emp!==emp);
+  sc.helpers['none'].push({emp,start:ent.start||fullHours(curDay,emp).start,end:ent.end||fullHours(curDay,emp).end,part:!!ent.part});
+  if(held.length){ sc.hold=sc.hold||{}; sc.hold[emp]=(sc.hold[emp]||[]).concat(held); }
+}
+function crewVehOf(sc,emp){for(const v of ALLVEH()){if(((sc.helpers&&sc.helpers[v])||[]).some(h=>h.emp===emp))return v;} if(((sc.helpers&&sc.helpers['none'])||[]).some(h=>h.emp===emp))return 'none'; return 'off';}
+function crewEntry(sc,emp){for(const v of ALLVEH().concat(['none'])){const e=((sc.helpers&&sc.helpers[v])||[]).find(h=>h.emp===emp);if(e)return e;}return null;}
 function pad2(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
 function fullHours(d,emp){const s=staffRec(emp);return{start:(s&&s.start)||'07:00',end:(s&&s.end)||'15:30'};}
 function setCrewVeh(emp,v){
+  if(v==='none'){ setNoVehicle(scenario,emp); return; }   // park them with no vehicle, holding their jobs
   // Enforce the strict maximum of two people per vehicle.
   if(v!=='off'){ const crew=((scenario.helpers&&scenario.helpers[v])||[]).filter(h=>h.emp!==emp); const distinct=[...new Set(crew.map(h=>h.emp))]; if(distinct.length>=MAX_PER_VEH){ toast('Only '+MAX_PER_VEH+' people per vehicle — '+(v===BB?'Big Bertha':v)+' already has '+distinct.join(' & ')+'.'); return; } }
   const ent=crewEntry(scenario,emp);
-  ALLVEH().forEach(x=>{if(scenario.helpers[x])scenario.helpers[x]=scenario.helpers[x].filter(h=>h.emp!==emp);});
-  if(v==='off')return;
+  ALLVEH().concat(['none']).forEach(x=>{if(scenario.helpers[x])scenario.helpers[x]=scenario.helpers[x].filter(h=>h.emp!==emp);});
+  if(v==='off'){ if(scenario.hold)delete scenario.hold[emp]; return; }
   let e;
   if(ent){e={emp,start:ent.start,end:ent.end,part:ent.part};}
   else{const f=fullHours(curDay,emp);e={emp,start:f.start,end:f.end,part:false};}
   scenario.helpers[v]=scenario.helpers[v]||[]; scenario.helpers[v].push(e);
+  // If they were holding jobs with no vehicle, those jobs move onto the vehicle they just got.
+  if(scenario.hold&&scenario.hold[emp]&&scenario.hold[emp].length){ scenario.hold[emp].slice().forEach(k=>{ scenario.alloc[k]=v; }); delete scenario.hold[emp]; }
 }
 function setPartDay(emp,on){ const e=crewEntry(scenario,emp); if(!e)return; e.part=on; if(!on){const f=fullHours(curDay,emp);e.start=f.start;e.end=f.end;} }
 function setHours(emp,which,val){ const e=crewEntry(scenario,emp); if(!e)return; if(which==='start')e.start=val; else e.end=val; e.part=true; }
@@ -645,7 +714,10 @@ function crewIntervals(d,v,sc){
 }
 function maxConcurrent(crew){const pts=[];crew.forEach(c=>{pts.push([c.start,1]);pts.push([c.end,-1]);});pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);let cur=0,mx=0;pts.forEach(p=>{cur+=p[1];if(cur>mx)mx=cur;});return mx;}
 function jobsForVeh(d,v,sc){return activeJobs(d).filter(j=>jobServicedBy(sc,j,v));}
-function unallocated(d,sc){return activeJobs(d).filter(j=>vehiclesForJob(sc,j).length===0);}
+function unallocated(d,sc){ const held=heldKeys(sc); return activeJobs(d).filter(j=>vehiclesForJob(sc,j).length===0 && !held.has(allocKey(j))); }
+// Jobs that are partly allocated but have left-over unallocated minutes (from trimming a crew's share) —
+// shown in the pool as a remainder so no work is lost.
+function partlyUnalloc(d,sc){ return activeJobs(d).filter(j=>vehiclesForJob(sc,j).length>0 && unallocMins(sc,j)>0); }
 function effectiveOrder(d,v,sc){
   const jobs=jobsForVeh(d,v,sc);
   const man=sc.order&&sc.order[v];
@@ -909,7 +981,7 @@ const Store={
   async get(date){ if(PLANS_API===null){const s=localStorage.getItem('plan2:'+date);return s?JSON.parse(s):{plan:null,version:0};} const r=await fetch(PLANS_API+'/api/plan-review/'+date,{credentials:'include'});return await r.json(); },
   async put(date,plan,baseVersion,labels){ if(PLANS_API===null){const v=(baseVersion||0)+1;const rec={plan,version:v,updatedBy:'you (device)',updatedAt:new Date().toISOString()};localStorage.setItem('plan2:'+date,JSON.stringify(rec));return Object.assign({ok:true,date},rec);} const r=await fetch(PLANS_API+'/api/plan-review/'+date,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan,baseVersion,labels:labels||{}})});return await r.json(); }
 };
-function planSig(sc){return JSON.stringify({a:sc.alloc,h:sc.helpers,o:sc.order,s:sc.status||'draft'});}
+function planSig(sc){return JSON.stringify({a:sc.alloc,h:sc.helpers,o:sc.order,sh:sc.share||{},hd:sc.hold||{},s:sc.status||'draft'});}
 
 /* =================== RENDER =================== */
 function setDate(date){
@@ -945,7 +1017,7 @@ function diffPlans(oldSc,newSc,d){
     else out.push('Moved '+addr+' from '+nm(oV)+' to '+nm(nV)); });
   return out;
 }
-function migrate(p){ const sc={alloc:p.alloc||{},helpers:p.helpers||{},order:p.order||{},share:p.share||{},status:p.status||'draft',bbDriver:p.bbDriver||null}; ALLVEH().forEach(v=>{sc.helpers[v]=sc.helpers[v]||[];});
+function migrate(p){ const sc={alloc:p.alloc||{},helpers:p.helpers||{},order:p.order||{},share:p.share||{},hold:p.hold||{},status:p.status||'draft',bbDriver:p.bbDriver||null}; ALLVEH().forEach(v=>{sc.helpers[v]=sc.helpers[v]||[];});
   // Drop any shared-job entries that point at a vehicle/job no longer present, so a stale share can't
   // resurrect work. A plan saved before sharing existed simply has share={} and loads exactly as before.
   Object.keys(sc.share).forEach(k=>{ const list=(sc.share[k]||[]).filter(x=>x&&x.veh); if(list.length>1){sc.share[k]=list;} else { delete sc.share[k]; if(list[0])sc.alloc[k]=sc.alloc[k]||list[0].veh; } });
@@ -1044,8 +1116,10 @@ function renderVerdict(day,meta){
 }
 function renderPool(date,day){
   const box=$('pool');
-  if(!day.unalloc.length){box.innerHTML='';return;}
-  let h='<div class="card need"><div class="sechead need"><span>Jobs to allocate ('+day.unalloc.length+')</span><button class=linkbtn id=autoAlloc>Auto-allocate (suggestion)</button></div>';
+  const partial=partlyUnalloc(date,scenario);
+  if(!day.unalloc.length && !partial.length){box.innerHTML='';return;}
+  let h='<div class="card need"><div class="sechead need"><span>Jobs to allocate ('+day.unalloc.length+')</span>'+(day.unalloc.length?'<button class=linkbtn id=autoAlloc>Auto-allocate (suggestion)</button>':'')+'</div>';
+  if(!day.unalloc.length) h+='<div class="small muted" style="padding:2px 0 6px">All jobs are on a truck. '+(partial.length?'Some have unallocated minutes — see below.':'')+'</div>';
   day.unalloc.forEach(j=>{
     const est=(j._status==='estimated')?'<span class=estdot>projected</span>':''; const nomap=!j.geo?'<span class=nomap>no map location</span>':'';
     const donem=isCompleted(j)?'<span style="color:#2f8f46;font-weight:600;font-size:11px;margin-left:6px">&#10003; done</span>':'';
@@ -1057,6 +1131,14 @@ function renderPool(date,day){
       '<button class=linkbtn style="font-size:11px;opacity:.65" data-tonote="'+esc(classKey(j))+'" title="This is a note/reminder, not a job">not a job?</button>'+
       '<button class=linkbtn style="font-size:11px;opacity:.65" data-markdone="'+esc(occKey(j))+'" title="Already done / not needed this day">already done?</button></div></div>';
   });
+  // Jobs that are partly on trucks but have left-over minutes (from trimming a crew's share) — shown so no
+  // work is lost. Re-add by increasing a crew's minutes on that job's card.
+  if(partial.length){
+    h+='<div class="sechead need" style="margin-top:8px"><span>Unallocated minutes ('+partial.length+')</span></div>';
+    partial.forEach(j=>{ const rem=Math.round(unallocMins(scenario,j)); const vs=vehiclesForJob(scenario,j).join(', ');
+      h+='<div class=jrow><div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'<span class=rembadge>'+rem+' of '+(j.est||0)+' min unallocated</span></div><div class=jsvc>'+esc(j.service||'')+' · on '+esc(vs)+' — edit the split on their card to re-add these minutes.</div></div></div>';
+    });
+  }
   h+='</div>'; box.innerHTML=h;
 }
 function renderReminders(date){
@@ -1219,76 +1301,89 @@ function renderEmployees(date,day){
   $('crewCard').innerHTML='';   // the crew picker now lives inside each employee card
   const assess={}; day.vehs.forEach(a=>assess[a.v]=a);
   const AV=activeVEH(date);
-  const vehBtns=(emp,cur)=>'<div class=seg>'+AV.map(vv=>'<button class="'+vehClass(vv)+' '+(cur===vv?'on '+vehClass(vv):'')+'" data-crew="'+esc(emp)+'" data-v="'+esc(vv)+'" title="'+(vv===BB?'Big Bertha':vv)+'">'+(vv===BB?'🚛':vv)+'</button>').join('')+'<button class="'+(cur==='off'?'on off':'')+'" data-crew="'+esc(emp)+'" data-v=off>Off</button></div>';
+  const vehSel=(emp,cur)=>'<div class=seg>'+AV.map(vv=>'<button class="'+vehClass(vv)+' '+(cur===vv?'on '+vehClass(vv):'')+'" data-crew="'+esc(emp)+'" data-v="'+esc(vv)+'" title="'+(vv===BB?'Big Bertha':vv)+'">'+(vv===BB?'🚛 Bertha':vv)+'</button>').join('')+'<button class="no '+(cur==='none'?'on no':'')+'" data-crew="'+esc(emp)+'" data-v=none title="Keep on the day but no vehicle yet">No vehicle</button></div>';
   let h='<div class=sechead><span>👷 Team — one card per person</span><button class=linkbtn id=mgStaff>Manage staff</button></div>';
   const names=staffNames();
   const ordered=STAFF_ORDER.filter(n=>names.includes(n)).concat(names.filter(n=>!STAFF_ORDER.includes(n)));
   const working=ordered.filter(e=>crewVehOf(scenario,e)!=='off');
   const bench=ordered.filter(e=>crewVehOf(scenario,e)==='off');
-  if(!working.length){ h+='<div class="card" style="text-align:center;color:#5b6b60;padding:16px">No one is on a truck yet. Put someone on a vehicle below to start building the day.</div>'; }
+  h+='<div class=vehgridWrap><div class="vehgrid" id=__empgrid>'; // grid wrapper handled by #vehs class below
+  if(!working.length){ h+='<div class="card" style="text-align:center;color:#5b6b60;padding:16px;grid-column:1/-1">No one is on the day yet. Put someone on a vehicle below to start building the day.</div>'; }
   working.forEach(emp=>{
     const v=crewVehOf(scenario,emp); const a=assess[v]||{}; const ent=crewEntry(scenario,emp);
     const spec=isSpec(emp); const isBBd=(v===BB&&bbDriverOf(scenario)===emp);
     const lead=vehLead(scenario,v); const isLead=(lead===emp);
-    const myH=empHoursOf(a,emp);
+    const myH=(v==='none')?null:empHoursOf(a,emp);
     const hChip=myH!=null?'<span class="ehrs'+(myH>MAXH()+1e-6?' over':'')+'">'+r1(myH)+'h</span>':'';
-    h+='<div class="empcard '+(v==='off'?'off':vehClass(v))+'">';
-    h+='<div class=emphd><div class="ava '+(spec?'spec':'')+'">'+ini(emp)+'</div><div class=cname>'+esc(emp)+(spec?' <span class=t>specialist</span>':'')+(isBBd?' <span class=t style="background:#f0e6d2;color:#7a5a1e">Bertha driver</span>':'')+'</div>'+hChip+'</div>';
-    h+='<div class=hours style="padding-left:0;margin-top:8px"><span class=muted>Vehicle:</span>'+vehBtns(emp,v)+'</div>';
-    h+='<div class=hours style="padding-left:0"><span class=muted>Hours:</span><div class=seg>'+
+    h+='<div class="empcard '+(v==='none'?'off':vehClass(v))+'">';
+    // header: avatar, name, hours chip, remove
+    h+='<div class=emphd><div class="ava '+(spec?'spec':'')+'">'+ini(emp)+'</div><div class=cname>'+esc(emp)+(spec?' <span class=t>specialist</span>':'')+(isBBd?' <span class=t style="background:#f0e6d2;color:#7a5a1e">Bertha driver</span>':'')+'</div>'+hChip+'<button class=empremove data-removeemp="'+esc(emp)+'" title="Take '+esc(emp)+' off the day">✕ Remove</button></div>';
+    // vehicle selector
+    h+='<div class=ctrlrow><span class=lbl>Vehicle</span>'+vehSel(emp,v)+'</div>';
+    // hours
+    h+='<div class=hoursctl><span class=lbl>Hours</span><div class=seg>'+
        '<button class="'+(!(ent&&ent.part)?'on H':'')+'" data-full="'+esc(emp)+'">Full day</button>'+
        '<button class="'+((ent&&ent.part)?'on H':'')+'" data-part="'+esc(emp)+'">Part day</button></div>';
     if(ent&&ent.part) h+='<input type=time value="'+esc(ent.start)+'" data-hrs="'+esc(emp)+'" data-se=start> – <input type=time value="'+esc(ent.end)+'" data-hrs="'+esc(emp)+'" data-se=end>';
     else if(ent) h+='<span class=muted>'+esc(ent.start)+'–'+esc(ent.end)+'</span>';
     h+='</div>';
-    if(isLead){
+    if(v==='none'){
+      h+='<div class=novehwarn>⚠ Needs a vehicle — pick one above to put '+esc(emp)+'’s jobs on a truck.</div>';
+      const held=holdOf(scenario,emp)||[];
+      if(held.length){ held.forEach(k=>{ const j=activeJobs(date).find(x=>allocKey(x)===k); if(!j)return;
+        h+='<div class=holdjob><div class=jnum>•</div><div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'</div><div class=jsvc>'+esc(j.service||'')+(j.est!=null?' · '+j.est+' min':'')+'</div></div><button class=unassignb data-unassignhold="'+esc(emp)+'|'+esc(k)+'" title="Return to Unallocated">✕ Unassign</button></div>'; }); }
+      else h+='<div class="small muted" style="padding:6px 0">No jobs waiting — give '+esc(emp)+' a vehicle, then allocate jobs.</div>';
+    } else if(isLead){
       const fin=a.finishMin!=null?fmtClock(a.finishMin):'—';
       const drvH=a.driveComplete?r1(a.driveH)+'h':(a.driveMin?'~'+fmtDur(a.driveMin):'—');
       const work=r1(a.onSiteH||0)+'h';
       h+='<div class=vstat><span><span class=k>Vehicle</span><b>'+(v===BB?'🚛 Big Bertha':v)+'</b></span><span><span class=k>Finish</span><b>'+fin+'</b></span><span><span class=k>Driving</span><b>'+drvH+'</b></span><span><span class=k>On-site</span><b>'+work+'</b></span></div>';
       if(v===BB){ const auth=bbAuthCrew(scenario), cur=bbDriverOf(scenario);
-        h+='<div style="font-size:13px;margin:0 0 9px">🚚 <b>Driver:</b> ';
-        if(auth.length) h+='<select data-bbdriver style="padding:4px 7px;border:1px solid #cfe0d6;border-radius:6px;font:inherit;font-size:13px"><option value="">— choose —</option>'+auth.map(n=>'<option'+(n===cur?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select>';
+        h+='<div style="font-size:13.5px;margin:0 0 9px">🚚 <b>Driver:</b> ';
+        if(auth.length) h+='<select data-bbdriver style="padding:5px 9px;border:1px solid #cfe0d6;border-radius:8px;font:inherit;font-size:13.5px"><option value="">— choose —</option>'+auth.map(n=>'<option'+(n===cur?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select>';
         if(!cur) h+=' <span style="color:#b4452b;font-weight:700">⛔ '+(auth.length?'not set':'only '+DEFAULT_BB_DRIVERS.join(' or ')+' can drive Bertha')+'</span>'; else h+=' <span style="color:#1a7a43">✓ '+esc(cur)+'</span>';
         h+='</div>';
       }
       const ord=a.order||[];
-      if(ord.length>=2) h+='<button class=mvb style="margin:0 0 8px;color:#2e8b57;border-color:#bfe0cd" data-optveh="'+esc(v)+'" title="Re-order the stops for the shortest day, keeping real appointment times">🧭 Optimise route</button>';
+      if(ord.length>=2) h+='<button class=mvb style="margin:0 0 10px;color:#2e8b57;border-color:#bfe0cd" data-optveh="'+esc(v)+'" title="Re-order the stops for the shortest day, keeping real appointment times">🧭 Optimise route</button>';
       if(!ord.length) h+='<div class="small muted" style="padding:6px 0">No jobs on this vehicle yet — assign from “Jobs to allocate” above, or share one in.</div>';
       const others=AV.filter(x=>x!==v);
       ord.forEach((j,i)=>{ h+=jobRowHTML(date,j,i,v,ord.length,others,a); });
       if(a.reasons&&a.reasons.length&&a.status!=='n') h+='<div class='+(a.status==='r'?'vwarn':'vok')+'>'+a.reasons.map(r=>'<div>'+(a.status==='r'?'⛔ ':'⚠️ ')+r+'</div>').join('')+'</div>';
       else if(a.status==='g'&&ord.length) h+='<div class=vok>✅ Fits the day'+(a.buffer?' with '+fmtDur(a.buffer)+' to spare':'')+'.</div>';
     } else {
-      h+='<div class=cocrew>🤝 Co-crew on '+(v===BB?'Big Bertha':esc(v))+' with <b>'+esc(lead||'—')+'</b> — same route. The jobs are listed on '+esc(lead||'the lead')+'’s card.</div>';
+      h+='<div class=cocrew>🤝 Co-crew on '+(v===BB?'Big Bertha':esc(v))+' with <b>'+esc(lead||'—')+'</b> — same route and jobs (listed on '+esc(lead||'the lead')+'’s card).</div>';
     }
     h+='</div>';
   });
+  h+='</div></div>';
   if(bench.length){
-    h+='<div class=benchhd>Not on a truck</div><div class="card" style="padding:8px 12px">';
+    h+='<div class=benchhd>Not on the day</div><div class="card" style="padding:10px 14px">';
     bench.forEach(emp=>{ const spec=isSpec(emp);
-      h+='<div class=crewrow><div class="ava off '+(spec?'spec':'')+'">'+ini(emp)+'</div><div class=cname>'+esc(emp)+(spec?' <span class=t>specialist</span>':'')+'</div>'+vehBtns(emp,'off')+'</div>';
+      h+='<div class=crewrow><div class="ava off '+(spec?'spec':'')+'">'+ini(emp)+'</div><div class=cname>'+esc(emp)+(spec?' <span class=t>specialist</span>':'')+'</div>'+
+        '<div class=seg>'+AV.map(vv=>'<button class="'+vehClass(vv)+'" data-crew="'+esc(emp)+'" data-v="'+esc(vv)+'">'+(vv===BB?'🚛 Bertha':vv)+'</button>').join('')+'</div></div>';
     });
     h+='</div>';
   }
-  if(addVehList(date).length){ h+='<div class="small muted" style="margin-top:8px">Need another vehicle? '+addVehList(date).map(function(v){return '<button class=linkbtn data-addveh="'+esc(v)+'" style="margin-left:4px">+ '+(v===BB?'🚛 Big Bertha':v)+'</button>';}).join(' ')+'</div>'; }
+  if(addVehList(date).length){ h+='<div class="small muted" style="margin-top:10px">Need another vehicle? '+addVehList(date).map(function(v){return '<button class=linkbtn data-addveh="'+esc(v)+'" style="margin-left:4px">+ '+(v===BB?'🚛 Big Bertha':v)+'</button>';}).join(' ')+'</div>'; }
   $('vehs').innerHTML=h;
 }
 function jobRowHTML(date,j,i,v,n,others,a){
   const estDot=(j._status==='estimated')?'<span class=estdot>projected</span>':''; const nomap=!j.geo?'<span class=nomap>no map location</span>':''; const newTag=j._proposed?'<span class=appt style="background:#eae0ff;color:#6b2fb3">NEW</span>':'';
   const tipTag=needsBigBertha(j)?'<span class=appt style="background:#f0e6d2;color:#7a5a1e">🚛 tip truck</span>':'';
-  const shared=isShared(scenario,j); const mine=effEst(scenario,j,v);
+  const shared=isShared(scenario,j); const mine=effEst(scenario,j,v); const rem=unallocMins(scenario,j);
   let h='<div class=jrow draggable=true data-key="'+esc(allocKey(j))+'" ondragstart="dragStart(event)"><div class=jnum>'+(i+1)+'</div>'+
-    '<div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'<span class="sk '+(j.skill||'Unknown')+'">'+(j.skill||'?')+'</span>'+(j.appt?'<span class=appt>⏰'+apptLabel(normAppt(j.appt))+'</span>':'')+(shared?'<span class=shbadge>⇄ shared</span>':'')+estDot+nomap+newTag+tipTag+'</div>'+
+    '<div class=jmain><div class=jaddr>'+esc(j.address||'(no address)')+'<span class="sk '+(j.skill||'Unknown')+'">'+(j.skill||'?')+'</span>'+(j.appt?'<span class=appt>⏰'+apptLabel(normAppt(j.appt))+'</span>':'')+(shared?'<span class=shbadge>⇄ shared</span>':'')+(rem>0?'<span class=rembadge>'+Math.round(rem)+' min unallocated</span>':'')+estDot+nomap+newTag+tipTag+'</div>'+
     '<div class=jsvc>'+esc(j.service||'')+(j.est!=null?' · '+j.est+' min total':' · <span style=color:#b4452b>no time</span>')+(shared?' · <b>'+Math.round(mine)+' min here</b>':'')+'</div>';
   if(shared){
     const vlist=vehiclesForJob(scenario,j);
-    h+='<div class=shrow>Split: '+vlist.map(vv=>{ const m=effEst(scenario,j,vv); return '<span>'+esc(vv)+' <input class=shmins type=number min=0 step=5 value="'+Math.round(m)+'" data-shmins="'+esc(allocKey(j))+'|'+esc(vv)+'"> min'+(vv!==v?' <button class="mvb" style="padding:0 6px" data-unshare="'+esc(allocKey(j))+'|'+esc(vv)+'" title="remove this vehicle">✕</button>':'')+'</span>'; }).join(' · ')+'</div>';
+    h+='<div class=shrow><span class=lbl style="min-width:0">Split:</span>'+vlist.map(vv=>{ const m=effEst(scenario,j,vv); return '<span class=shpair>'+esc(vv===BB?'Bertha':vv)+' <input class=shmins type=number min=0 step=5 value="'+Math.round(m)+'" data-shmins="'+esc(allocKey(j))+'|'+esc(vv)+'"> min <button class="unassignb" style="padding:1px 7px" data-unshare="'+esc(allocKey(j))+'|'+esc(vv)+'" title="remove '+esc(vv)+' from this job">✕</button></span>'; }).join('')+'</div>';
   }
   h+='</div><div class=jbtns><button class=ob data-ord=up data-v="'+esc(v)+'" data-key="'+esc(jobKey(j))+'" '+(i===0?'disabled':'')+'>▲</button>'+
     '<button class=ob data-ord=down data-v="'+esc(v)+'" data-key="'+esc(jobKey(j))+'" '+(i===n-1?'disabled':'')+'>▼</button>'+
-    others.map(o=>'<button class="mvb '+(o==='HOPPER'?'toH':'')+'" data-move="'+esc(o)+'" data-key="'+esc(allocKey(j))+'">→ '+(o===BB?'Bertha':o)+'</button>').join('')+
-    '<button class="share" data-sharejob="'+esc(allocKey(j))+'" title="Also give this job to another vehicle and split the work">+ share</button></div></div>';
+    others.map(o=>'<button class="mvb '+(o==='HOPPER'?'toH':'')+'" data-move="'+esc(o)+'" data-key="'+esc(allocKey(j))+'" title="Move to '+esc(o)+'">→ '+(o===BB?'Bertha':o)+'</button>').join('')+
+    '<button class="share" data-sharejob="'+esc(allocKey(j))+'" title="Also give this job to another vehicle and split the work">+ Share</button>'+
+    '<button class="unassignb" data-unassignjob="'+esc(allocKey(j))+'|'+esc(v)+'" title="Take this job off '+esc(v)+' (back to Unallocated if no one else has it)">✕ Unassign</button></div></div>';
   return h;
 }
 
@@ -1525,6 +1620,13 @@ document.addEventListener('click',e=>{
   const sj=e.target.closest('[data-sharejob]'); if(sj){ openShareMenu(sj.dataset.sharejob); return; }
   const sa=e.target.closest('[data-shareadd]'); if(sa){ const p=sa.dataset.shareadd.split('|'); const j=activeJobs(curDay).find(x=>allocKey(x)===p[0]); if(j){ shareJobTo(scenario,j,p[1],null); $('dlg').close(); render(); toast('Shared with '+p[1]+' — split the minutes on the job row'); } return; }
   const us=e.target.closest('[data-unshare]'); if(us){ const p=us.dataset.unshare.split('|'); const j=activeJobs(curDay).find(x=>allocKey(x)===p[0]); if(j){ unshareJobFrom(scenario,j,p[1]); render(); toast('Removed '+p[1]+' from that job'); } return; }
+  const uj=e.target.closest('[data-unassignjob]'); if(uj){ const p=uj.dataset.unassignjob.split('|'); const j=activeJobs(curDay).find(x=>allocKey(x)===p[0]); if(j){ const wasShared=isShared(scenario,j); unassignJobFromVeh(scenario,j,p[1]); render(); toast(wasShared?('Took that job off '+p[1]):'Job returned to “Jobs to allocate”'); } return; }
+  const uh=e.target.closest('[data-unassignhold]'); if(uh){ const p=uh.dataset.unassignhold.split('|'); const j=activeJobs(curDay).find(x=>allocKey(x)===p[1]); if(j){ unallocateJob(scenario,j); render(); toast('Job returned to “Jobs to allocate”'); } return; }
+  const re=e.target.closest('[data-removeemp]'); if(re){ const emp=re.dataset.removeemp; const rel=employeeExclusiveJobs(scenario,emp).length;
+    const doIt=()=>{ removeEmployee(scenario,emp); render(); toast(esc(emp)+' taken off the day'+(rel?' — '+rel+' job'+(rel>1?'s':'')+' back to “Jobs to allocate”':'')); };
+    if(rel>=2) confirmDlg('Remove '+esc(emp)+'?','Taking '+esc(emp)+' off the day will return '+rel+' of their job'+(rel>1?'s':'')+' to “Jobs to allocate”. Anyone sharing those jobs keeps their part.','Remove',doIt,'Keep');
+    else doIt();
+    return; }
   const as=e.target.closest('[data-assign]'); if(as){assign(as.dataset.key,as.dataset.assign);return;}
   const tj=e.target.closest('[data-tojob]'); if(tj){reclassify(tj.dataset.tojob,'job');toast('Moved to jobs — it now counts and can be allocated');return;}
   if(e.target.id==='mgStaff'){openStaffManager();return;}
