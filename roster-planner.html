@@ -93,6 +93,7 @@ label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;l
     <div class="logo">my<b>Bins</b> Roster Planner</div>
     <div class="asof" id="asof">loading…</div>
   </header>
+  <div id="feedwarn"></div>
   <div class="sub">Open a day — the roster Wes normally builds is already suggested from history. Adjust for anything unusual, then save.</div>
 
   <div class="ctl">
@@ -133,6 +134,25 @@ function rotationOf(iso){ // Monday of anchor week = W1, fortnightly
 function dowName(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'long',timeZone:'UTC'});}
 function mondayOf(iso){ var d=new Date(iso+'T12:00:00Z'); var dow=(d.getUTCDay()+6)%7; d.setUTCDate(d.getUTCDate()-dow); return d.toISOString().slice(0,10); }
 function shortDay(iso){ return new Date(iso+'T12:00:00Z').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}); }
+// ---- Feed freshness / coverage (so the planner NEVER silently shows stale data as current) ----
+function isoToday(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function addDaysISO(iso,n){ var d=new Date(iso+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+function feedLastDate(){ var ds=(FEED&&FEED.weekDates)||[]; return ds.length?ds[ds.length-1]:((FEED&&FEED.today)||''); }
+function feedFirstDate(){ var ds=(FEED&&FEED.weekDates)||[]; return ds.length?ds[0]:((FEED&&FEED.today)||''); }
+function feedCoversDate(iso){ return !!(FEED&&FEED.byDate&&FEED.byDate[iso]); }
+function feedStale(){ var last=feedLastDate(); return !!(last && last < isoToday()); }  // feed ends before today
+// Prominent, non-dismissable warning when the feed is out of date OR the open day has no live jobs yet.
+function renderFeedWarn(){
+  var box=$('#feedwarn'); if(!box) return; var html='';
+  if(feedStale()){
+    html+='<div class="rec bad" style="margin:8px 0"><span class="ic">⚠</span><div><b>Roster feed is out of date.</b> It was last refreshed <b>'+esc(FEED.generatedAt||'(unknown)')+'</b> and only contains live Zenkit jobs up to <b>'+esc(shortDay(feedLastDate()))+'</b> — but today is <b>'+esc(shortDay(isoToday()))+'</b>. You can still plan ahead below, but any day past the feed is built from the usual roster in history, not live Zenkit jobs. Ask for a feed refresh if this persists.</div></div>';
+  }
+  if(DATE && !feedCoversDate(DATE)){
+    html+='<div class="rec warn" style="margin:8px 0"><span class="ic">!</span><div><b>No live Zenkit jobs loaded for '+esc(shortDay(DATE))+' yet.</b> This day is shown from the usual '+esc(DOW||dowName(DATE))+' ('+esc(ROT==='W1'?'Week 1':'Week 2')+') roster in history — confirm it against Zenkit before relying on it. It is NOT an empty/finished day.</div></div>';
+  }
+  box.innerHTML=html;
+  var asof=$('#asof'); if(asof){ asof.style.background=feedStale()?'#fde8e4':''; asof.style.color=feedStale()?'#8a2f1a':''; asof.style.borderColor=feedStale()?'#f3c9bf':''; }
+}
 
 /* ============ MOWING COMMITMENTS (read-only from Blake's myMowing handover) ============
    Wes sees, at the top of the day he is planning, exactly which staff and vehicles Blake has
@@ -261,8 +281,16 @@ async function boot(){
   catch(e){ $('#main').innerHTML='<div class="loading">Could not load the roster feed. Open through the planner login.</div>'; return; }
   $('#asof').textContent=FEED.generatedAt||'';
   var dp=$('#date');
-  var dates=(FEED.weekDates||[]); DATE = (dates.indexOf(FEED.today)>=0)?FEED.today:(dates[0]||FEED.today);
-  dp.value=DATE; dp.min=dates[0]||''; dp.max=dates[dates.length-1]||'';
+  var dates=(FEED.weekDates||[]); var today=isoToday();
+  // Default to the REAL today so Wes starts on the day he needs to plan, even if the feed is behind.
+  DATE = today || (dates.indexOf(FEED.today)>=0?FEED.today:(dates[0]||FEED.today));
+  dp.value=DATE;
+  dp.min=feedFirstDate()||today;
+  // Always allow the current week + at least the next two working weeks — a stale or single-week feed
+  // must NEVER lock Wes out of planning ahead. Reach through the Friday after next (generous margin).
+  var feedMax=feedLastDate()||today;
+  var planMax=addDaysISO(mondayOf(today), 18);
+  dp.max=(feedMax>planMax)?feedMax:planMax;
   dp.onchange=function(){ DATE=dp.value; loadDay(); };
   $('#save').onclick=function(){ doSave(); };
   $('#reset').onclick=async function(){ if(DIRTY && !confirm('Clear your changes and reset to the suggested roster?\n\nAnything you have moved or reassigned will be lost.')) return; STATE=suggested(); STATE.shifts=STATE.shifts||[]; STATE.tray=STATE.tray||[]; STATE.shared=STATE.shared||{}; CONF_RUN={}; CONF_VEH={}; buildSuggestions(); try{ await applyLearning(); }catch(e){} DIRTY=false; CONFLICT=null; render(); toast('Reset to the suggested roster'); };
@@ -338,6 +366,7 @@ function migrateShared(){ var m=sharedMap(); var seen={};
 async function loadDay(){
   DOW=dowName(DATE); ROT=rotationOf(DATE);
   $('#dow').textContent=DOW; $('#rot').textContent=(ROT==='W1'?'Week 1':'Week 2')+' rotation';
+  renderFeedWarn();
   // try load saved plan for this exact date
   STATE=null; VERSION=0; var fromSaved=false;
   try{ var r=await fetch('/api/roster/'+DATE,{cache:'no-store'}); if(r.ok){ var j=await r.json(); if(j.roster){ STATE=j.roster; VERSION=j.version||0; fromSaved=true; } } }catch(e){}
