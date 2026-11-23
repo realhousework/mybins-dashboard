@@ -7,6 +7,9 @@ body{margin:0;background:#f4f6f4;color:#17201a;font:15px/1.45 -apple-system,Blin
 .wrap{max-width:1180px;margin:0 auto;padding:16px 18px 70px}
 header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-bottom:3px solid #2e8b57;padding-bottom:12px}
 .logo{font-size:22px;font-weight:800;letter-spacing:-.02em}.logo b{color:#2e8b57}
+.homebtn{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:#2e8b57;background:#eef3f0;border:1px solid #cfe9d9;border-radius:999px;padding:5px 12px;text-decoration:none;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.homebtn:hover{background:#e2efe8}
+.hgrp{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
 .asof{font-size:12.5px;background:#e7f4ec;color:#0f7a43;border:1px solid #cfe9d9;border-radius:999px;padding:4px 12px;font-weight:700}
 .sub{color:#5b6b60;font-size:13px;margin:8px 0 2px}
 .ctl{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;margin:16px 0 6px}
@@ -90,7 +93,10 @@ label.fl{font-size:11px;color:#5b6b60;text-transform:uppercase;font-weight:700;l
 </style></head>
 <body><div class="wrap">
   <header>
-    <div class="logo">my<b>Bins</b> Roster Planner</div>
+    <div class="hgrp">
+      <a class="homebtn" id="opsHub" href="https://realhousework.github.io/mybins-dashboard/home.html">‹ Operations Hub</a>
+      <div class="logo">my<b>Bins</b> Roster Planner</div>
+    </div>
     <div class="asof" id="asof">loading…</div>
   </header>
   <div id="feedwarn"></div>
@@ -692,5 +698,7 @@ async function doSave(forceBase){
   SAVING=false;$('#save').disabled=false;
 }
 boot();
+// Operations Hub: warn before leaving with unsaved changes.
+(function(){var h=document.getElementById('opsHub');if(h)h.addEventListener('click',function(e){if(typeof DIRTY!=='undefined'&&DIRTY&&!confirm('You have unsaved changes to this roster. Leave and lose them?'))e.preventDefault();});})();
 </script>
 </body></html>
