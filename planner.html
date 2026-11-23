@@ -6,6 +6,9 @@ body{margin:0;background:#f4f6f4;color:#17201a;font:16px/1.5 -apple-system,Blink
 h1{font-size:20px;margin:0}.logo b{color:#2e8b57}
 .muted{color:#5b6b60}.small{font-size:13px}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:3px solid #2e8b57;padding-bottom:10px}
+.homebtn{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:#2e8b57;background:#eef3f0;border:1px solid #cfe9d9;border-radius:999px;padding:5px 12px;text-decoration:none;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.homebtn:hover{background:#e2efe8}
+.hgrp{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
 .who{font-size:12.5px;background:#e7f4ec;color:#0f7a43;border:1px solid #cfe9d9;border-radius:999px;padding:4px 12px;font-weight:700}
 .demobar{background:#8a3ffb;color:#fff;font-weight:800;text-align:center;padding:7px;border-radius:10px;margin:10px 0;font-size:13.5px;letter-spacing:.02em}
 .errbox{background:#fde8e4;border:1px solid #f3c9bf;color:#8a2f1a;border-radius:14px;padding:20px;margin:40px 0;text-align:center}
@@ -159,7 +162,10 @@ dialog .df{padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;bord
 @media(max-width:760px){.vehgrid{grid-template-columns:1fr}.datebar .today{min-width:150px;font-size:17px}.weekcard .jcol{min-width:48px}.weekcard .dcol{min-width:78px}}
 </style></head><body><div class=wrap>
 <div class=topbar>
-  <h1 class=logo>my<b>Mowing</b> · Daily Plan</h1>
+  <div class=hgrp>
+    <a class=homebtn id=opsHub href="https://realhousework.github.io/mybins-dashboard/home.html">‹ Operations Hub</a>
+    <h1 class=logo>my<b>Mowing</b> · Daily Plan</h1>
+  </div>
   <span class=who id=who>…</span>
 </div>
 <div id=demobar></div>
@@ -1739,6 +1745,8 @@ document.addEventListener('change',e=>{ const t=e.target.closest('[data-hrs]'); 
   if(e.target.id==='datePick'&&e.target.value)setDate(e.target.value); });
 $('prev').onclick=()=>shiftDay(-1); $('next').onclick=()=>shiftDay(1);
 $('saveBtn').onclick=savePlan; $('suggestBtn').onclick=suggestPlan; $('waBtn').onclick=copyWA;
+// Operations Hub: warn before leaving with unsaved changes (dirty = Save button enabled and still reading "Save plan").
+(function(){var h=document.getElementById('opsHub');if(h)h.addEventListener('click',function(e){var sb=document.getElementById('saveBtn');if(sb&&!sb.disabled&&/Save plan/.test(sb.textContent)&&!confirm('You have unsaved changes to this plan. Leave and lose them?'))e.preventDefault();});})();
 // Reset allocations removed from the UI (Nov 2026). Handler guarded in case the button is absent; saved
 // plans and their data are untouched.
 { const _reset=$('resetAlloc'); if(_reset) _reset.onclick=()=>{ const n=activeJobs(curDay).filter(j=>vehOfJob(scenario,j)).length; if(!n){toast('Nothing allocated to reset');return;} confirmDlg('Reset allocations?','Take all '+n+' job'+(n>1?'s':'')+' back off the trucks and into “Jobs to allocate”. Your crew and hours stay as they are. (Save afterwards to keep it.)','Reset',()=>{ scenario.alloc={}; scenario.order={}; render(); toast('Cleared — all jobs back in the pool'); },'Cancel'); }; }
